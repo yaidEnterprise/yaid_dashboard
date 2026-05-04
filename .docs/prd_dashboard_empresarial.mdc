@@ -1,0 +1,2648 @@
+---
+description: PRD do Dashboard Web Empresarial do YaID
+globs:
+  - "apps/web/**"
+  - "src/**"
+  - "app/**"
+  - "components/**"
+alwaysApply: false
+---
+
+# PRD — Dashboard Web Empresarial YaID
+
+## 1. Resumo Executivo
+
+### Produto
+
+**Nome do Produto:** YaID Dashboard Empresarial
+
+**Tipo de Produto:** Aplicativo web B2B com frontend e backend em Next.js, utilizando Supabase como base de dados.
+
+**Escopo deste documento:** Este PRD cobre exclusivamente o Dashboard Web Empresarial. Não cobre o aplicativo mobile do usuário final, nem a implementação do smart contract, nem o fluxo completo de onboarding documental do usuário.
+
+**Status:** Rascunho inicial
+
+**Última Atualização:** Abril/2026
+
+### Visão do Produto
+
+O YaID Dashboard Empresarial é uma plataforma web para empresas parceiras criarem e gerenciarem suas integrações com a YaID, permitindo solicitar validações de personhood baseadas em DID/VC/VP sem precisar lidar diretamente com a complexidade técnica de identidade descentralizada.
+
+### Usuário-alvo
+
+O produto é destinado a empresas que desejam integrar validação de identidade/personhood em seus próprios sistemas.
+
+Exemplos de empresas-alvo:
+
+- marketplaces;
+- redes sociais;
+- fintechs;
+- edtechs;
+- plataformas de cadastro;
+- plataformas que desejam reduzir bots, perfis falsos, contas duplicadas ou fraudes de identidade.
+
+### Caso de uso principal
+
+Uma empresa parceira acessa o dashboard, cadastra sua organização, cria um app próprio, configura um webhook, recebe uma API key e passa a conseguir criar solicitações de validação de personhood para seus próprios usuários.
+
+### Proposta de valor
+
+A empresa parceira não precisa entender ou implementar diretamente DID, VC, VP, blockchain ou verificação de revogação. Ela consome uma API simples e recebe um resultado objetivo:
+
+{
+  "valid": true
+}
+
+O Dashboard Empresarial transforma a infraestrutura técnica do YaID em uma experiência B2B simples, operacional e integrável.
+
+### Métricas de sucesso
+
+Métricas primárias:
+
+- tempo médio para cadastrar uma empresa e criar o primeiro app menor ou igual a 10 minutos;
+- taxa de criação de app concluída maior ou igual a 80%;
+- taxa de proof_requests finalizadas com sucesso técnico maior ou igual a 95%;
+- tempo médio de resposta da criação de proof_request menor que 1 segundo;
+- webhooks entregues com sucesso em pelo menos 95% das tentativas válidas.
+
+Métricas secundárias:
+
+- número de empresas cadastradas;
+- número de apps criados por empresa;
+- número de proof_requests criadas;
+- percentual de proof_requests aprovadas, rejeitadas e expiradas;
+- tempo médio entre criação da proof_request e conclusão;
+- taxa de erro em webhooks;
+- quantidade média de validações por empresa;
+- quantidade de solicitações por ambiente: sandbox e production.
+
+### Alinhamento estratégico
+
+O Dashboard Empresarial apoia o objetivo de transformar a YaID em uma plataforma B2B de identidade verificável. Sem o dashboard, a YaID seria apenas um protocolo técnico ou uma API de difícil operação. Com o dashboard, a empresa parceira consegue se autoatender, criar integrações, obter credenciais, configurar webhooks e acompanhar validações.
+
+### Requisitos de recursos
+
+Estimativa de esforço para MVP:
+
+- 1 desenvolvedor fullstack Next.js/Supabase;
+- 1 pessoa responsável por produto/documentação;
+- 1 pessoa para revisão técnica de segurança e arquitetura;
+- 3 a 5 semanas de desenvolvimento para MVP funcional.
+
+Habilidades necessárias:
+
+- Next.js App Router;
+- TypeScript;
+- Supabase/PostgreSQL;
+- autenticação/autorização no contexto web;
+- modelagem de APIs REST;
+- segurança de API keys;
+- integração com webhook;
+- noções do fluxo DID/VC/VP, ainda que a complexidade de SSI esteja encapsulada fora do dashboard.
+
+---
+
+## 2. Declaração do Problema & Oportunidade
+
+### Definição do problema
+
+Empresas que precisam validar se um usuário é uma pessoa real enfrentam um problema operacional e técnico.
+
+Sem uma solução especializada, a empresa precisa escolher entre:
+
+1. pedir documentos diretamente ao usuário;
+2. contratar soluções tradicionais de KYC;
+3. não validar identidade e aceitar risco de fraude;
+4. construir internamente uma integração com identidade digital;
+5. lidar diretamente com conceitos complexos como DID, VC, VP, revogação e blockchain.
+
+Cada alternativa possui custo, complexidade, fricção ou risco de privacidade.
+
+O problema específico resolvido pelo Dashboard Empresarial da YaID é:
+
+Como permitir que uma empresa parceira integre validação de personhood com baixa fricção técnica, sem precisar entender os detalhes internos de DID, VC, VP e blockchain?
+
+### Pontos de dor dos usuários empresariais
+
+- dificuldade de integrar fluxos de identidade descentralizada;
+- ausência de uma interface simples para gerenciar credenciais de integração;
+- necessidade de configurar webhooks por app;
+- necessidade de separar ambiente sandbox de production;
+- dificuldade de acompanhar o status das validações;
+- dificuldade de correlacionar uma validação YaID com um usuário interno da empresa;
+- necessidade de receber somente o resultado final da validação, sem receber dados pessoais sensíveis;
+- necessidade de reduzir esforço técnico para adoção.
+
+### Evidências e premissas do projeto
+
+Este PRD parte das decisões já definidas para o MVP:
+
+- o MVP terá foco em personhood;
+- o app mobile será a wallet do usuário/holder;
+- o app mobile guardará DID, chave local e VC de personhood;
+- a YaID atuará como issuer;
+- a empresa parceira atuará como verifier;
+- o dashboard empresarial não armazena documento pessoal do usuário;
+- a empresa interage com a YaID por API e webhook;
+- a blockchain será usada como registry de confiança/revogação, não como banco de dados empresarial;
+- o banco empresarial do MVP terá como base quatro tabelas principais:
+  - companies;
+  - company_apps;
+  - proof_requests;
+  - proof_sessions.
+
+### Análise de oportunidade
+
+A oportunidade do dashboard é transformar a YaID em uma plataforma B2B utilizável. Ele cria a camada de operação empresarial do produto.
+
+Sem o dashboard:
+
+- a empresa dependeria do time YaID para criar configurações;
+- a geração de API key seria manual;
+- a configuração de webhook seria manual;
+- haveria baixa rastreabilidade das solicitações;
+- seria difícil demonstrar o produto para parceiros.
+
+Com o dashboard:
+
+- a empresa cria sua própria integração;
+- recebe API key;
+- configura webhook;
+- cria proof_requests;
+- acompanha o status das validações;
+- testa o fluxo ponta a ponta.
+
+### Lacuna competitiva
+
+O diferencial da YaID está em expor para empresas uma API simples de validação, enquanto internamente utiliza conceitos de identidade descentralizada.
+
+A empresa não precisa validar DID/VC/VP diretamente. O dashboard e a API encapsulam a complexidade.
+
+Fluxo percebido pela empresa:
+
+Criar solicitação
+Receber verification_url
+Redirecionar usuário
+Aguardar webhook
+Receber valid=true/false
+
+### Critérios de sucesso
+
+Primários:
+
+- empresa consegue cadastrar uma organização;
+- empresa consegue criar um app próprio;
+- empresa recebe API key uma única vez;
+- empresa consegue configurar webhook_url;
+- empresa consegue criar proof_request usando a API key;
+- empresa consegue visualizar proof_requests no dashboard;
+- empresa consegue receber resultado via webhook.
+
+Secundários:
+
+- interface compreensível para usuários técnicos e semi-técnicos;
+- baixa taxa de erro na configuração inicial;
+- separação clara entre sandbox e production;
+- rastreabilidade por external_reference;
+- visualização clara de status: pending_user, processing, approved, rejected e expired.
+
+---
+
+## 3. Requisitos & Histórias de Usuário
+
+## 3.1 Personas de Usuário Primárias
+
+### Persona 1 — Responsável Técnico da Empresa
+
+Perfil:
+
+Desenvolvedor, tech lead, arquiteto ou responsável pela integração da empresa com a YaID.
+
+Objetivos:
+
+- criar app próprio;
+- obter API key;
+- configurar webhook;
+- entender como chamar a API da YaID;
+- testar o fluxo em sandbox;
+- acompanhar se as solicitações estão funcionando.
+
+Pontos de dor:
+
+- não quer depender de configuração manual pelo time YaID;
+- precisa de credenciais claras;
+- precisa saber qual webhook está configurado;
+- precisa testar o fluxo antes de produção;
+- precisa entender o payload esperado da API e do webhook.
+
+Critérios de sucesso:
+
+- consegue criar app em poucos minutos;
+- consegue copiar API key uma única vez;
+- consegue criar proof_request usando a API;
+- consegue receber webhook no endpoint configurado.
+
+### Persona 2 — Gestor Operacional da Empresa
+
+Perfil:
+
+Pessoa responsável por acompanhar validações, status de usuários ou processos operacionais dentro da empresa.
+
+Objetivos:
+
+- visualizar solicitações de validação;
+- entender quais foram aprovadas, rejeitadas ou expiradas;
+- correlacionar validações com IDs internos da empresa;
+- acompanhar volume e taxa de sucesso.
+
+Pontos de dor:
+
+- dificuldade de saber se uma validação falhou por erro técnico ou rejeição;
+- dificuldade de correlacionar request_id com usuário interno;
+- falta de visibilidade operacional;
+- dependência do time técnico para investigar problemas.
+
+Critérios de sucesso:
+
+- consegue filtrar proof_requests por status;
+- consegue buscar por external_reference;
+- consegue abrir detalhes de uma validação;
+- consegue saber quando a validação foi concluída.
+
+## 3.2 Mapeamento da Jornada do Usuário
+
+### Jornada atual sem dashboard
+
+Empresa entra em contato com YaID
+YaID cria configuração manual
+YaID entrega credenciais manualmente
+Empresa integra via API
+Empresa tem pouca visibilidade sobre solicitações
+Investigação depende de logs técnicos
+
+### Jornada proposta
+
+Empresa acessa Dashboard YaID
+Cadastra company
+Cria company_app
+Configura webhook_url
+Recebe API key
+Cria proof_request via API
+Recebe verification_url
+Redireciona usuário
+Acompanha status no dashboard
+Recebe webhook final
+
+## 3.3 Histórias de Usuário Centrais
+
+### Épico 1 — Cadastro de empresa
+
+História:
+
+Como uma empresa parceira, eu quero cadastrar minha organização para que eu possa começar a usar a YaID.
+
+Critérios de aceitação:
+
+- a empresa consegue informar nome e documento;
+- o sistema cria um registro em companies;
+- o status inicial da empresa é active no MVP;
+- o sistema retorna o company_id criado;
+- a empresa passa a poder criar apps próprios.
+
+### Épico 2 — Criação de app próprio
+
+História:
+
+Como responsável técnico da empresa, eu quero criar um app próprio para obter uma API key e integrar meu sistema à YaID.
+
+Critérios de aceitação:
+
+- a empresa informa nome do app, environment e webhook_url;
+- o sistema cria um registro em company_apps;
+- o sistema gera uma API key no formato <app_id>.<secret>;
+- o secret é exibido apenas uma vez;
+- o banco armazena apenas o hash do secret;
+- o app fica associado à company correta;
+- o status inicial do app é active.
+
+### Épico 3 — Criação de solicitação de validação
+
+História:
+
+Como empresa parceira, eu quero criar uma solicitação de validação de personhood para que meu usuário possa comprovar sua identidade via YaID.
+
+Critérios de aceitação:
+
+- a empresa autentica a chamada usando API key;
+- a API identifica o company_app pelo app_id da API key;
+- a API valida o secret recebido contra o hash armazenado;
+- a API cria uma proof_request;
+- a API cria uma proof_session associada;
+- a API retorna request_id e verification_url;
+- a proof_request inicia com status pending_user;
+- a proof_session inicia com status waiting_user.
+
+### Épico 4 — Acompanhamento de solicitações
+
+História:
+
+Como gestor operacional da empresa, eu quero visualizar as solicitações de validação para acompanhar o status dos usuários.
+
+Critérios de aceitação:
+
+- o dashboard lista proof_requests da empresa;
+- é possível filtrar por status;
+- é possível buscar por external_reference;
+- é possível abrir detalhes de uma proof_request;
+- a empresa só visualiza dados dos seus próprios apps;
+- a listagem mostra request_id, app, proof_type, status, result, external_reference, created_at e validated_at.
+
+### Épico 5 — Entrega de resultado via webhook
+
+História:
+
+Como empresa parceira, eu quero receber o resultado da validação no meu webhook para continuar automaticamente o fluxo do meu sistema.
+
+Critérios de aceitação:
+
+- o webhook_url é lido de company_apps;
+- a API envia o resultado quando a proof_request é finalizada;
+- o payload contém request_id, proof_type, status, valid e external_reference;
+- falhas de envio devem ser registradas em log interno, mesmo que ainda não exista tabela específica no MVP;
+- o dashboard deve mostrar o status final da proof_request independentemente de o webhook ter sucesso ou falhar.
+
+---
+
+## 4. Requisitos Funcionais
+
+## 4.1 Recursos Centrais — Deve Ter
+
+### 4.1.1 Cadastro de empresa
+
+Descrição:
+
+Permitir criar uma company na base da YaID.
+
+Campos mínimos:
+
+- name;
+- document_number;
+- status;
+- created_at.
+
+Regras:
+
+- name é obrigatório;
+- document_number é opcional no MVP, mas recomendado;
+- status inicial deve ser active;
+- id deve ser UUID gerado pelo banco.
+
+Resultado esperado:
+
+- registro criado em companies.
+
+### 4.1.2 Criação de app próprio
+
+Descrição:
+
+Permitir que uma company crie um company_app para integrar com a API YaID.
+
+Campos mínimos:
+
+- company_id;
+- name;
+- api_key_hash;
+- webhook_url;
+- environment;
+- status;
+- created_at.
+
+Regras:
+
+- cada app pertence a uma company;
+- o environment deve ser sandbox ou production;
+- o status inicial deve ser active;
+- a API key deve ser exibida uma única vez;
+- a API key deve ter formato <app_id>.<secret>;
+- somente o hash do secret deve ser armazenado.
+
+Resultado esperado:
+
+- registro criado em company_apps;
+- API key retornada uma única vez para a empresa.
+
+### 4.1.3 Listagem de apps
+
+Descrição:
+
+Permitir que a empresa visualize seus apps cadastrados.
+
+Dados exibidos:
+
+- app_id;
+- name;
+- environment;
+- webhook_url;
+- status;
+- created_at.
+
+Critérios:
+
+- não exibir API key original;
+- não exibir secret;
+- permitir identificar qual app pertence a sandbox ou production.
+
+### 4.1.4 Criação de proof_request via API
+
+Descrição:
+
+Permitir que um company_app crie uma solicitação de validação de personhood.
+
+Endpoint esperado:
+
+POST /api/proof-requests
+
+Autenticação:
+
+Authorization: Bearer <app_id>.<secret>
+
+Payload:
+
+{
+  "proof_type": "personhood_vc",
+  "external_reference": "user_789"
+}
+
+Resposta:
+
+{
+  "request_id": "req_123",
+  "verification_url": "https://verify.yaid.com/v/<session_token>",
+  "status": "pending_user"
+}
+
+Regras:
+
+- a API deve validar a API key;
+- o app precisa estar active;
+- a company precisa estar active;
+- proof_type inicial suportado: personhood_vc;
+- external_reference é opcional;
+- deve criar proof_request;
+- deve criar proof_session;
+- deve retornar verification_url.
+
+### 4.1.5 Listagem de proof_requests
+
+Descrição:
+
+Permitir que a empresa veja as solicitações criadas por seus apps.
+
+Filtros mínimos:
+
+- status;
+- app_id;
+- external_reference;
+- created_at.
+
+Dados exibidos:
+
+- request_id;
+- app_name;
+- proof_type;
+- status;
+- result;
+- external_reference;
+- created_at;
+- validated_at.
+
+### 4.1.6 Detalhe de proof_request
+
+Descrição:
+
+Permitir que a empresa veja os detalhes de uma solicitação específica.
+
+Dados exibidos:
+
+- request_id;
+- app_id;
+- app_name;
+- proof_type;
+- status;
+- result;
+- external_reference;
+- created_at;
+- validated_at;
+- proof_session.status;
+- proof_session.created_at;
+- proof_session.expires_at;
+- proof_session.opened_at;
+- proof_session.approved_at.
+
+### 4.1.7 Tela coringa de verificação
+
+Descrição:
+
+A API/dashboard deve suportar a geração de verification_url para o usuário final.
+
+Formato esperado:
+
+https://verify.yaid.com/v/<session_token>
+
+Regras:
+
+- o session_token bruto aparece na URL;
+- o banco armazena somente session_token_hash;
+- a tela resolve a sessão internamente;
+- se a sessão estiver expirada, deve mostrar status expirado;
+- se estiver válida, deve exibir botão/QR para abrir o app YaID;
+- URLs podem ser derivadas dinamicamente do token e não precisam ser persistidas como colunas.
+
+### 4.1.8 Recebimento de VP pelo app mobile
+
+Descrição:
+
+Embora o app mobile não faça parte deste PRD, a API do dashboard deve possuir endpoint para receber a Verifiable Presentation enviada pelo app.
+
+Endpoint esperado:
+
+POST /api/presentations/verify
+
+Responsabilidade:
+
+- validar VP;
+- validar assinatura da VC pelo issuer;
+- validar assinatura da VP pelo holder;
+- validar challenge/nonce;
+- consultar registry/revogação;
+- atualizar proof_request;
+- retornar status final.
+
+Observação:
+
+Este PRD cobre apenas o endpoint e a atualização das tabelas empresariais. O fluxo de geração da VP pertence ao app mobile.
+
+### 4.1.9 Envio de webhook
+
+Descrição:
+
+Quando uma proof_request for finalizada, a API deve enviar o resultado para o webhook_url configurado em company_apps.
+
+Payload esperado:
+
+{
+  "event": "proof.completed",
+  "request_id": "req_123",
+  "proof_type": "personhood_vc",
+  "external_reference": "user_789",
+  "status": "approved",
+  "valid": true,
+  "validated_at": "2026-04-28T20:00:00Z"
+}
+
+Regras:
+
+- webhook_url vem de company_apps;
+- o dashboard não deve exigir callback_url por proof_request;
+- a proof_request deve ser finalizada mesmo se o webhook falhar;
+- falhas de webhook devem ser logadas internamente.
+
+## 4.2 Recursos Secundários — Bom Ter
+
+Recursos que podem ser considerados após o MVP:
+
+- rotação de API key;
+- múltiplas API keys por app;
+- logs detalhados de webhook;
+- tela para reenvio manual de webhook;
+- documentação interativa da API dentro do dashboard;
+- painel analítico com volume de validações;
+- ambiente de testes com simulação de aprovação/rejeição;
+- gestão de membros da empresa;
+- permissões por papel;
+- exportação CSV de proof_requests;
+- health check do webhook configurado.
+
+## 4.3 Priorização MoSCoW
+
+### Must Have
+
+- cadastro de company;
+- criação de company_app;
+- geração de API key;
+- armazenamento seguro do hash da API key;
+- configuração de webhook_url;
+- criação de proof_request via API;
+- criação de proof_session;
+- geração de verification_url;
+- listagem de proof_requests;
+- detalhe de proof_request;
+- atualização de status da proof_request;
+- envio de webhook final.
+
+### Should Have
+
+- filtros por status e app;
+- busca por external_reference;
+- separação sandbox/production;
+- visualização clara do status da sessão;
+- validação básica de webhook_url;
+- logs técnicos mínimos.
+
+### Could Have
+
+- reenvio manual de webhook;
+- rotação de API key;
+- página de documentação da API;
+- painel de métricas;
+- simulação de fluxo sandbox.
+
+### Won't Have no MVP
+
+- gestão complexa de times e permissões;
+- billing;
+- múltiplos webhooks por app;
+- ZKP;
+- smart contract management pelo dashboard;
+- onboarding documental do usuário;
+- emissão de VC pelo dashboard;
+- app mobile.
+
+---
+
+## 5. Requisitos Técnicos
+
+## 5.1 Stack
+
+Frontend:
+
+- Next.js;
+- TypeScript;
+- React;
+- componentes reutilizáveis;
+- possível uso de shadcn/ui;
+- Tailwind CSS.
+
+Backend:
+
+- Next.js Route Handlers;
+- TypeScript;
+- Supabase client/server;
+- endpoints REST.
+
+Banco de dados:
+
+- Supabase/PostgreSQL.
+
+Autenticação entre empresa e API:
+
+- API key no formato <app_id>.<secret>;
+- app_id usado para lookup;
+- secret validado contra api_key_hash.
+
+## 5.2 Arquitetura de alto nível
+
+Componentes:
+
+- Dashboard Web Empresarial;
+- API interna Next.js;
+- Supabase;
+- Tela coringa de verificação;
+- API de recebimento de VP;
+- integração futura com Blockchain/Registry;
+- integração futura com app mobile.
+
+Fluxo empresarial:
+
+Empresa cria app
+Empresa recebe API key
+Empresa chama POST /proof-requests
+API cria proof_request e proof_session
+Empresa redireciona usuário para verification_url
+App mobile envia VP para API
+API valida VP e registry
+API atualiza proof_request
+API envia webhook para empresa
+
+## 5.3 Modelo de dados
+
+### companies
+
+Finalidade:
+
+Armazena empresas clientes da YaID.
+
+Campos:
+
+- id: UUID, PK;
+- name: VARCHAR, obrigatório;
+- document_number: VARCHAR, opcional;
+- status: VARCHAR, obrigatório;
+- created_at: TIMESTAMP, obrigatório.
+
+Status possíveis:
+
+- active;
+- inactive;
+- suspended.
+
+### company_apps
+
+Finalidade:
+
+Armazena integrações/apps de cada empresa.
+
+Campos:
+
+- id: UUID, PK;
+- company_id: UUID, FK para companies.id;
+- name: VARCHAR, obrigatório;
+- api_key_hash: VARCHAR(255) ou TEXT, obrigatório;
+- webhook_url: VARCHAR, obrigatório;
+- environment: VARCHAR, obrigatório;
+- status: VARCHAR, obrigatório;
+- created_at: TIMESTAMP, obrigatório.
+
+Status possíveis:
+
+- active;
+- inactive;
+- suspended.
+
+Environment possíveis:
+
+- sandbox;
+- production.
+
+Formato da API key:
+
+<app_id>.<secret>
+
+Armazenamento:
+
+- app_id fica em company_apps.id;
+- secret é exibido uma única vez;
+- api_key_hash armazena hash do secret.
+
+### proof_requests
+
+Finalidade:
+
+Armazena pedidos de validação feitos por empresas.
+
+Campos:
+
+- id: UUID, PK;
+- app_id: UUID, FK para company_apps.id;
+- proof_type: VARCHAR, obrigatório;
+- status: VARCHAR, obrigatório;
+- result: BOOLEAN, opcional;
+- external_reference: VARCHAR, opcional;
+- created_at: TIMESTAMP, obrigatório;
+- validated_at: TIMESTAMP, opcional.
+
+proof_type inicial:
+
+- personhood_vc.
+
+Status possíveis:
+
+- pending_user;
+- processing;
+- approved;
+- rejected;
+- expired.
+
+Regras de result:
+
+- pending_user: null;
+- processing: null;
+- approved: true;
+- rejected: false;
+- expired: null.
+
+### proof_sessions
+
+Finalidade:
+
+Armazena a sessão de interação do usuário com a tela coringa e deep link.
+
+Campos:
+
+- proof_request_id: UUID, PK e FK para proof_requests.id;
+- session_token_hash: VARCHAR(255) ou TEXT, obrigatório;
+- status: VARCHAR, obrigatório;
+- created_at: TIMESTAMP, obrigatório;
+- expires_at: TIMESTAMP, obrigatório;
+- opened_at: TIMESTAMP, opcional;
+- approved_at: TIMESTAMP, opcional.
+
+Observação:
+
+Como proof_request e proof_session são 1:1 no MVP, proof_request_id pode ser usado como PK/FK, evitando um id próprio em proof_sessions.
+
+Status possíveis:
+
+- waiting_user;
+- opened;
+- approved_by_user;
+- expired;
+- cancelled.
+
+## 5.4 Relacionamentos
+
+companies 1:N company_apps
+
+company_apps 1:N proof_requests
+
+proof_requests 1:1 proof_sessions
+
+## 5.5 Endpoints mínimos
+
+### POST /api/companies
+
+Cria uma empresa.
+
+Request:
+
+{
+  "name": "Empresa XPTO",
+  "document_number": "12345678000190"
+}
+
+Response:
+
+{
+  "company_id": "uuid",
+  "status": "active"
+}
+
+### POST /api/company-apps
+
+Cria um app para uma empresa.
+
+Request:
+
+{
+  "company_id": "uuid",
+  "name": "onboarding-web-prod",
+  "environment": "production",
+  "webhook_url": "https://empresa.com/webhooks/yaid"
+}
+
+Response:
+
+{
+  "app_id": "uuid",
+  "api_key": "<app_id>.<secret>",
+  "status": "active"
+}
+
+Observação:
+
+A api_key deve ser exibida uma única vez.
+
+### GET /api/company-apps
+
+Lista apps da empresa.
+
+Response:
+
+{
+  "items": [
+    {
+      "id": "uuid",
+      "name": "onboarding-web-prod",
+      "environment": "production",
+      "webhook_url": "https://empresa.com/webhooks/yaid",
+      "status": "active",
+      "created_at": "2026-04-28T20:00:00Z"
+    }
+  ]
+}
+
+### POST /api/proof-requests
+
+Cria solicitação de validação.
+
+Headers:
+
+Authorization: Bearer <app_id>.<secret>
+
+Request:
+
+{
+  "proof_type": "personhood_vc",
+  "external_reference": "user_789"
+}
+
+Response:
+
+{
+  "request_id": "uuid",
+  "verification_url": "https://verify.yaid.com/v/<session_token>",
+  "status": "pending_user"
+}
+
+### GET /api/proof-requests
+
+Lista proof_requests da empresa.
+
+Filtros:
+
+- status;
+- app_id;
+- external_reference;
+- created_at.
+
+### GET /api/proof-requests/{request_id}
+
+Retorna detalhe da proof_request.
+
+### POST /api/presentations/verify
+
+Recebe VP enviada pelo app mobile.
+
+Request conceitual:
+
+{
+  "request_id": "uuid",
+  "verifiable_presentation": {}
+}
+
+Response:
+
+{
+  "request_id": "uuid",
+  "valid": true,
+  "status": "approved"
+}
+
+## 5.6 Requisitos de segurança
+
+- API key nunca deve ser armazenada em texto puro;
+- secret da API key deve ser exibido apenas uma vez;
+- api_key_hash deve usar algoritmo apropriado para segredo;
+- endpoints empresariais devem garantir isolamento por company/app;
+- empresa não pode acessar proof_requests de outra empresa;
+- session_token_hash deve ser armazenado como hash, não token bruto;
+- verification_url pode conter token bruto, mas o banco só armazena o hash;
+- webhooks devem ser enviados somente para webhook_url cadastrada em company_apps;
+- futuramente, webhook deve ser assinado com HMAC;
+- dados pessoais do usuário não devem ser armazenados no dashboard empresarial.
+
+## 5.7 Requisitos de desempenho
+
+Metas iniciais:
+
+- POST /api/proof-requests menor que 1 segundo em condições normais;
+- listagem de proof_requests menor que 2 segundos;
+- criação de company_app menor que 1 segundo;
+- envio de webhook assíncrono ou tolerante a falhas;
+- suporte inicial a baixo volume, adequado para MVP/TCC.
+
+## 5.8 Requisitos de escalabilidade
+
+O MVP deve suportar crescimento incremental:
+
+- múltiplas empresas;
+- múltiplos apps por empresa;
+- milhares de proof_requests;
+- separação por environment;
+- possibilidade futura de tabelas adicionais:
+  - webhook_deliveries;
+  - presentations;
+  - app_credentials;
+  - company_members.
+
+---
+
+## 6. Requisitos de Experiência do Usuário
+
+## 6.1 Princípios de design
+
+O dashboard deve ser:
+
+- simples;
+- técnico o suficiente para integração;
+- claro em relação a credenciais e webhooks;
+- orientado a status;
+- sem exposição de dados pessoais do usuário final.
+
+Princípios:
+
+- mostrar o mínimo necessário;
+- deixar claro o que é sandbox e o que é production;
+- evitar jargão excessivo de DID/VC/VP na interface empresarial;
+- priorizar clareza operacional.
+
+## 6.2 Estrutura de navegação
+
+Páginas mínimas:
+
+1. Cadastro/registro da empresa;
+2. Visão geral do dashboard;
+3. Apps/Integrações;
+4. Criar app;
+5. Detalhe do app;
+6. Proof Requests;
+7. Detalhe da proof_request;
+8. Tela coringa de verificação.
+
+## 6.3 Requisitos de interface
+
+### Tela de criação de empresa
+
+Campos:
+
+- nome da empresa;
+- documento da empresa.
+
+Ação:
+
+- criar empresa.
+
+Resultado:
+
+- empresa criada com status active.
+
+### Tela de apps
+
+Elementos:
+
+- lista de apps;
+- botão criar app;
+- identificação de environment;
+- webhook_url;
+- status.
+
+### Tela de criação de app
+
+Campos:
+
+- nome do app;
+- environment;
+- webhook_url.
+
+Resultado:
+
+- app criado;
+- api_key exibida uma única vez;
+- aviso claro: “Copie esta chave agora. Ela não será exibida novamente.”
+
+### Tela de proof_requests
+
+Elementos:
+
+- tabela;
+- filtros;
+- busca por external_reference;
+- status visual;
+- data de criação;
+- data de validação.
+
+### Tela de detalhe da proof_request
+
+Elementos:
+
+- status da request;
+- status da session;
+- external_reference;
+- verification_url;
+- datas relevantes;
+- resultado final.
+
+### Tela coringa YaID
+
+Elementos:
+
+- status da sessão;
+- nome da empresa/app solicitante;
+- botão “Abrir app YaID”;
+- QR Code, se estiver em desktop;
+- mensagem de sessão expirada;
+- mensagem de validação concluída.
+
+## 6.4 Critérios de usabilidade
+
+- usuário técnico deve conseguir criar app sem documentação externa obrigatória;
+- API key deve ser fácil de copiar;
+- status deve ser compreensível sem precisar abrir logs;
+- fluxos críticos devem ter feedback imediato;
+- erros de webhook_url inválido devem ser claros;
+- estados finais approved/rejected/expired devem ser visualmente distintos.
+
+---
+
+## 7. Requisitos Não Funcionais
+
+## 7.1 Segurança
+
+Requisitos:
+
+- armazenar apenas hash do secret da API key;
+- proteger rotas internas;
+- validar ownership de company/app/request;
+- não armazenar dados pessoais do holder/usuário final;
+- validar webhook_url;
+- evitar exposição de session_token_hash;
+- evitar logs com secrets;
+- evitar logs com API key bruta;
+- sanitizar entradas.
+
+Riscos específicos:
+
+- vazamento de API key;
+- empresa acessando dados de outra empresa;
+- replay de verification_url;
+- webhook mal configurado;
+- chamada de API com app suspenso.
+
+Mitigações:
+
+- API key exibida uma única vez;
+- hash do secret;
+- status de app/company;
+- expires_at em proof_sessions;
+- isolamento por app_id;
+- validação de authorization header.
+
+## 7.2 Desempenho
+
+Metas:
+
+- carregamento inicial do dashboard menor que 3 segundos;
+- ações principais com feedback menor que 1 segundo quando possível;
+- queries paginadas para proof_requests;
+- índices em campos usados para busca/filtro.
+
+Índices recomendados:
+
+- company_apps.company_id;
+- company_apps.api_key_hash ou campo derivado se necessário;
+- proof_requests.app_id;
+- proof_requests.status;
+- proof_requests.external_reference;
+- proof_sessions.session_token_hash.
+
+## 7.3 Confiabilidade
+
+Requisitos:
+
+- erros de webhook não podem impedir a finalização da proof_request;
+- proof_request deve ter estados consistentes;
+- proof_session expirada deve refletir em proof_request expired;
+- falhas de validação de VP devem gerar rejected;
+- chamadas inválidas devem retornar erros explícitos.
+
+## 7.4 Escalabilidade
+
+O MVP deve permitir evolução para:
+
+- múltiplas credenciais por app;
+- múltiplos membros por empresa;
+- múltiplos proof_types;
+- logs de webhook;
+- auditoria de presentations;
+- billing por volume de validações;
+- painel analítico.
+
+---
+
+## 8. Métricas de Sucesso & Análise
+
+## 8.1 KPIs primários
+
+- número de empresas cadastradas;
+- número de apps criados;
+- tempo até criação do primeiro app;
+- número de proof_requests criadas;
+- taxa de proof_requests concluídas;
+- taxa de webhook entregue com sucesso;
+- tempo médio de validação.
+
+## 8.2 KPIs secundários
+
+- percentual de requests por status;
+- percentual de sessões expiradas;
+- percentual de rejeições;
+- requests por app;
+- requests por environment;
+- erros de autenticação por API key;
+- erros de webhook.
+
+## 8.3 Eventos de rastreamento
+
+Eventos recomendados:
+
+- company.created;
+- company_app.created;
+- company_app.api_key_generated;
+- proof_request.created;
+- proof_session.created;
+- proof_session.opened;
+- proof_session.approved_by_user;
+- presentation.submitted;
+- presentation.verified;
+- proof_request.approved;
+- proof_request.rejected;
+- proof_request.expired;
+- webhook.sent;
+- webhook.failed.
+
+## 8.4 Medida de sucesso
+
+Após o MVP, revisar:
+
+- empresas conseguem criar app sem suporte?
+- empresas conseguem criar proof_request com a API key?
+- empresas conseguem receber webhook corretamente?
+- há clareza sobre status?
+- há necessidade de logs mais detalhados?
+- há necessidade de rotação de API key?
+- há necessidade de documentação embutida?
+
+---
+
+## 9. Plano de Implementação
+
+## 9.1 Fase 1 — Fundação do dashboard
+
+Objetivo:
+
+Criar base do projeto Next.js e Supabase.
+
+Entregas:
+
+- setup Next.js;
+- setup Supabase;
+- criação das tabelas:
+  - companies;
+  - company_apps;
+  - proof_requests;
+  - proof_sessions;
+- layout base do dashboard;
+- navegação principal.
+
+Duração estimada:
+
+- 3 a 5 dias.
+
+## 9.2 Fase 2 — Cadastro de empresa e app
+
+Objetivo:
+
+Permitir criar company e company_app.
+
+Entregas:
+
+- tela de cadastro de company;
+- tela de criação de app;
+- geração de API key;
+- armazenamento de hash;
+- listagem de apps;
+- detalhe de app.
+
+Duração estimada:
+
+- 5 a 7 dias.
+
+## 9.3 Fase 3 — API de proof_requests
+
+Objetivo:
+
+Permitir que empresas criem solicitações via API.
+
+Entregas:
+
+- autenticação por API key;
+- POST /api/proof-requests;
+- criação de proof_request;
+- criação de proof_session;
+- geração de verification_url;
+- listagem de proof_requests;
+- detalhe de proof_request.
+
+Duração estimada:
+
+- 5 a 8 dias.
+
+## 9.4 Fase 4 — Tela coringa
+
+Objetivo:
+
+Criar a tela de verificação acessada pelo usuário final.
+
+Entregas:
+
+- rota /v/[token];
+- resolução de session_token;
+- status da sessão;
+- botão/deep link para app;
+- tratamento de sessão expirada.
+
+Duração estimada:
+
+- 3 a 5 dias.
+
+## 9.5 Fase 5 — Verificação de VP e resultado
+
+Objetivo:
+
+Preparar endpoint para receber VP do app mobile e atualizar proof_request.
+
+Entregas:
+
+- POST /api/presentations/verify;
+- validação estrutural inicial;
+- atualização de proof_request;
+- atualização de proof_session;
+- webhook final.
+
+Duração estimada:
+
+- 5 a 8 dias.
+
+Observação:
+
+A validação criptográfica completa de VC/VP pode ser implementada inicialmente de forma simplificada no MVP, desde que a interface e os contratos de dados estejam preparados para a validação real.
+
+## 9.6 Fase 6 — QA e refinamento
+
+Objetivo:
+
+Validar fluxo ponta a ponta.
+
+Entregas:
+
+- testes manuais;
+- testes de criação de app;
+- testes de API key;
+- testes de proof_request;
+- testes de webhook;
+- revisão de segurança básica.
+
+Duração estimada:
+
+- 3 a 5 dias.
+
+---
+
+## 10. Avaliação de Risco & Mitigação
+
+## 10.1 Riscos técnicos
+
+### Risco 1 — API key mal protegida
+
+Probabilidade: média
+
+Impacto: alto
+
+Mitigação:
+
+- nunca armazenar API key em texto puro;
+- exibir secret uma única vez;
+- usar hash do secret;
+- permitir rotação no futuro.
+
+### Risco 2 — Isolamento incorreto entre empresas
+
+Probabilidade: média
+
+Impacto: alto
+
+Mitigação:
+
+- toda consulta deve passar pelo contexto de company/app;
+- não buscar proof_requests apenas por id sem validar ownership;
+- aplicar RLS ou validação server-side rigorosa.
+
+### Risco 3 — Webhook falha e empresa não recebe resultado
+
+Probabilidade: média
+
+Impacto: médio
+
+Mitigação:
+
+- manter status final da proof_request no banco;
+- permitir consulta via GET;
+- futuramente criar webhook_deliveries e retry.
+
+### Risco 4 — Complexidade de DID/VC/VP atrasar dashboard
+
+Probabilidade: média
+
+Impacto: médio
+
+Mitigação:
+
+- dashboard deve encapsular SSI;
+- MVP pode validar integração com payloads simulados;
+- manter contrato de API estável para futura validação completa.
+
+### Risco 5 — Session token exposto em logs ou histórico
+
+Probabilidade: média
+
+Impacto: médio
+
+Mitigação:
+
+- token com TTL curto;
+- armazenar hash no banco;
+- expirar sessão após uso ou timeout;
+- não logar token bruto.
+
+## 10.2 Riscos de negócio
+
+### Risco 1 — Empresas não entendem o valor do dashboard
+
+Mitigação:
+
+- foco em proposta simples: “receba valid=true/false”;
+- interface orientada à integração;
+- documentação objetiva.
+
+### Risco 2 — Escopo crescer demais
+
+Mitigação:
+
+- MVP limitado a personhood_vc;
+- não incluir ZKP;
+- não incluir gestão complexa de usuários;
+- não incluir billing;
+- não incluir smart contract management.
+
+### Risco 3 — Dependência do app mobile
+
+Mitigação:
+
+- dashboard e API devem ser testáveis com payloads simulados;
+- app mobile pode ser integrado depois;
+- proof_request e proof_session já ficam preparadas.
+
+## 10.3 Estratégia de mitigação geral
+
+- manter quatro tabelas centrais no MVP;
+- evitar armazenar dados sensíveis do holder;
+- separar claramente dashboard empresarial, app mobile e smart contract;
+- priorizar fluxo ponta a ponta simples;
+- documentar limitações explicitamente.
+
+---
+
+## 11. Escopo explícito do MVP
+
+## 11.1 Dentro do escopo
+
+- cadastro de company;
+- criação de company_app;
+- geração de API key;
+- configuração de webhook;
+- criação de proof_request;
+- criação de proof_session;
+- geração de verification_url;
+- tela coringa;
+- listagem de proof_requests;
+- detalhe de proof_request;
+- atualização de status;
+- envio de webhook final.
+
+## 11.2 Fora do escopo
+
+- emissão de VC;
+- cadastro documental do usuário;
+- app mobile;
+- smart contract;
+- ZKP;
+- billing;
+- gestão de times;
+- múltiplas chaves por app;
+- logs avançados de webhook;
+- painel financeiro;
+- suporte multi-tenant avançado além do isolamento básico por company/app.
+
+---
+
+## 12. Definição de Pronto
+
+O MVP do Dashboard Empresarial estará pronto quando:
+
+- for possível criar uma company;
+- for possível criar um company_app;
+- o sistema gerar API key no formato <app_id>.<secret>;
+- o banco armazenar apenas hash do secret;
+- for possível criar proof_request via API autenticada;
+- for criada uma proof_session associada;
+- for retornada uma verification_url;
+- a tela coringa abrir com o session_token;
+- a proof_request puder chegar a approved, rejected ou expired;
+- o dashboard listar proof_requests;
+- o dashboard exibir detalhes da proof_request;
+- a API enviar webhook final para webhook_url;
+- não houver armazenamento de dados pessoais do holder no dashboard empresarial;
+- os critérios de segurança mínimos estiverem atendidos.
+
+---
+
+## 13. Checklist de Qualidade
+
+- [ ] Problema está claramente definido.
+- [ ] Solução está alinhada ao MVP do YaID.
+- [ ] Requisitos usam apenas as tabelas definidas para o dashboard.
+- [ ] Critérios de aceitação são testáveis.
+- [ ] API key não é armazenada em texto puro.
+- [ ] Dados pessoais do usuário final não são armazenados no dashboard.
+- [ ] Fluxo de company_app está claro.
+- [ ] Fluxo de proof_request está claro.
+- [ ] Fluxo de proof_session está claro.
+- [ ] Tela coringa está contemplada.
+- [ ] Webhook vem de company_apps, não de proof_requests.
+- [ ] ZKP, app mobile e smart contract estão fora do escopo deste PRD.
+
+## Complemento ao PRD — Rotas de API faltantes do Dashboard Empresarial
+
+### Objetivo deste complemento
+
+Este complemento adiciona ao PRD do Dashboard Web Empresarial as rotas de API necessárias para suportar o fluxo completo definido até agora, considerando:
+
+- dashboard empresarial em Next.js;
+- backend também em Next.js Route Handlers;
+- Supabase como base de dados;
+- app mobile Expo consumindo o mesmo backend;
+- fluxo DID/VC/VP para personhood;
+- OCR e validação documental executados na API;
+- blockchain/registry consultado pela API, não diretamente pelo app;
+- ausência de ZKP no MVP.
+
+Este complemento mantém a separação entre:
+
+1. rotas empresariais;
+2. rotas consumidas pelo app mobile;
+3. rotas da tela coringa;
+4. rotas internas de validação e atualização de status.
+
+---
+
+# 1. Rotas empresariais já previstas
+
+As rotas abaixo já estavam contempladas conceitualmente no PRD do Dashboard Empresarial, mas devem ser formalizadas como endpoints do backend Next.js.
+
+---
+
+## 1.1 POST /api/companies
+
+### Finalidade
+
+Criar uma empresa cliente na base da YaID.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Request
+
+{
+  "name": "Empresa XPTO",
+  "document_number": "12345678000190"
+}
+
+### Response — sucesso
+
+{
+  "company_id": "uuid",
+  "name": "Empresa XPTO",
+  "document_number": "12345678000190",
+  "status": "active",
+  "created_at": "2026-04-28T20:00:00Z"
+}
+
+### Regras
+
+- name é obrigatório;
+- document_number é opcional no MVP;
+- status inicial deve ser active;
+- cria registro em companies.
+
+### Tabela afetada
+
+companies
+
+---
+
+## 1.2 GET /api/companies/{company_id}
+
+### Finalidade
+
+Buscar dados de uma empresa.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Response — sucesso
+
+{
+  "company_id": "uuid",
+  "name": "Empresa XPTO",
+  "document_number": "12345678000190",
+  "status": "active",
+  "created_at": "2026-04-28T20:00:00Z"
+}
+
+### Regras
+
+- deve retornar apenas empresas acessíveis ao contexto atual;
+- no MVP, se não houver gestão de usuários empresariais, pode ser utilizado apenas para consulta administrativa/desenvolvimento.
+
+### Tabela afetada
+
+companies
+
+---
+
+# 2. Rotas de apps empresariais
+
+---
+
+## 2.1 POST /api/company-apps
+
+### Finalidade
+
+Criar um app próprio para uma empresa, gerar API key e configurar webhook.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Request
+
+{
+  "company_id": "uuid",
+  "name": "onboarding-web-prod",
+  "environment": "production",
+  "webhook_url": "https://empresa.com/webhooks/yaid"
+}
+
+### Response — sucesso
+
+{
+  "app_id": "uuid",
+  "name": "onboarding-web-prod",
+  "environment": "production",
+  "webhook_url": "https://empresa.com/webhooks/yaid",
+  "status": "active",
+  "api_key": "<app_id>.<secret>",
+  "created_at": "2026-04-28T20:00:00Z"
+}
+
+### Regras
+
+- company_id deve existir;
+- company deve estar active;
+- name é obrigatório;
+- environment deve ser sandbox ou production;
+- webhook_url é obrigatório;
+- webhook_url deve ter formato válido de URL HTTPS;
+- API key deve seguir o formato <app_id>.<secret>;
+- app_id é o id do registro em company_apps;
+- secret deve ser gerado com entropia suficiente;
+- secret deve ser exibido apenas uma vez;
+- apenas o hash do secret deve ser armazenado em api_key_hash;
+- status inicial deve ser active.
+
+### Tabela afetada
+
+company_apps
+
+---
+
+## 2.2 GET /api/company-apps?company_id={company_id}
+
+### Finalidade
+
+Listar apps de uma empresa.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Response — sucesso
+
+{
+  "items": [
+    {
+      "app_id": "uuid",
+      "company_id": "uuid",
+      "name": "onboarding-web-prod",
+      "environment": "production",
+      "webhook_url": "https://empresa.com/webhooks/yaid",
+      "status": "active",
+      "created_at": "2026-04-28T20:00:00Z"
+    }
+  ]
+}
+
+### Regras
+
+- não deve retornar api_key;
+- não deve retornar api_key_hash;
+- deve filtrar por company_id;
+- deve respeitar isolamento por empresa.
+
+### Tabela afetada
+
+company_apps
+
+---
+
+## 2.3 GET /api/company-apps/{app_id}
+
+### Finalidade
+
+Buscar detalhe de um app empresarial.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Response — sucesso
+
+{
+  "app_id": "uuid",
+  "company_id": "uuid",
+  "name": "onboarding-web-prod",
+  "environment": "production",
+  "webhook_url": "https://empresa.com/webhooks/yaid",
+  "status": "active",
+  "created_at": "2026-04-28T20:00:00Z"
+}
+
+### Regras
+
+- não deve retornar api_key;
+- não deve retornar api_key_hash;
+- deve validar que o app pertence à empresa correta.
+
+### Tabela afetada
+
+company_apps
+
+---
+
+## 2.4 PATCH /api/company-apps/{app_id}
+
+### Finalidade
+
+Atualizar dados básicos do app empresarial.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Request
+
+{
+  "name": "onboarding-web-prod",
+  "webhook_url": "https://empresa.com/webhooks/yaid",
+  "status": "active"
+}
+
+### Response — sucesso
+
+{
+  "app_id": "uuid",
+  "name": "onboarding-web-prod",
+  "webhook_url": "https://empresa.com/webhooks/yaid",
+  "status": "active"
+}
+
+### Regras
+
+- permitir atualizar name;
+- permitir atualizar webhook_url;
+- permitir alterar status entre active, inactive e suspended;
+- não permitir alterar api_key_hash por esta rota;
+- não permitir trocar company_id;
+- webhook_url deve ser HTTPS válido.
+
+### Tabela afetada
+
+company_apps
+
+---
+
+# 3. Rotas de proof requests
+
+---
+
+## 3.1 POST /api/proof-requests
+
+### Finalidade
+
+Criar uma solicitação de validação de personhood.
+
+### Consumidor
+
+Sistema da Empresa Parceira.
+
+### Autenticação
+
+Authorization: Bearer <app_id>.<secret>
+
+### Request
+
+{
+  "proof_type": "personhood_vc",
+  "external_reference": "user_789"
+}
+
+### Response — sucesso
+
+{
+  "request_id": "uuid",
+  "proof_type": "personhood_vc",
+  "status": "pending_user",
+  "verification_url": "https://verify.yaid.com/v/<session_token>",
+  "external_reference": "user_789",
+  "created_at": "2026-04-28T20:00:00Z"
+}
+
+### Regras
+
+- app_id deve ser extraído da API key;
+- secret deve ser validado contra api_key_hash;
+- company_app deve existir;
+- company_app deve estar active;
+- company associada deve estar active;
+- proof_type inicial suportado no MVP: personhood_vc;
+- external_reference é opcional;
+- cria registro em proof_requests;
+- cria registro 1:1 em proof_sessions;
+- proof_requests.status inicial deve ser pending_user;
+- proof_requests.result inicial deve ser null;
+- proof_sessions.status inicial deve ser waiting_user;
+- proof_sessions.expires_at deve ser definido;
+- deve gerar session_token bruto para compor verification_url;
+- deve armazenar apenas session_token_hash no banco.
+
+### Tabelas afetadas
+
+proof_requests
+proof_sessions
+
+---
+
+## 3.2 GET /api/proof-requests
+
+### Finalidade
+
+Listar solicitações de validação da empresa/app.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Query params
+
+company_id
+app_id
+status
+external_reference
+created_from
+created_to
+page
+limit
+
+### Response — sucesso
+
+{
+  "items": [
+    {
+      "request_id": "uuid",
+      "app_id": "uuid",
+      "app_name": "onboarding-web-prod",
+      "proof_type": "personhood_vc",
+      "status": "pending_user",
+      "result": null,
+      "external_reference": "user_789",
+      "created_at": "2026-04-28T20:00:00Z",
+      "validated_at": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1
+  }
+}
+
+### Regras
+
+- deve retornar apenas proof_requests associadas à empresa;
+- deve permitir filtro por app_id;
+- deve permitir filtro por status;
+- deve permitir busca por external_reference;
+- deve ser paginado;
+- não deve expor dados do usuário final;
+- não deve retornar VP completa.
+
+### Tabelas afetadas
+
+proof_requests
+company_apps
+
+---
+
+## 3.3 GET /api/proof-requests/{request_id}
+
+### Finalidade
+
+Buscar detalhe de uma solicitação de validação.
+
+### Consumidor
+
+Dashboard Web Empresarial.
+
+### Response — sucesso
+
+{
+  "request_id": "uuid",
+  "app": {
+    "app_id": "uuid",
+    "name": "onboarding-web-prod",
+    "environment": "production"
+  },
+  "proof_type": "personhood_vc",
+  "status": "approved",
+  "result": true,
+  "external_reference": "user_789",
+  "created_at": "2026-04-28T20:00:00Z",
+  "validated_at": "2026-04-28T20:03:00Z",
+  "session": {
+    "status": "approved_by_user",
+    "created_at": "2026-04-28T20:00:00Z",
+    "expires_at": "2026-04-28T20:10:00Z",
+    "opened_at": "2026-04-28T20:01:00Z",
+    "approved_at": "2026-04-28T20:02:30Z"
+  }
+}
+
+### Regras
+
+- deve validar ownership da request;
+- deve retornar status da proof_request e proof_session;
+- não deve retornar session_token_hash;
+- não deve retornar VP bruta;
+- não deve retornar dados pessoais do usuário.
+
+### Tabelas afetadas
+
+proof_requests
+proof_sessions
+company_apps
+
+---
+
+# 4. Rotas da tela coringa
+
+---
+
+## 4.1 GET /v/{session_token}
+
+### Finalidade
+
+Renderizar a tela coringa da YaID para o usuário final.
+
+### Consumidor
+
+Browser do usuário.
+
+### Observação
+
+Esta rota pode ser uma página Next.js, não necessariamente uma API JSON.
+
+### Comportamento
+
+- recebe session_token bruto na URL;
+- calcula hash do token;
+- busca proof_session por session_token_hash;
+- valida expiração;
+- se válida, renderiza botão/QR Code para abrir o app;
+- se expirada, renderiza estado de sessão expirada;
+- se já finalizada, renderiza resultado final;
+- se inválida, renderiza erro genérico.
+
+### Estados possíveis exibidos
+
+waiting_user
+opened
+approved_by_user
+expired
+cancelled
+approved
+rejected
+
+### Tabelas consultadas
+
+proof_sessions
+proof_requests
+company_apps
+companies
+
+---
+
+## 4.2 GET /api/proof-sessions/{session_token}/public
+
+### Finalidade
+
+Retornar dados públicos mínimos da sessão para a tela coringa.
+
+### Consumidor
+
+Tela Curinga YaID.
+
+### Response — sucesso
+
+{
+  "request_id": "uuid",
+  "proof_type": "personhood_vc",
+  "company": {
+    "name": "Empresa XPTO"
+  },
+  "app": {
+    "name": "onboarding-web-prod"
+  },
+  "session": {
+    "status": "waiting_user",
+    "expires_at": "2026-04-28T20:10:00Z"
+  },
+  "deep_link": "yaid://proof/<session_token>"
+}
+
+### Regras
+
+- não deve expor session_token_hash;
+- não deve expor dados internos da empresa;
+- não deve expor api_key;
+- não deve expor dados do usuário;
+- se a sessão estiver expirada, atualizar proof_session para expired e proof_request para expired.
+
+### Tabelas afetadas/consultadas
+
+proof_sessions
+proof_requests
+company_apps
+companies
+
+---
+
+# 5. Rotas consumidas pelo app mobile
+
+Estas rotas são necessárias para o app Expo/TypeScript e complementam o backend Next.js definido no dashboard empresarial.
+
+---
+
+## 5.1 POST /api/identity-submissions
+
+### Finalidade
+
+Criar submissão de identidade do usuário e enviar fotos do RG para OCR/validação na API.
+
+### Consumidor
+
+App Mobile YaID Wallet.
+
+### Tipo de request
+
+multipart/form-data ou JSON com upload previamente resolvido.
+
+Para MVP, recomenda-se multipart/form-data por simplicidade.
+
+### Request — multipart conceitual
+
+holder_did: did:yaid:user:abc
+holder_public_key: z6M...
+document_type: RG
+document_front_image: file
+document_back_image: file
+
+### Response — sucesso
+
+{
+  "submission_id": "sub_123",
+  "status": "processing"
+}
+
+### Responsabilidade da API
+
+- receber imagens do RG;
+- criar uma identity_submission interna;
+- executar OCR server-side;
+- extrair informações do RG;
+- validar consistência mínima;
+- validar autenticidade conforme capacidade do MVP;
+- emitir VC de personhood se aprovado;
+- preparar retorno da VC para o app;
+- minimizar/apagar dados sensíveis após emissão, conforme política do MVP.
+
+### Observação sobre modelo de dados
+
+Esta rota exige uma entidade operacional além das quatro tabelas empresariais.
+
+Necessidade de nova tabela recomendada:
+
+identity_submissions
+
+Justificativa:
+
+O fluxo de cadastro documental do usuário não pertence a companies, company_apps, proof_requests ou proof_sessions. É um fluxo do holder/app mobile e precisa de status próprio.
+
+Campos mínimos recomendados:
+
+- id;
+- holder_did;
+- holder_public_key;
+- document_type;
+- status;
+- credential_id;
+- credential_id_hash;
+- created_at;
+- processed_at;
+- rejected_at.
+
+Não armazenar permanentemente:
+
+- imagem do RG;
+- OCR bruto;
+- CPF;
+- nome;
+- data de nascimento;
+- foto;
+- dados sensíveis completos.
+
+---
+
+## 5.2 GET /api/identity-submissions/{submission_id}
+
+### Finalidade
+
+Permitir que o app consulte o status da validação documental.
+
+### Consumidor
+
+App Mobile YaID Wallet.
+
+### Response — processing
+
+{
+  "submission_id": "sub_123",
+  "status": "processing"
+}
+
+### Response — approved
+
+{
+  "submission_id": "sub_123",
+  "status": "approved",
+  "verifiable_credential": {
+    "@context": ["https://www.w3.org/ns/credentials/v2"],
+    "id": "urn:uuid:vc-personhood-001",
+    "type": ["VerifiableCredential", "PersonhoodCredential"],
+    "issuer": "did:yaid:issuer:main",
+    "credentialSubject": {
+      "id": "did:yaid:user:abc",
+      "personhood": true
+    },
+    "proof": {}
+  }
+}
+
+### Response — rejected
+
+{
+  "submission_id": "sub_123",
+  "status": "rejected",
+  "reason": "document_validation_failed"
+}
+
+### Regras
+
+- se aprovado, retornar VC assinada;
+- se rejeitado, retornar motivo genérico;
+- não retornar OCR bruto;
+- não retornar dados pessoais extraídos;
+- não retornar imagens;
+- permitir polling simples no MVP.
+
+### Nova tabela recomendada
+
+identity_submissions
+
+---
+
+## 5.3 GET /api/proof-sessions/{session_token}/challenge
+
+### Finalidade
+
+Permitir que o app obtenha o desafio necessário para criar uma Verifiable Presentation.
+
+### Consumidor
+
+App Mobile YaID Wallet.
+
+### Response — sucesso
+
+{
+  "request_id": "req_123",
+  "proof_type": "personhood_vc",
+  "company": {
+    "name": "Empresa XPTO"
+  },
+  "challenge": {
+    "nonce": "random_nonce",
+    "audience": "api.yaid.com",
+    "expires_at": "2026-04-28T20:10:00Z"
+  }
+}
+
+### Regras
+
+- recebe session_token bruto;
+- calcula hash;
+- busca proof_session;
+- se não existir, retornar erro;
+- se expirada, atualizar proof_session para expired e proof_request para expired;
+- se válida, gerar ou retornar nonce;
+- atualizar proof_session.status para opened;
+- atualizar opened_at se ainda estiver null;
+- retornar nome da empresa solicitante;
+- retornar proof_type;
+- retornar audience;
+- retornar expires_at.
+
+### Observação sobre dados
+
+O challenge nonce precisa ser persistido para validação posterior da VP.
+
+Isso exige uma das seguintes decisões:
+
+Opção A — adicionar campo em proof_sessions:
+
+- challenge_nonce_hash;
+- challenge_created_at;
+
+Opção B — criar tabela separada proof_session_challenges.
+
+Para o MVP, recomenda-se Opção A para manter simplicidade.
+
+Campos adicionais recomendados em proof_sessions:
+
+- challenge_nonce_hash;
+- challenge_created_at.
+
+### Tabelas afetadas
+
+proof_sessions
+proof_requests
+company_apps
+companies
+
+---
+
+## 5.4 POST /api/presentations/verify
+
+### Finalidade
+
+Receber Verifiable Presentation enviada pelo app, verificar VC/VP e finalizar a proof_request.
+
+### Consumidor
+
+App Mobile YaID Wallet.
+
+### Request
+
+{
+  "request_id": "req_123",
+  "verifiable_presentation": {
+    "type": ["VerifiablePresentation"],
+    "holder": "did:yaid:user:abc",
+    "verifiableCredential": [],
+    "proof": {}
+  }
+}
+
+### Response — aprovado
+
+{
+  "request_id": "req_123",
+  "valid": true,
+  "status": "approved"
+}
+
+### Response — rejeitado
+
+{
+  "request_id": "req_123",
+  "valid": false,
+  "status": "rejected",
+  "reason": "invalid_presentation"
+}
+
+### Regras de validação
+
+A API deve:
+
+1. buscar proof_request;
+2. buscar proof_session;
+3. verificar se a sessão não expirou;
+4. verificar se o request_id existe;
+5. verificar se proof_type é personhood_vc;
+6. validar estrutura básica da VP;
+7. verificar se a VP contém uma VC de personhood;
+8. verificar assinatura da VC pelo issuer YaID;
+9. verificar assinatura da VP pelo holder;
+10. verificar se o challenge/nonce da VP bate com o nonce emitido;
+11. verificar se audience/domain está correto;
+12. verificar se holder da VP corresponde ao credentialSubject.id da VC;
+13. consultar registry/blockchain para issuer confiável;
+14. consultar registry/blockchain para status de revogação da VC;
+15. se tudo for válido:
+    - proof_request.status = approved;
+    - proof_request.result = true;
+    - proof_request.validated_at = now;
+    - proof_session.status = approved_by_user;
+    - proof_session.approved_at = now;
+    - enviar webhook para company_app.webhook_url.
+16. se inválido:
+    - proof_request.status = rejected;
+    - proof_request.result = false;
+    - proof_request.validated_at = now;
+    - enviar webhook com valid=false.
+
+### Tabelas afetadas
+
+proof_requests
+proof_sessions
+company_apps
+
+### Integração externa
+
+Blockchain / Registry
+
+---
+
+## 5.5 POST /api/proof-sessions/{session_token}/cancel
+
+### Finalidade
+
+Permitir que o app informe cancelamento explícito pelo usuário.
+
+### Consumidor
+
+App Mobile YaID Wallet.
+
+### Request
+
+{
+  "reason": "user_cancelled"
+}
+
+### Response
+
+{
+  "status": "cancelled"
+}
+
+### Regras
+
+- buscar sessão pelo hash do session_token;
+- se já finalizada, não alterar;
+- se válida, atualizar proof_session.status para cancelled;
+- atualizar proof_request.status para rejected;
+- proof_request.result = false;
+- proof_request.validated_at = now;
+- enviar webhook com valid=false e reason=user_cancelled.
+
+### Tabelas afetadas
+
+proof_sessions
+proof_requests
+
+---
+
+# 6. Rotas internas ou administrativas recomendadas
+
+Estas rotas não são obrigatórias para o MVP visual, mas ajudam a manter o fluxo operacional testável.
+
+---
+
+## 6.1 POST /api/internal/proof-requests/{request_id}/expire
+
+### Finalidade
+
+Expirar uma proof_request/proof_session manualmente ou por rotina interna.
+
+### Consumidor
+
+Sistema interno, job, cron ou execução server-side.
+
+### Response
+
+{
+  "request_id": "req_123",
+  "status": "expired"
+}
+
+### Regras
+
+- se proof_request já estiver approved ou rejected, não alterar;
+- se proof_session.expires_at < now, atualizar:
+  - proof_session.status = expired;
+  - proof_request.status = expired;
+  - proof_request.result = null;
+- opcionalmente enviar webhook de expiração.
+
+### Tabelas afetadas
+
+proof_requests
+proof_sessions
+
+---
+
+## 6.2 POST /api/internal/webhooks/send
+
+### Finalidade
+
+Executar envio de webhook para uma proof_request finalizada.
+
+### Consumidor
+
+API interna após validação de VP.
+
+### Request
+
+{
+  "request_id": "req_123"
+}
+
+### Response
+
+{
+  "sent": true
+}
+
+### Regras
+
+- buscar proof_request;
+- buscar company_app;
+- montar payload;
+- enviar para webhook_url;
+- não reabrir proof_request se webhook falhar;
+- logar falha internamente.
+
+### Observação sobre modelo de dados
+
+Para rastrear entregas de webhook de forma adequada, recomenda-se tabela futura:
+
+webhook_deliveries
+
+No MVP, pode-se apenas logar no servidor, mas isso reduz auditabilidade.
+
+---
+
+# 7. Rotas que NÃO devem existir no MVP
+
+Para manter o MVP simples, as rotas abaixo não devem ser implementadas inicialmente:
+
+- POST /api/proof-requests com callback_url por request;
+- endpoint para empresa enviar dados pessoais do usuário;
+- endpoint para empresa consultar VC ou VP completa;
+- endpoint para empresa acessar documento do usuário;
+- endpoint para app acessar Supabase diretamente;
+- endpoint para app interagir diretamente com smart contract;
+- endpoint para ZKP;
+- endpoint para prova de maioridade;
+- endpoint para rotação de API key;
+- endpoint para múltiplas credenciais por usuário;
+- endpoint para billing.
+
+---
+
+# 8. Ajustes necessários no modelo de dados
+
+As quatro tabelas empresariais continuam sendo o núcleo do dashboard:
+
+- companies;
+- company_apps;
+- proof_requests;
+- proof_sessions.
+
+Porém, para suportar o app mobile e o fluxo de emissão de VC, é necessário reconhecer rotas que pertencem ao backend compartilhado, mas não ao dashboard empresarial.
+
+## 8.1 Nova tabela recomendada: identity_submissions
+
+### Finalidade
+
+Controlar o fluxo de submissão de RG pelo usuário no app mobile.
+
+### Campos mínimos
+
+- id: UUID, PK;
+- holder_did: TEXT, obrigatório;
+- holder_public_key: TEXT, obrigatório;
+- document_type: TEXT, obrigatório;
+- status: TEXT, obrigatório;
+- credential_id: TEXT, opcional;
+- credential_id_hash: TEXT, opcional;
+- created_at: TIMESTAMP, obrigatório;
+- processed_at: TIMESTAMP, opcional;
+- rejected_at: TIMESTAMP, opcional;
+- rejection_reason: TEXT, opcional.
+
+### Status possíveis
+
+- processing;
+- approved;
+- rejected;
+- failed.
+
+### Observação de privacidade
+
+A tabela não deve armazenar permanentemente:
+
+- nome;
+- CPF;
+- data de nascimento;
+- imagens do RG;
+- OCR bruto.
+
+---
+
+## 8.2 Ajuste recomendado em proof_sessions
+
+Para suportar challenge/nonce de VP:
+
+Adicionar campos:
+
+- challenge_nonce_hash: TEXT, opcional;
+- challenge_created_at: TIMESTAMP, opcional.
+
+### Justificativa
+
+A API precisa validar que a VP enviada pelo app corresponde ao challenge emitido para aquela sessão. O nonce bruto pode ir para o app, mas o banco deve armazenar apenas hash do nonce.
+
+---
+
+# 9. Lista consolidada de endpoints do MVP
+
+## Dashboard empresarial
+
+- POST /api/companies
+- GET /api/companies/{company_id}
+- POST /api/company-apps
+- GET /api/company-apps
+- GET /api/company-apps/{app_id}
+- PATCH /api/company-apps/{app_id}
+- GET /api/proof-requests
+- GET /api/proof-requests/{request_id}
+
+## Sistema da empresa parceira
+
+- POST /api/proof-requests
+
+## Tela coringa
+
+- GET /v/{session_token}
+- GET /api/proof-sessions/{session_token}/public
+
+## App mobile
+
+- POST /api/identity-submissions
+- GET /api/identity-submissions/{submission_id}
+- GET /api/proof-sessions/{session_token}/challenge
+- POST /api/presentations/verify
+- POST /api/proof-sessions/{session_token}/cancel
+
+## Internas/recomendadas
+
+- POST /api/internal/proof-requests/{request_id}/expire
+- POST /api/internal/webhooks/send
+
+---
+
+# 10. Critérios de aceitação do complemento
+
+Este complemento será considerado atendido quando:
+
+- todas as rotas necessárias ao dashboard empresarial estiverem documentadas;
+- todas as rotas consumidas pelo app mobile estiverem explicitadas;
+- estiver claro quais rotas já pertencem ao dashboard e quais exigem novas capacidades;
+- o endpoint de challenge estiver definido;
+- o endpoint de VP estiver definido;
+- o endpoint de identity_submissions estiver definido;
+- o modelo reconhecer a necessidade de identity_submissions;
+- o modelo reconhecer a necessidade de challenge_nonce_hash em proof_sessions;
+- nenhuma rota exponha dados pessoais do usuário para a empresa parceira;
+- nenhuma rota exija ZKP no MVP.

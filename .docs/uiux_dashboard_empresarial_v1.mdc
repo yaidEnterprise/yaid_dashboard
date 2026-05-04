@@ -1,0 +1,2658 @@
+---
+description: Especificação de telas, design system e paleta de cores do Dashboard Web Empresarial YaID
+globs:
+  - "apps/web/**"
+  - "src/**"
+  - "app/**"
+  - "components/**"
+  - "styles/**"
+  - "app/globals.css"
+alwaysApply: false
+---
+
+# Especificação de Telas e Design — Dashboard Web Empresarial YaID
+
+## 1. Visão Geral
+
+Este documento detalha as telas necessárias para o Dashboard Web Empresarial YaID, considerando o escopo definido no PRD do produto.
+
+O dashboard será uma aplicação web B2B para empresas parceiras configurarem sua integração com a YaID, criarem apps, gerenciarem API keys, configurarem webhooks e acompanharem solicitações de validação de personhood.
+
+O objetivo visual do produto é transmitir:
+
+- confiança;
+- segurança;
+- clareza técnica;
+- privacidade;
+- modernidade;
+- simplicidade operacional;
+- credibilidade para empresas.
+
+A interface deve evitar aparência excessivamente experimental, cripto ou voltada para consumidor final. O YaID Dashboard Empresarial deve parecer uma ferramenta SaaS B2B sólida, semelhante a painéis de infraestrutura, autenticação, API management e identity providers.
+
+---
+
+## 2. Princípios de Design
+
+## 2.1 Clareza operacional
+
+A empresa deve entender rapidamente:
+
+- qual app está configurado;
+- qual ambiente está sendo usado;
+- qual webhook está ativo;
+- quantas validações foram criadas;
+- quais validações estão pendentes;
+- quais validações foram aprovadas, rejeitadas ou expiradas.
+
+Evitar interfaces com excesso de elementos decorativos. O foco deve ser utilidade.
+
+## 2.2 Segurança perceptível
+
+Como o produto lida com identidade, API keys, webhooks e validações, a interface precisa comunicar segurança.
+
+Isso deve aparecer em:
+
+- avisos claros sobre API keys;
+- indicação de que secrets são exibidos apenas uma vez;
+- uso de badges para ambiente sandbox/production;
+- estados visuais para status crítico;
+- textos curtos explicando privacidade e não armazenamento de documentos pessoais.
+
+## 2.3 Baixa fricção técnica
+
+O dashboard será usado por usuários técnicos e semi-técnicos.
+
+A interface deve:
+
+- reduzir decisões desnecessárias;
+- explicar conceitos como app, API key, webhook e proof request;
+- usar exemplos de payload;
+- oferecer ações rápidas de copiar;
+- mostrar estados vazios com próximos passos.
+
+## 2.4 Separação clara entre sandbox e produção
+
+O ambiente sandbox deve ser visualmente distinguível de production.
+
+Sandbox deve transmitir teste, desenvolvimento e baixa criticidade.
+
+Production deve transmitir cuidado, operação real e maior criticidade.
+
+## 2.5 Privacidade como parte da experiência
+
+O dashboard não deve parecer um sistema de armazenamento de documentos pessoais.
+
+A comunicação visual e textual deve reforçar que a empresa recebe apenas o resultado da validação, e não dados pessoais brutos do usuário.
+
+---
+
+## 3. Identidade Visual Recomendada
+
+## 3.1 Direção visual
+
+Estilo recomendado:
+
+- SaaS B2B moderno;
+- minimalista;
+- tecnológico;
+- confiável;
+- limpo;
+- orientado a dados;
+- com poucos elementos visuais decorativos.
+
+Referências conceituais de estilo:
+
+- dashboards de autenticação;
+- painéis de API management;
+- ferramentas de infraestrutura cloud;
+- plataformas de compliance;
+- ferramentas de observabilidade;
+- plataformas de identidade digital.
+
+Não seguir uma estética excessivamente Web3, com gradientes neon, elementos futuristas exagerados ou ilustrações de blockchain em excesso. O foco deve ser confiança empresarial.
+
+---
+
+## 4. Paleta de Cores
+
+## 4.1 Paleta principal
+
+A paleta recomendada combina azul profundo, verde de validação e tons neutros frios.
+
+### Cor primária
+
+Nome: YaID Navy
+
+Uso:
+
+- sidebar;
+- headers importantes;
+- botões primários;
+- estados de foco;
+- elementos institucionais.
+
+Valor sugerido:
+
+#0F172A
+
+Descrição:
+
+Azul escuro quase grafite. Transmite segurança, sobriedade e confiança.
+
+### Cor primária alternativa
+
+Nome: YaID Blue
+
+Uso:
+
+- links;
+- botões secundários;
+- estados ativos;
+- destaques de navegação;
+- gráficos.
+
+Valor sugerido:
+
+#2563EB
+
+Descrição:
+
+Azul técnico e moderno, adequado para produtos SaaS.
+
+### Cor de validação
+
+Nome: Verified Green
+
+Uso:
+
+- status approved;
+- indicadores de sucesso;
+- mensagens positivas;
+- ícones de confirmação.
+
+Valor sugerido:
+
+#16A34A
+
+Descrição:
+
+Verde de aprovação, associado à validação concluída.
+
+### Cor de alerta
+
+Nome: Warning Amber
+
+Uso:
+
+- status pending_user;
+- status waiting_user;
+- sessões próximas de expirar;
+- avisos não críticos.
+
+Valor sugerido:
+
+#F59E0B
+
+Descrição:
+
+Amarelo/âmbar para estados de atenção.
+
+### Cor de erro
+
+Nome: Rejected Red
+
+Uso:
+
+- status rejected;
+- falhas de webhook;
+- erros de formulário;
+- estados suspensos.
+
+Valor sugerido:
+
+#DC2626
+
+Descrição:
+
+Vermelho objetivo para erro ou rejeição.
+
+### Cor de expiração
+
+Nome: Expired Gray
+
+Uso:
+
+- status expired;
+- itens inativos;
+- estados antigos;
+- dados não disponíveis.
+
+Valor sugerido:
+
+#64748B
+
+Descrição:
+
+Cinza azulado para status neutro ou encerrado sem sucesso.
+
+---
+
+## 4.2 Paleta neutra
+
+### Background principal
+
+Valor:
+
+#F8FAFC
+
+Uso:
+
+- fundo geral da aplicação;
+- áreas externas de cards.
+
+### Surface/Card
+
+Valor:
+
+#FFFFFF
+
+Uso:
+
+- cards;
+- tabelas;
+- modais;
+- painéis;
+- formulários.
+
+### Border
+
+Valor:
+
+#E2E8F0
+
+Uso:
+
+- bordas de cards;
+- divisórias;
+- inputs;
+- tabelas.
+
+### Texto principal
+
+Valor:
+
+#0F172A
+
+Uso:
+
+- títulos;
+- labels importantes;
+- conteúdo principal.
+
+### Texto secundário
+
+Valor:
+
+#475569
+
+Uso:
+
+- descrições;
+- subtítulos;
+- textos auxiliares.
+
+### Texto terciário
+
+Valor:
+
+#94A3B8
+
+Uso:
+
+- placeholders;
+- informações menos importantes;
+- timestamps secundários.
+
+---
+
+## 4.3 Cores por status
+
+### proof_request.status
+
+pending_user:
+
+- background: #FEF3C7
+- text: #92400E
+- border: #FCD34D
+- label: Pending user
+
+processing:
+
+- background: #DBEAFE
+- text: #1D4ED8
+- border: #93C5FD
+- label: Processing
+
+approved:
+
+- background: #DCFCE7
+- text: #166534
+- border: #86EFAC
+- label: Approved
+
+rejected:
+
+- background: #FEE2E2
+- text: #991B1B
+- border: #FCA5A5
+- label: Rejected
+
+expired:
+
+- background: #F1F5F9
+- text: #475569
+- border: #CBD5E1
+- label: Expired
+
+### proof_session.status
+
+waiting_user:
+
+- usar estilo semelhante a pending_user.
+
+opened:
+
+- usar estilo semelhante a processing.
+
+approved_by_user:
+
+- usar estilo semelhante a approved.
+
+expired:
+
+- usar estilo semelhante a expired.
+
+cancelled:
+
+- usar estilo semelhante a rejected, porém com texto menos agressivo.
+
+---
+
+## 4.4 Cores por ambiente
+
+sandbox:
+
+- background: #EFF6FF
+- text: #1D4ED8
+- border: #BFDBFE
+- label: Sandbox
+
+production:
+
+- background: #ECFDF5
+- text: #047857
+- border: #A7F3D0
+- label: Production
+
+Regra visual:
+
+- sandbox deve parecer ambiente de teste;
+- production deve parecer ambiente real;
+- em ações sensíveis de production, usar confirmação adicional.
+
+---
+
+## 5. Tipografia
+
+## 5.1 Fonte recomendada
+
+Fonte principal:
+
+Inter
+
+Alternativas:
+
+- Geist Sans;
+- IBM Plex Sans;
+- system-ui;
+- sans-serif.
+
+A fonte deve priorizar legibilidade em dashboards, tabelas, formulários e blocos de código.
+
+## 5.2 Escala tipográfica
+
+Display / título de página:
+
+- tamanho: 28px a 32px;
+- peso: 700;
+- uso: títulos principais de páginas.
+
+Título de seção:
+
+- tamanho: 20px a 24px;
+- peso: 600;
+- uso: cards principais e áreas de conteúdo.
+
+Subtítulo:
+
+- tamanho: 16px a 18px;
+- peso: 500;
+- uso: descrições de blocos.
+
+Texto base:
+
+- tamanho: 14px a 16px;
+- peso: 400;
+- uso: textos comuns.
+
+Texto auxiliar:
+
+- tamanho: 12px a 13px;
+- peso: 400;
+- uso: descrições, hints e timestamps.
+
+Código/API:
+
+- fonte: JetBrains Mono, Geist Mono ou monospace;
+- tamanho: 13px a 14px;
+- uso: API keys, endpoints, request_id, payloads JSON.
+
+---
+
+## 6. Layout Geral da Aplicação
+
+## 6.1 Estrutura base
+
+A aplicação deve usar uma estrutura clássica de dashboard:
+
+- sidebar lateral fixa no desktop;
+- topbar interna com contexto da empresa/usuário;
+- área principal de conteúdo;
+- cards e tabelas;
+- modais para criação rápida;
+- páginas de detalhe para objetos importantes.
+
+Layout desktop:
+
+- sidebar: 260px;
+- conteúdo: flexível;
+- padding da página: 24px a 32px;
+- largura máxima opcional para páginas de formulário: 960px;
+- tabelas devem ocupar largura completa.
+
+Layout mobile/tablet:
+
+- sidebar vira menu recolhível;
+- topbar mantém botão de menu;
+- tabelas viram cards ou recebem scroll horizontal;
+- ações principais permanecem acessíveis no topo.
+
+---
+
+## 6.2 Navegação principal
+
+Itens recomendados na sidebar:
+
+1. Overview
+2. Apps
+3. Proof Requests
+4. Webhooks
+5. API Docs
+6. Settings
+
+Para o MVP, os itens mínimos são:
+
+1. Overview
+2. Apps
+3. Proof Requests
+4. Settings
+
+Itens opcionais pós-MVP:
+
+- Webhook Logs;
+- API Docs;
+- Team;
+- Billing;
+- Audit Logs.
+
+---
+
+## 6.3 Topbar
+
+A topbar deve conter:
+
+- nome da empresa ativa;
+- seletor de ambiente global, se aplicável;
+- botão de ajuda/documentação;
+- avatar ou menu do usuário;
+- indicação de workspace/company.
+
+Exemplo de elementos:
+
+- Empresa XPTO
+- Sandbox / Production
+- Docs
+- User menu
+
+No MVP, se não houver multiusuário avançado, o menu do usuário pode conter apenas:
+
+- Account;
+- Company settings;
+- Logout.
+
+---
+
+## 7. Componentes Base
+
+## 7.1 Botões
+
+### Botão primário
+
+Uso:
+
+- criar app;
+- criar company;
+- salvar alterações;
+- gerar API key;
+- criar solicitação de teste.
+
+Visual:
+
+- background: YaID Navy ou YaID Blue;
+- texto branco;
+- borda arredondada;
+- altura entre 40px e 44px.
+
+### Botão secundário
+
+Uso:
+
+- cancelar;
+- voltar;
+- copiar;
+- abrir detalhes;
+- testar webhook.
+
+Visual:
+
+- fundo branco;
+- borda neutra;
+- texto primário ou azul.
+
+### Botão destrutivo
+
+Uso:
+
+- desativar app;
+- revogar API key;
+- remover configuração.
+
+Visual:
+
+- vermelho;
+- deve pedir confirmação.
+
+---
+
+## 7.2 Cards
+
+Cards devem ser usados para:
+
+- métricas;
+- blocos de configuração;
+- detalhes de app;
+- detalhes de proof request;
+- estados vazios.
+
+Visual:
+
+- fundo branco;
+- borda #E2E8F0;
+- border-radius: 12px a 16px;
+- sombra leve opcional;
+- padding: 20px a 24px.
+
+---
+
+## 7.3 Tabelas
+
+Tabelas serão essenciais para:
+
+- listagem de apps;
+- listagem de proof_requests;
+- histórico de validações;
+- logs futuros de webhook.
+
+Regras:
+
+- cabeçalho com texto pequeno e peso 600;
+- linhas com altura confortável;
+- hover sutil;
+- coluna de ações à direita;
+- badges para status;
+- datas em formato legível;
+- IDs longos truncados com opção de copiar.
+
+---
+
+## 7.4 Badges
+
+Badges devem representar:
+
+- status;
+- environment;
+- proof_type;
+- result;
+- app status.
+
+Formato:
+
+- texto pequeno;
+- border-radius alto;
+- padding horizontal;
+- cor semântica;
+- opcionalmente ícone pequeno.
+
+---
+
+## 7.5 Inputs
+
+Inputs devem ser simples e claros.
+
+Estados:
+
+- default;
+- focus;
+- error;
+- disabled;
+- success opcional.
+
+Campos de URL e API devem usar validação visual.
+
+Exemplos:
+
+- webhook_url inválida;
+- document_number inválido;
+- name obrigatório;
+- environment não selecionado.
+
+---
+
+## 7.6 Code blocks
+
+Usar para:
+
+- API key;
+- exemplos de payload;
+- endpoint;
+- curl;
+- JSON de webhook;
+- request_id/session_token.
+
+Visual:
+
+- fundo #0F172A;
+- texto #E2E8F0;
+- borda arredondada;
+- botão de copiar no canto superior direito;
+- fonte monospace.
+
+---
+
+## 8. Mapa de Telas
+
+## 8.1 Telas mínimas para MVP
+
+1. Login
+2. Cadastro de empresa / Onboarding inicial
+3. Layout autenticado
+4. Overview
+5. Apps
+6. Criar app
+7. API key gerada
+8. Detalhe do app
+9. Proof Requests
+10. Detalhe da Proof Request
+11. Configurações da empresa
+12. Tela coringa de verificação
+13. Tela de sessão expirada
+14. Tela de sucesso/aguardando app mobile
+
+## 8.2 Telas recomendadas pós-MVP
+
+1. Webhook Logs
+2. Reenvio de webhook
+3. Rotação de API key
+4. API Docs interativa
+5. Simulador sandbox
+6. Gestão de membros
+7. Permissões por papel
+8. Audit logs
+9. Billing
+10. Página de status da integração
+
+---
+
+# 9. Detalhamento das Telas
+
+---
+
+## 9.1 Tela de Login
+
+## Objetivo
+
+Permitir que usuários empresariais acessem o Dashboard YaID.
+
+## Rota sugerida
+
+/sign-in
+
+## Público
+
+- responsável técnico;
+- gestor operacional;
+- administrador da empresa.
+
+## Conteúdo principal
+
+Elementos:
+
+- logo YaID;
+- título: "Acesse sua conta";
+- subtítulo: "Gerencie suas integrações de validação de identidade com a YaID.";
+- campo de e-mail;
+- campo de senha;
+- botão "Entrar";
+- link "Esqueci minha senha";
+- link para cadastro, se o cadastro for aberto.
+
+## Design
+
+Layout recomendado:
+
+- tela dividida em duas colunas no desktop;
+- lado esquerdo com formulário;
+- lado direito com bloco institucional;
+- em mobile, apenas o formulário centralizado.
+
+Lado institucional pode conter:
+
+- frase de confiança;
+- mini cards com conceitos:
+  - API simples;
+  - validação sem dados sensíveis;
+  - webhooks em tempo real;
+  - sandbox para testes.
+
+## Estados
+
+- loading ao enviar;
+- erro de credencial inválida;
+- erro de conexão;
+- conta sem empresa associada;
+- redirecionamento para onboarding se necessário.
+
+## Observações
+
+No MVP, caso a autenticação seja simplificada, a tela ainda deve ser projetada para suportar autenticação real via Supabase Auth posteriormente.
+
+---
+
+## 9.2 Tela de Cadastro / Onboarding da Empresa
+
+## Objetivo
+
+Criar o registro inicial da empresa no YaID.
+
+## Rota sugerida
+
+/onboarding/company
+
+## Conteúdo principal
+
+Campos:
+
+- nome da empresa;
+- CNPJ ou documento da empresa;
+- nome do responsável;
+- e-mail do responsável, se necessário;
+- aceite de termos, se aplicável.
+
+Ações:
+
+- "Criar empresa";
+- "Cancelar";
+- "Já tenho uma conta".
+
+## Texto de apoio
+
+Exemplo:
+
+"Cadastre sua organização para começar a criar apps, configurar webhooks e gerar solicitações de validação de personhood."
+
+## Design
+
+Usar layout em card central.
+
+Estrutura:
+
+- título;
+- descrição curta;
+- formulário;
+- bloco informativo lateral ou inferior;
+- botão principal.
+
+## Validações
+
+- nome obrigatório;
+- document_number opcional no MVP, mas se preenchido deve ter formato válido;
+- evitar duplicidade de empresa, se possível.
+
+## Estado vazio ou inicial
+
+Esta é a primeira tela após login quando o usuário ainda não possui company associada.
+
+## Pós-ação
+
+Após criar a empresa:
+
+- redirecionar para /apps/new;
+- ou redirecionar para um onboarding guiado com criação do primeiro app.
+
+Recomendação:
+
+Após criar a empresa, levar diretamente para criação do primeiro app, pois a principal métrica é reduzir tempo até a primeira integração.
+
+---
+
+## 9.3 Layout Autenticado
+
+## Objetivo
+
+Fornecer estrutura padrão para todas as telas internas.
+
+## Componentes
+
+- sidebar;
+- topbar;
+- breadcrumb opcional;
+- content area;
+- container de página;
+- sistema de toast;
+- modal provider.
+
+## Sidebar
+
+Itens:
+
+- Overview
+- Apps
+- Proof Requests
+- Settings
+
+Itens pós-MVP:
+
+- Webhooks
+- API Docs
+- Team
+- Billing
+- Audit Logs
+
+## Topbar
+
+Elementos:
+
+- nome da empresa;
+- ambiente selecionado, caso exista filtro global;
+- botão Docs;
+- menu do usuário.
+
+## Estados
+
+- carregando empresa;
+- empresa suspensa;
+- erro ao carregar permissões;
+- usuário sem company.
+
+---
+
+## 9.4 Overview
+
+## Objetivo
+
+Dar uma visão rápida do uso da integração, status geral e próximos passos.
+
+## Rota sugerida
+
+/dashboard
+
+ou
+
+/
+
+quando autenticado.
+
+## Conteúdo principal
+
+### Cabeçalho da página
+
+Título:
+
+"Overview"
+
+Subtítulo:
+
+"Acompanhe o uso das validações de personhood e o status das suas integrações."
+
+Ação principal:
+
+- "Criar app"
+- ou "Nova proof request de teste" no sandbox.
+
+### Cards de métricas
+
+Cards mínimos:
+
+1. Total de proof requests
+2. Aprovações
+3. Rejeições
+4. Pendentes
+5. Expiradas
+6. Taxa de aprovação
+
+Para MVP inicial, se não houver dados suficientes, usar:
+
+- Apps ativos
+- Proof requests criadas
+- Requests pendentes
+- Requests aprovadas
+
+### Bloco de próximo passo
+
+Se a empresa ainda não tem app:
+
+Título:
+
+"Crie seu primeiro app"
+
+Descrição:
+
+"Apps representam integrações da sua empresa com a API da YaID. Cada app possui uma API key e um webhook."
+
+Botão:
+
+"Criar app"
+
+Se a empresa já tem app, mas não tem proof_request:
+
+Título:
+
+"Teste sua primeira validação"
+
+Descrição:
+
+"Use sua API key para criar uma proof request em sandbox e validar o fluxo ponta a ponta."
+
+Botão:
+
+"Ver documentação da API"
+
+### Lista recente
+
+Tabela ou lista compacta:
+
+- request_id;
+- app;
+- status;
+- external_reference;
+- created_at;
+- validated_at.
+
+## Design
+
+Layout recomendado:
+
+- cabeçalho no topo;
+- grid de métricas;
+- seção de onboarding/progresso;
+- tabela recente;
+- cards com fundo branco.
+
+## Estados vazios
+
+Sem apps:
+
+"Você ainda não criou nenhum app."
+
+Sem proof_requests:
+
+"Nenhuma solicitação foi criada ainda."
+
+## Observação
+
+Esta tela pode ser simples no MVP. O principal valor operacional estará nas telas de Apps e Proof Requests.
+
+---
+
+## 9.5 Apps — Listagem
+
+## Objetivo
+
+Permitir que a empresa veja e gerencie seus apps de integração.
+
+## Rota sugerida
+
+/apps
+
+## Conteúdo principal
+
+### Cabeçalho
+
+Título:
+
+"Apps"
+
+Subtítulo:
+
+"Gerencie as integrações da sua empresa, API keys, webhooks e ambientes."
+
+Ação principal:
+
+"Criar app"
+
+### Tabela de apps
+
+Colunas:
+
+- Nome;
+- Ambiente;
+- Webhook URL;
+- Status;
+- Criado em;
+- Ações.
+
+Coluna Nome:
+
+- app name;
+- app_id em texto menor com botão copiar.
+
+Coluna Ambiente:
+
+- badge sandbox ou production.
+
+Coluna Webhook URL:
+
+- URL truncada;
+- botão copiar.
+
+Coluna Status:
+
+- active;
+- inactive;
+- suspended.
+
+Ações:
+
+- ver detalhes;
+- editar webhook;
+- desativar app;
+- rotacionar API key, pós-MVP.
+
+## Filtros
+
+MVP:
+
+- environment;
+- status.
+
+Pós-MVP:
+
+- busca por nome;
+- data de criação.
+
+## Estado vazio
+
+Título:
+
+"Crie seu primeiro app"
+
+Descrição:
+
+"Apps conectam sua empresa à API da YaID. Cada app possui uma API key própria e um webhook para receber resultados."
+
+Botão:
+
+"Criar app"
+
+## Design
+
+Tabela em card.
+
+No topo da tabela:
+
+- campo de busca;
+- filtro de ambiente;
+- botão criar app.
+
+---
+
+## 9.6 Criar App
+
+## Objetivo
+
+Criar uma integração empresarial associada à company.
+
+## Rota sugerida
+
+/apps/new
+
+## Conteúdo principal
+
+Campos:
+
+1. Nome do app
+2. Ambiente
+3. Webhook URL
+
+### Campo: Nome do app
+
+Placeholder:
+
+"Ex: onboarding-web-prod"
+
+Texto auxiliar:
+
+"Use um nome que ajude sua equipe a identificar onde esta integração será usada."
+
+### Campo: Ambiente
+
+Opções:
+
+- Sandbox
+- Production
+
+Texto auxiliar:
+
+"Use sandbox para testes e production para fluxos reais."
+
+### Campo: Webhook URL
+
+Placeholder:
+
+"https://empresa.com/webhooks/yaid"
+
+Texto auxiliar:
+
+"A YaID enviará o resultado final da validação para este endpoint."
+
+## Ações
+
+- "Criar app"
+- "Cancelar"
+
+## Design
+
+Layout recomendado:
+
+- formulário em card à esquerda;
+- card explicativo à direita.
+
+Card explicativo:
+
+Título:
+
+"O que é um app?"
+
+Texto:
+
+"Um app representa uma integração da sua empresa com a YaID. Ele possui uma API key, um ambiente e um webhook para receber eventos."
+
+## Validações
+
+- nome obrigatório;
+- environment obrigatório;
+- webhook_url obrigatório;
+- webhook_url deve iniciar com https:// em production;
+- em sandbox, pode permitir http://localhost para testes, se definido como regra do MVP.
+
+## Pós-ação
+
+Após criar app:
+
+- redirecionar para tela de API key gerada;
+- a API key deve ser exibida uma única vez.
+
+---
+
+## 9.7 API Key Gerada
+
+## Objetivo
+
+Exibir a API key gerada uma única vez após criação do app.
+
+## Rota sugerida
+
+/apps/[app_id]/key-created
+
+ou modal imediatamente após criação.
+
+## Conteúdo principal
+
+Título:
+
+"API key gerada"
+
+Subtítulo:
+
+"Copie e armazene esta chave agora. Por segurança, ela não será exibida novamente."
+
+Bloco de API key:
+
+<app_id>.<secret>
+
+Ações:
+
+- "Copiar API key"
+- "Já salvei minha API key"
+- "Ver app"
+
+## Avisos obrigatórios
+
+Texto de segurança:
+
+"Esta chave concede acesso à criação de proof requests para este app. Não exponha a API key no frontend, em repositórios públicos ou em logs."
+
+Outro aviso:
+
+"A YaID armazena apenas o hash do secret. Não será possível recuperar esta chave depois."
+
+## Design
+
+Usar card central com destaque.
+
+Visual:
+
+- ícone de chave ou escudo;
+- alerta em âmbar;
+- bloco de código escuro;
+- botão de copiar em destaque.
+
+## Estados
+
+- copiado com sucesso;
+- erro ao copiar;
+- confirmação antes de sair da tela.
+
+## Regra importante
+
+Não permitir que o usuário saia sem reconhecer que salvou a chave.
+
+Pode haver checkbox:
+
+"Eu copiei e armazenei minha API key em um local seguro."
+
+---
+
+## 9.8 Detalhe do App
+
+## Objetivo
+
+Permitir que a empresa visualize detalhes de um app específico e configure seu webhook.
+
+## Rota sugerida
+
+/apps/[app_id]
+
+## Conteúdo principal
+
+### Cabeçalho
+
+- nome do app;
+- badge de ambiente;
+- badge de status;
+- app_id com botão copiar;
+- ações rápidas.
+
+Ações:
+
+- editar webhook;
+- desativar app;
+- rotacionar API key, pós-MVP;
+- testar webhook, pós-MVP.
+
+### Cards de resumo
+
+1. Ambiente
+2. Status
+3. Webhook URL
+4. Criado em
+5. Total de proof_requests
+6. Última atividade
+
+### Seção API
+
+Mostrar:
+
+- endpoint para criar proof_request;
+- exemplo de header Authorization;
+- aviso de que a API key não pode ser recuperada.
+
+Exemplo:
+
+POST /api/proof-requests
+
+Authorization: Bearer <app_id>.<secret>
+
+### Seção Webhook
+
+Mostrar:
+
+- webhook_url atual;
+- payload esperado;
+- status básico da configuração;
+- botão editar.
+
+Payload exemplo:
+
+{
+  "event": "proof.completed",
+  "request_id": "uuid",
+  "proof_type": "personhood_vc",
+  "external_reference": "user_789",
+  "status": "approved",
+  "valid": true,
+  "validated_at": "2026-04-28T20:00:00Z"
+}
+
+### Seção Proof Requests recentes
+
+Tabela compacta:
+
+- request_id;
+- status;
+- result;
+- external_reference;
+- created_at.
+
+Ação:
+
+"Ver todas as proof requests"
+
+## Design
+
+Layout:
+
+- cabeçalho com ações;
+- grid de cards;
+- duas colunas para API/Webhook no desktop;
+- tabela recente abaixo.
+
+---
+
+## 9.9 Editar Webhook do App
+
+## Objetivo
+
+Permitir alteração da webhook_url associada ao app.
+
+## Rota sugerida
+
+Modal dentro de /apps/[app_id]
+
+ou
+
+/apps/[app_id]/webhook
+
+## Conteúdo principal
+
+Campo:
+
+- Webhook URL
+
+Ações:
+
+- Salvar;
+- Cancelar;
+- Testar webhook, pós-MVP.
+
+## Validações
+
+- obrigatório;
+- URL válida;
+- production exige https;
+- sandbox pode permitir localhost se definido como regra.
+
+## Avisos
+
+"Alterar o webhook afeta as próximas validações finalizadas deste app."
+
+## Design
+
+Pode ser modal simples.
+
+Em production, exibir aviso adicional:
+
+"Você está alterando o webhook de um app em produção."
+
+---
+
+## 9.10 Proof Requests — Listagem
+
+## Objetivo
+
+Permitir que a empresa acompanhe solicitações de validação criadas por seus apps.
+
+## Rota sugerida
+
+/proof-requests
+
+## Conteúdo principal
+
+### Cabeçalho
+
+Título:
+
+"Proof Requests"
+
+Subtítulo:
+
+"Acompanhe solicitações de validação de personhood criadas pelos seus apps."
+
+Ação opcional:
+
+- "Criar request de teste", apenas sandbox;
+- "Ver documentação da API".
+
+### Filtros
+
+Filtros mínimos:
+
+- status;
+- app;
+- environment;
+- external_reference;
+- data de criação.
+
+Campos:
+
+- select de status;
+- select de app;
+- input de external_reference;
+- date range;
+- botão limpar filtros.
+
+### Tabela
+
+Colunas:
+
+- Request ID;
+- App;
+- Proof Type;
+- Status;
+- Result;
+- External Reference;
+- Created At;
+- Validated At;
+- Ações.
+
+Coluna Request ID:
+
+- ID truncado;
+- botão copiar.
+
+Coluna App:
+
+- nome do app;
+- badge environment.
+
+Coluna Proof Type:
+
+- personhood_vc.
+
+Coluna Status:
+
+- badge semântico.
+
+Coluna Result:
+
+- true;
+- false;
+- null;
+- usar representação visual:
+  - Valid;
+  - Invalid;
+  - Not available.
+
+Coluna External Reference:
+
+- texto;
+- se vazio, mostrar "-".
+
+Coluna Ações:
+
+- ver detalhes.
+
+## Estado vazio
+
+Sem requests:
+
+"Nenhuma proof request encontrada."
+
+Se filtros aplicados:
+
+"Nenhuma proof request corresponde aos filtros selecionados."
+
+## Design
+
+Tabela deve ser o componente central.
+
+No mobile:
+
+- usar cards por proof_request;
+- mostrar status no topo do card;
+- ações no rodapé.
+
+---
+
+## 9.11 Detalhe da Proof Request
+
+## Objetivo
+
+Exibir todos os dados operacionais de uma solicitação de validação.
+
+## Rota sugerida
+
+/proof-requests/[request_id]
+
+## Conteúdo principal
+
+### Cabeçalho
+
+- Request ID;
+- botão copiar;
+- status badge;
+- result badge;
+- botão voltar.
+
+Subtítulo:
+
+"Detalhes da solicitação de validação criada pelo app."
+
+### Cards principais
+
+1. Status da request
+2. Resultado
+3. App
+4. External reference
+5. Criada em
+6. Validada em
+
+### Seção Dados da proof_request
+
+Campos:
+
+- request_id;
+- app_id;
+- app_name;
+- proof_type;
+- status;
+- result;
+- external_reference;
+- created_at;
+- validated_at.
+
+### Seção Sessão
+
+Campos:
+
+- proof_session.status;
+- created_at;
+- expires_at;
+- opened_at;
+- approved_at.
+
+Mostrar timeline visual:
+
+1. Request criada
+2. Usuário abriu sessão
+3. Usuário aprovou no app
+4. Validação concluída
+5. Webhook enviado, pós-MVP
+
+Para MVP, a timeline pode conter apenas os campos disponíveis.
+
+### Seção Verification URL
+
+Mostrar:
+
+- verification_url, se ainda válida;
+- botão copiar;
+- botão abrir em nova aba.
+
+Se expirada:
+
+"Esta sessão expirou. Crie uma nova proof request para gerar uma nova verification_url."
+
+### Seção Webhook
+
+MVP:
+
+- mostrar webhook_url do app;
+- mostrar payload esperado;
+- informar que falhas são registradas internamente.
+
+Pós-MVP:
+
+- status de entrega;
+- tentativas;
+- resposta HTTP;
+- botão reenviar.
+
+## Design
+
+Layout recomendado:
+
+- cabeçalho;
+- cards de status;
+- duas colunas:
+  - dados da request;
+  - dados da sessão;
+- timeline abaixo;
+- bloco de webhook.
+
+## Estados
+
+- pending_user: destacar que aguarda ação do usuário;
+- processing: destacar que a VP está sendo validada;
+- approved: destacar resultado positivo;
+- rejected: destacar resultado negativo;
+- expired: destacar que a sessão expirou.
+
+---
+
+## 9.12 Configurações da Empresa
+
+## Objetivo
+
+Permitir visualizar e editar dados básicos da company.
+
+## Rota sugerida
+
+/settings
+
+## Conteúdo principal
+
+Seções:
+
+1. Dados da empresa
+2. Segurança
+3. Ambiente e preferências
+4. Zona perigosa, pós-MVP
+
+### Dados da empresa
+
+Campos:
+
+- name;
+- document_number;
+- status;
+- created_at.
+
+Ações:
+
+- editar nome;
+- salvar.
+
+### Segurança
+
+MVP:
+
+- texto explicando API keys;
+- link para Apps.
+
+Pós-MVP:
+
+- membros;
+- papéis;
+- autenticação em dois fatores;
+- audit logs.
+
+### Ambiente e preferências
+
+Pós-MVP:
+
+- ambiente padrão;
+- timezone;
+- formato de datas.
+
+## Design
+
+Página com cards empilhados.
+
+Ações críticas devem ficar separadas no final.
+
+---
+
+## 9.13 Tela Coringa de Verificação
+
+## Objetivo
+
+Tela aberta pelo usuário final a partir da verification_url gerada para uma proof_session.
+
+Embora o app mobile não faça parte do dashboard empresarial, esta tela pertence ao fluxo web suportado pelo produto.
+
+## Rota sugerida
+
+/v/[session_token]
+
+ou domínio separado:
+
+https://verify.yaid.com/v/[session_token]
+
+## Público
+
+Usuário final da empresa parceira.
+
+## Conteúdo principal
+
+Quando a sessão está válida:
+
+- logo YaID;
+- título: "Confirme sua identidade com YaID";
+- subtítulo: "A empresa parceira está solicitando uma validação de personhood.";
+- nome da empresa solicitante;
+- nome do app, se aplicável;
+- tipo de prova: Personhood;
+- botão principal: "Abrir app YaID";
+- QR Code para abrir no celular, se acessado no desktop;
+- texto de privacidade.
+
+Texto de privacidade sugerido:
+
+"A YaID confirma apenas o resultado da validação. Seus documentos pessoais não são enviados para a empresa parceira."
+
+## Ações
+
+- Abrir app YaID;
+- Copiar link;
+- Ver detalhes da solicitação, opcional;
+- Cancelar, pós-MVP.
+
+## Design
+
+Layout:
+
+- card centralizado;
+- fundo claro;
+- ícone de escudo;
+- CTA forte;
+- QR Code em destaque no desktop.
+
+## Estados
+
+1. Sessão válida
+2. Sessão expirada
+3. Sessão já aprovada
+4. Sessão cancelada
+5. Token inválido
+6. Erro interno
+
+---
+
+## 9.14 Tela de Sessão Expirada
+
+## Objetivo
+
+Informar ao usuário final que a sessão não pode mais ser usada.
+
+## Rota
+
+Mesmo endpoint da tela coringa:
+
+/v/[session_token]
+
+## Conteúdo
+
+Título:
+
+"Sessão expirada"
+
+Descrição:
+
+"Esta solicitação de validação expirou. Volte para a plataforma parceira e solicite uma nova validação."
+
+Ação:
+
+"Entendi"
+
+Opcional:
+
+"Voltar para a empresa parceira", se houver redirect configurado futuramente.
+
+## Design
+
+- card central;
+- badge expired;
+- tom neutro;
+- evitar vermelho agressivo, pois não é erro de fraude.
+
+---
+
+## 9.15 Tela de Aguardando Confirmação no App
+
+## Objetivo
+
+Indicar que o usuário abriu a sessão e precisa finalizar a aprovação no app YaID.
+
+## Conteúdo
+
+Título:
+
+"Aguardando confirmação no app"
+
+Descrição:
+
+"Abra o app YaID no seu celular e aprove o compartilhamento da prova solicitada."
+
+Elementos:
+
+- loading state;
+- botão "Abrir app novamente";
+- QR Code, se desktop;
+- instruções curtas.
+
+## Estado posterior
+
+Quando a proof_request for finalizada:
+
+- mostrar sucesso;
+- ou mostrar falha/rejeição;
+- ou orientar retorno à plataforma parceira.
+
+---
+
+## 9.16 Tela de Sucesso da Verificação
+
+## Objetivo
+
+Informar ao usuário final que a validação foi concluída.
+
+## Conteúdo
+
+Título:
+
+"Validação concluída"
+
+Descrição:
+
+"Sua validação foi processada. Você pode retornar para a plataforma parceira."
+
+Ação:
+
+"Voltar para a plataforma"
+
+Observação:
+
+No MVP, se não houver redirect_url, mostrar apenas mensagem final.
+
+## Design
+
+- ícone de sucesso;
+- badge approved;
+- card central;
+- visual limpo.
+
+---
+
+# 10. Telas Pós-MVP
+
+---
+
+## 10.1 Webhook Logs
+
+## Objetivo
+
+Permitir rastrear entregas de webhook.
+
+## Rota sugerida
+
+/webhooks/logs
+
+## Conteúdo
+
+Tabela:
+
+- event;
+- request_id;
+- app;
+- status de entrega;
+- HTTP status;
+- tentativas;
+- última tentativa;
+- próximo retry;
+- ações.
+
+Ações:
+
+- abrir detalhe;
+- reenviar webhook.
+
+## Valor
+
+Ajuda a empresa a diagnosticar problemas de integração sem depender do suporte YaID.
+
+---
+
+## 10.2 Detalhe de Webhook
+
+## Conteúdo
+
+- payload enviado;
+- headers;
+- endpoint;
+- response status;
+- response body truncado;
+- timestamps;
+- tentativas;
+- botão reenviar.
+
+---
+
+## 10.3 API Docs Interna
+
+## Objetivo
+
+Documentar a API diretamente no dashboard.
+
+## Rota sugerida
+
+/docs
+
+## Conteúdo
+
+- autenticação;
+- criar proof request;
+- payload de webhook;
+- códigos de erro;
+- exemplos em curl;
+- exemplos em TypeScript;
+- exemplos em Python.
+
+## Design
+
+Layout de documentação:
+
+- navegação lateral interna;
+- blocos de código;
+- exemplos copiáveis;
+- seletor de ambiente sandbox/production.
+
+---
+
+## 10.4 Simulador Sandbox
+
+## Objetivo
+
+Permitir que a empresa teste uma validação sem depender do app mobile real.
+
+## Rota sugerida
+
+/sandbox/simulator
+
+## Conteúdo
+
+- selecionar app sandbox;
+- informar external_reference;
+- criar proof_request;
+- simular approved;
+- simular rejected;
+- visualizar webhook enviado.
+
+## Regra
+
+Disponível apenas para apps sandbox.
+
+---
+
+## 10.5 Gestão de Membros
+
+## Objetivo
+
+Permitir múltiplos usuários por empresa.
+
+## Rota sugerida
+
+/settings/team
+
+## Conteúdo
+
+- lista de membros;
+- convite por e-mail;
+- papel;
+- status do convite;
+- remover membro.
+
+Papéis possíveis:
+
+- owner;
+- admin;
+- developer;
+- viewer.
+
+---
+
+# 11. Fluxos de Navegação
+
+---
+
+## 11.1 Fluxo inicial recomendado
+
+1. Usuário cria conta ou faz login.
+2. Se não tiver company, vai para onboarding.
+3. Cria company.
+4. Vai para criação do primeiro app.
+5. Cria app.
+6. Recebe API key.
+7. Copia API key.
+8. Vai para detalhe do app.
+9. Consulta exemplo de integração.
+10. Cria proof_request via API.
+11. Acompanha resultado em Proof Requests.
+
+---
+
+## 11.2 Fluxo de criação de app
+
+/apps
+
+Clique em "Criar app"
+
+/apps/new
+
+Preenche:
+
+- name;
+- environment;
+- webhook_url.
+
+Sistema cria company_app.
+
+Redireciona para tela de API key gerada.
+
+Usuário copia chave.
+
+Usuário acessa detalhe do app.
+
+---
+
+## 11.3 Fluxo de acompanhamento de validação
+
+Empresa cria proof_request via API.
+
+Dashboard mostra request em pending_user.
+
+Usuário abre verification_url.
+
+Sessão muda para opened.
+
+App mobile envia VP.
+
+API valida.
+
+proof_request muda para approved ou rejected.
+
+Webhook é enviado.
+
+Dashboard mostra resultado final.
+
+---
+
+# 12. Responsividade
+
+## 12.1 Desktop
+
+Principal alvo do dashboard empresarial.
+
+Regras:
+
+- sidebar fixa;
+- tabelas completas;
+- filtros na horizontal;
+- cards em grid;
+- detalhes em duas colunas.
+
+## 12.2 Tablet
+
+Regras:
+
+- sidebar recolhível;
+- cards em duas colunas;
+- tabelas com scroll horizontal;
+- filtros quebram em múltiplas linhas.
+
+## 12.3 Mobile
+
+Embora não seja o principal uso empresarial, deve funcionar.
+
+Regras:
+
+- sidebar vira drawer;
+- tabelas viram cards ou scroll horizontal;
+- botões principais ficam no topo;
+- modais ocupam quase tela cheia;
+- evitar excesso de colunas.
+
+A tela coringa de verificação deve ser excelente no mobile, pois será usada pelo usuário final.
+
+---
+
+# 13. Estados Vazios
+
+## 13.1 Sem company
+
+Mensagem:
+
+"Você ainda não possui uma empresa cadastrada."
+
+Ação:
+
+"Cadastrar empresa"
+
+## 13.2 Sem apps
+
+Mensagem:
+
+"Você ainda não criou nenhum app."
+
+Descrição:
+
+"Crie um app para gerar uma API key e configurar seu webhook."
+
+Ação:
+
+"Criar app"
+
+## 13.3 Sem proof requests
+
+Mensagem:
+
+"Nenhuma proof request criada."
+
+Descrição:
+
+"As solicitações aparecerão aqui quando sua integração chamar a API da YaID."
+
+Ação:
+
+"Ver documentação da API"
+
+## 13.4 Sem resultados em filtros
+
+Mensagem:
+
+"Nenhum resultado encontrado."
+
+Descrição:
+
+"Tente ajustar os filtros ou limpar a busca."
+
+Ação:
+
+"Limpar filtros"
+
+---
+
+# 14. Estados de Loading
+
+## 14.1 Carregamento de página
+
+Usar skeletons em:
+
+- cards;
+- tabelas;
+- detalhes;
+- formulário.
+
+Evitar tela totalmente branca.
+
+## 14.2 Ações assíncronas
+
+Botões devem mostrar loading em:
+
+- criar app;
+- salvar webhook;
+- criar company;
+- copiar API key, se necessário;
+- testar webhook, pós-MVP.
+
+## 14.3 Tabelas
+
+Durante carregamento:
+
+- mostrar skeleton de 5 linhas;
+- manter cabeçalho visível se possível.
+
+---
+
+# 15. Estados de Erro
+
+## 15.1 Erro genérico
+
+Mensagem:
+
+"Não foi possível carregar os dados."
+
+Ação:
+
+"Tentar novamente"
+
+## 15.2 Erro de permissão
+
+Mensagem:
+
+"Você não tem permissão para acessar este recurso."
+
+## 15.3 Company suspensa
+
+Mensagem:
+
+"Sua empresa está suspensa. Entre em contato com o suporte da YaID."
+
+## 15.4 App inativo
+
+Mensagem:
+
+"Este app está inativo e não pode criar novas proof requests."
+
+## 15.5 Webhook inválido
+
+Mensagem:
+
+"Informe uma URL válida para receber eventos da YaID."
+
+## 15.6 API key não recuperável
+
+Mensagem:
+
+"Por segurança, a API key não pode ser exibida novamente. Gere uma nova chave caso tenha perdido o acesso."
+
+---
+
+# 16. Microcopy Recomendada
+
+## 16.1 API key
+
+"Copie esta chave agora. Ela será exibida apenas uma vez."
+
+"Não exponha esta chave no frontend, em repositórios públicos ou em logs."
+
+"A YaID armazena apenas o hash do secret."
+
+## 16.2 Webhook
+
+"A YaID enviará o resultado final da validação para este endpoint."
+
+"Falhas de webhook não impedem a conclusão da proof request."
+
+## 16.3 Proof request
+
+"Uma proof request representa uma solicitação de validação criada por um app da sua empresa."
+
+"O campo external_reference ajuda a correlacionar a validação com um usuário ou processo interno da sua plataforma."
+
+## 16.4 Privacidade
+
+"A empresa recebe apenas o resultado da validação, não os documentos pessoais do usuário."
+
+"A YaID foi desenhada para reduzir exposição de dados sensíveis."
+
+## 16.5 Sandbox
+
+"Use sandbox para testar sua integração antes de operar em produção."
+
+## 16.6 Production
+
+"Este ambiente deve ser usado apenas para fluxos reais da sua empresa."
+
+---
+
+# 17. Sugestão de Estrutura de Rotas Next.js
+
+## 17.1 Rotas públicas
+
+app/
+  sign-in/
+    page.tsx
+
+  sign-up/
+    page.tsx
+
+  v/
+    [sessionToken]/
+      page.tsx
+
+## 17.2 Rotas autenticadas
+
+app/
+  dashboard/
+    page.tsx
+
+  onboarding/
+    company/
+      page.tsx
+
+  apps/
+    page.tsx
+
+    new/
+      page.tsx
+
+    [appId]/
+      page.tsx
+
+      key-created/
+        page.tsx
+
+  proof-requests/
+    page.tsx
+
+    [requestId]/
+      page.tsx
+
+  settings/
+    page.tsx
+
+## 17.3 Rotas futuras
+
+app/
+  webhooks/
+    logs/
+      page.tsx
+
+    logs/
+      [logId]/
+        page.tsx
+
+  docs/
+    page.tsx
+
+  sandbox/
+    simulator/
+      page.tsx
+
+  settings/
+    team/
+      page.tsx
+
+---
+
+# 18. Sugestão de Componentes
+
+## 18.1 Componentes de layout
+
+components/layout/
+  app-sidebar.tsx
+  app-topbar.tsx
+  authenticated-layout.tsx
+  page-header.tsx
+  content-shell.tsx
+
+## 18.2 Componentes de feedback
+
+components/feedback/
+  empty-state.tsx
+  loading-skeleton.tsx
+  error-state.tsx
+  status-badge.tsx
+  environment-badge.tsx
+  result-badge.tsx
+
+## 18.3 Componentes de apps
+
+components/apps/
+  app-card.tsx
+  app-table.tsx
+  app-form.tsx
+  api-key-created-card.tsx
+  webhook-form.tsx
+  app-summary-cards.tsx
+
+## 18.4 Componentes de proof requests
+
+components/proof-requests/
+  proof-request-table.tsx
+  proof-request-filters.tsx
+  proof-request-detail.tsx
+  proof-request-timeline.tsx
+  proof-session-card.tsx
+
+## 18.5 Componentes de documentação/API
+
+components/api/
+  code-block.tsx
+  copy-button.tsx
+  endpoint-card.tsx
+  payload-example.tsx
+
+## 18.6 Componentes da tela coringa
+
+components/verification/
+  verification-card.tsx
+  qr-code-card.tsx
+  session-expired-card.tsx
+  waiting-app-confirmation.tsx
+  verification-success-card.tsx
+
+---
+
+# 19. Tokens de Design em CSS
+
+Sugestão para app/globals.css ou arquivo equivalente:
+
+:root {
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+
+  --primary: #0F172A;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #2563EB;
+  --secondary-foreground: #FFFFFF;
+
+  --success: #16A34A;
+  --success-foreground: #FFFFFF;
+
+  --warning: #F59E0B;
+  --warning-foreground: #0F172A;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
+---
+
+# 20. Classes Semânticas Recomendadas
+
+## 20.1 Status badges
+
+.status-pending-user {
+  background: #FEF3C7;
+  color: #92400E;
+  border-color: #FCD34D;
+}
+
+.status-processing {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  border-color: #93C5FD;
+}
+
+.status-approved {
+  background: #DCFCE7;
+  color: #166534;
+  border-color: #86EFAC;
+}
+
+.status-rejected {
+  background: #FEE2E2;
+  color: #991B1B;
+  border-color: #FCA5A5;
+}
+
+.status-expired {
+  background: #F1F5F9;
+  color: #475569;
+  border-color: #CBD5E1;
+}
+
+## 20.2 Environment badges
+
+.environment-sandbox {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #BFDBFE;
+}
+
+.environment-production {
+  background: #ECFDF5;
+  color: #047857;
+  border-color: #A7F3D0;
+}
+
+---
+
+# 21. Prioridade de Implementação das Telas
+
+## Fase 1 — Estrutura e onboarding
+
+1. Login
+2. Layout autenticado
+3. Cadastro de empresa
+4. Overview simples
+
+## Fase 2 — Apps
+
+1. Apps listagem
+2. Criar app
+3. API key gerada
+4. Detalhe do app
+5. Editar webhook
+
+## Fase 3 — Proof Requests
+
+1. Proof Requests listagem
+2. Filtros básicos
+3. Detalhe da proof request
+4. Timeline simples de sessão
+
+## Fase 4 — Tela coringa
+
+1. Tela de sessão válida
+2. Tela de sessão expirada
+3. Tela aguardando app
+4. Tela de sucesso
+
+## Fase 5 — Melhorias
+
+1. API Docs
+2. Webhook logs
+3. Simulador sandbox
+4. Gestão de membros
+5. Rotação de API key
+
+---
+
+# 22. Checklist de Aceite Visual
+
+## Geral
+
+- A aplicação transmite segurança e confiança.
+- A navegação principal é clara.
+- O usuário entende o que é um app.
+- O usuário entende onde configurar o webhook.
+- O usuário entende que a API key aparece apenas uma vez.
+- Sandbox e production são visualmente distinguíveis.
+- Status de proof_request são claros.
+- Tabelas são legíveis.
+- IDs longos podem ser copiados.
+- Estados vazios orientam o próximo passo.
+- Erros possuem mensagem compreensível.
+
+## Apps
+
+- É possível criar app com poucos campos.
+- A API key é exibida em destaque.
+- O aviso de segurança da API key é claro.
+- O detalhe do app mostra webhook e endpoint.
+- O app_id é fácil de copiar.
+
+## Proof Requests
+
+- A listagem permite entender rapidamente o status.
+- O filtro por status é acessível.
+- O external_reference aparece com clareza.
+- O detalhe da request mostra sessão e resultado.
+- A verification_url pode ser copiada quando válida.
+
+## Tela coringa
+
+- Usuário final entende o que está sendo solicitado.
+- Usuário final entende que documentos pessoais não serão enviados à empresa.
+- CTA para abrir app YaID é claro.
+- Sessão expirada possui mensagem objetiva.
+- Mobile é priorizado nessa tela.
+
+---
+
+# 23. Decisões de Design Recomendadas para o MVP
+
+1. Usar layout de dashboard com sidebar fixa no desktop.
+2. Usar shadcn/ui como base de componentes.
+3. Usar Tailwind CSS com tokens semânticos no globals.css.
+4. Usar Inter ou Geist Sans como fonte principal.
+5. Usar JetBrains Mono ou Geist Mono para blocos de código.
+6. Criar componente único de StatusBadge.
+7. Criar componente único de EnvironmentBadge.
+8. Criar componente CopyButton reutilizável.
+9. Criar CodeBlock reutilizável para API examples.
+10. Fazer a tela de API key gerada como página ou modal bloqueante.
+11. Não exibir API key novamente após sair da tela.
+12. Começar com Overview simples e evoluir depois.
+13. Priorizar Apps e Proof Requests sobre métricas avançadas.
+14. Tratar a tela coringa como experiência mobile-first.
+15. Evitar estética cripto exagerada.
+
+---
+
+# 24. Resultado Esperado
+
+Ao final da implementação das telas descritas neste documento, o Dashboard Web Empresarial YaID deve permitir que uma empresa parceira:
+
+- cadastre sua organização;
+- crie um app;
+- configure um webhook;
+- receba uma API key;
+- entenda como chamar a API;
+- acompanhe proof_requests;
+- visualize detalhes de cada validação;
+- diferencie sandbox e production;
+- entenda claramente os status das solicitações;
+- encaminhe seus usuários para uma tela de verificação;
+- receba o resultado final por webhook.
+
+A experiência deve ser simples o suficiente para uma empresa começar em poucos minutos, mas robusta o suficiente para transmitir confiança em um produto de identidade digital.
