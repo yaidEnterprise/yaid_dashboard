@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ShieldHalf, Loader2, AlertCircle, Code2, Lock, Zap, FlaskConical } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -21,12 +22,24 @@ export default function SignInPage() {
 
     setLoading(true);
 
-    // Simulate auth — will be replaced with Supabase Auth
-    await new Promise((r) => setTimeout(r, 800));
+    const supabase = getSupabaseBrowserClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
-    // For MVP, any non-empty credentials work
-    window.location.href = "/";
-    setLoading(false);
+    if (signInError) {
+      setError("E-mail ou senha inválidos.");
+      setLoading(false);
+      return;
+    }
+
+    const res = await fetch("/api/companies/me", { cache: "no-store" });
+    if (res.ok) {
+      window.location.href = "/";
+    } else {
+      window.location.href = "/onboarding/company";
+    }
   }
 
   const featureCards = [

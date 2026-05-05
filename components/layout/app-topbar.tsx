@@ -13,7 +13,7 @@ export function AppTopbar() {
       <div className="hidden items-center gap-2 sm:flex">
         <span className="text-sm font-medium text-text-primary">Acme Identidade Ltda.</span>
         <span className="text-text-tertiary">·</span>
-        <EnvBadge env="sandbox" />
+        <EnvBadge env="homol" />
       </div>
 
       <div className="ml-auto flex items-center gap-1.5">

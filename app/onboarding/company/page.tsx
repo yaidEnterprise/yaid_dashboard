@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ShieldHalf, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function OnboardingCompanyPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
-  const [responsibleName, setResponsibleName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -18,9 +20,14 @@ export default function OnboardingCompanyPage() {
   function validate() {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = "Nome da empresa é obrigatório.";
-    if (!responsibleName.trim()) newErrors.responsibleName = "Nome do responsável é obrigatório.";
+    if (!email.trim()) newErrors.email = "E-mail é obrigatório.";
+    if (password.length < 8) newErrors.password = "Senha deve ter ao menos 8 caracteres.";
     if (!termsAccepted) newErrors.terms = "Aceite os termos para continuar.";
     return newErrors;
+  }
+
+  function digitsOnly(value: string) {
+    return value.replace(/\D/g, "");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,8 +37,43 @@ export default function OnboardingCompanyPage() {
     if (Object.keys(newErrors).length > 0) return;
 
     setLoading(true);
-    // Simulate company creation — will be replaced with API call
-    await new Promise((r) => setTimeout(r, 800));
+    const supabase = getSupabaseBrowserClient();
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+    });
+
+    if (signUpError) {
+      toast.error(signUpError.message || "Não foi possível criar a conta.");
+      setLoading(false);
+      return;
+    }
+
+    // If email confirmation is enabled in Supabase, no session is returned.
+    if (!signUpData.session) {
+      toast.success("Conta criada! Verifique seu e-mail para confirmar antes de continuar.");
+      router.push("/sign-in");
+      return;
+    }
+
+    const doc = digitsOnly(documentNumber);
+    const res = await fetch("/api/companies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        documentNumber: doc.length ? doc : null,
+      }),
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      toast.error(json?.error?.message || "Falha ao criar a empresa.");
+      setLoading(false);
+      return;
+    }
+
     toast.success("Empresa criada com sucesso!");
     router.push("/apps/new");
   }
@@ -67,6 +109,7 @@ export default function OnboardingCompanyPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: XPTO Tecnologia"
+                maxLength={50}
                 className={`h-11 w-full rounded-lg border bg-surface px-4 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-trust/20 ${
                   errors.name ? "border-destructive focus:border-destructive" : "border-border focus:border-trust"
                 }`}
@@ -76,35 +119,54 @@ export default function OnboardingCompanyPage() {
 
             <div>
               <label htmlFor="document-number" className="mb-1.5 block text-sm font-medium text-text-primary">
-                CNPJ <span className="text-text-tertiary">(opcional)</span>
+                CNPJ / CPF <span className="text-text-tertiary">(opcional)</span>
               </label>
               <input
                 id="document-number"
                 type="text"
                 value={documentNumber}
                 onChange={(e) => setDocumentNumber(e.target.value)}
-                placeholder="00.000.000/0001-00"
+                placeholder="00000000000000"
+                inputMode="numeric"
                 className="h-11 w-full rounded-lg border border-border bg-surface px-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
               />
             </div>
 
             <div>
-              <label htmlFor="responsible-name" className="mb-1.5 block text-sm font-medium text-text-primary">
-                Nome do responsável <span className="text-destructive">*</span>
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-text-primary">
+                E-mail empresarial <span className="text-destructive">*</span>
               </label>
               <input
-                id="responsible-name"
-                type="text"
-                value={responsibleName}
-                onChange={(e) => setResponsibleName(e.target.value)}
-                placeholder="Ex: João Silva"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="contato@empresa.com"
+                autoComplete="email"
                 className={`h-11 w-full rounded-lg border bg-surface px-4 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-trust/20 ${
-                  errors.responsibleName ? "border-destructive focus:border-destructive" : "border-border focus:border-trust"
+                  errors.email ? "border-destructive focus:border-destructive" : "border-border focus:border-trust"
                 }`}
               />
-              {errors.responsibleName && (
-                <p className="mt-1 text-xs text-destructive">{errors.responsibleName}</p>
-              )}
+              {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-text-primary">
+                Senha <span className="text-destructive">*</span>
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                minLength={8}
+                className={`h-11 w-full rounded-lg border bg-surface px-4 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-trust/20 ${
+                  errors.password ? "border-destructive focus:border-destructive" : "border-border focus:border-trust"
+                }`}
+              />
+              {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password}</p>}
             </div>
 
             <div className="flex items-start gap-3 pt-2">

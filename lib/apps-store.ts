@@ -1,127 +1,85 @@
-export type AppEnv = "production" | "sandbox";
-export type AppStatus = "active" | "inactive";
+// Thin client-side wrapper over the company-app HTTP API.
+// Matches the shape returned by /api/company-apps endpoints.
+
+export type AppEnv = "dev" | "homol" | "prod";
+export type AppStatus = "enabled" | "disabled";
 
 export interface YaidApp {
   id: string;
+  companyId: string;
   name: string;
-  description: string;
-  env: AppEnv;
+  environment: AppEnv;
   status: AppStatus;
-  webhook: string;
-  created: string;
+  webhookUrl: string;
+  createdAt: string;
 }
 
-const STORAGE_KEY = "yaid:apps";
-
-const SEED_APPS: YaidApp[] = [
-  {
-    id: "seed-1",
-    name: "Onboarding Produção",
-    description: "Fluxo principal de cadastro de novos clientes.",
-    env: "production",
-    status: "active",
-    webhook: "https://api.acme.com/yaid/hooks/onboarding",
-    created: "12 mar 2025",
-  },
-  {
-    id: "seed-2",
-    name: "Backoffice KYC",
-    description: "Reverificação periódica de clientes ativos.",
-    env: "production",
-    status: "active",
-    webhook: "https://api.acme.com/yaid/hooks/kyc",
-    created: "04 fev 2025",
-  },
-  {
-    id: "seed-3",
-    name: "Portal Sandbox",
-    description: "Ambiente de homologação do time de produto.",
-    env: "sandbox",
-    status: "active",
-    webhook: "https://staging.acme.com/yaid/hook",
-    created: "21 jan 2025",
-  },
-  {
-    id: "seed-4",
-    name: "App descontinuado",
-    description: "Integração legada do app mobile v1.",
-    env: "production",
-    status: "inactive",
-    webhook: "—",
-    created: "08 ago 2024",
-  },
-];
-
-function readStored(): YaidApp[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as YaidApp[]) : [];
-  } catch {
-    return [];
-  }
+export interface YaidAppWithKey extends YaidApp {
+  apiKey: string;
 }
 
-function writeStored(apps: YaidApp[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(apps));
-  window.dispatchEvent(new CustomEvent("yaid:apps-changed"));
-}
-
-export function getApps(): YaidApp[] {
-  return [...readStored(), ...SEED_APPS];
-}
-
-function generateApiKey(env: AppEnv): string {
-  const prefix = env === "production" ? "yaid_live" : "yaid_test";
-  const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let body = "";
-  const bytes = new Uint8Array(40);
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-  }
-  for (let i = 0; i < bytes.length; i++) body += alphabet[bytes[i] % alphabet.length];
-  return `${prefix}_${body}`;
-}
-
-export function createApp(input: {
+export type CreateAppInput = {
   name: string;
-  description: string;
-  env: AppEnv;
-  webhook: string;
-}): { app: YaidApp; apiKey: string } {
-  const now = new Date();
-  const created = now.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-  const app: YaidApp = {
-    id: `app_${now.getTime().toString(36)}`,
-    name: input.name.trim(),
-    description: input.description.trim(),
-    env: input.env,
-    status: "active",
-    webhook: input.webhook.trim() || "—",
-    created,
-  };
-  const stored = readStored();
-  writeStored([app, ...stored]);
-  const apiKey = generateApiKey(input.env);
-  return { app, apiKey };
+  environment: AppEnv;
+  webhookUrl: string;
+};
+
+export type UpdateAppInput = {
+  name?: string;
+  webhookUrl?: string;
+  status?: AppStatus;
+};
+
+async function asJson(res: Response) {
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message =
+      (json && typeof json === "object" && json.error?.message) ||
+      `Request failed with status ${res.status}`;
+    throw new Error(message);
+  }
+  return json;
 }
 
-export function subscribeApps(listener: () => void): () => void {
-  if (typeof window === "undefined") return () => {};
-  const handler = () => listener();
-  window.addEventListener("yaid:apps-changed", handler);
-  window.addEventListener("storage", handler);
-  return () => {
-    window.removeEventListener("yaid:apps-changed", handler);
-    window.removeEventListener("storage", handler);
-  };
+export async function listApps(): Promise<YaidApp[]> {
+  const res = await fetch("/api/company-apps", { cache: "no-store" });
+  const json = await asJson(res);
+  return (json.items ?? []) as YaidApp[];
 }
+
+export async function getApp(appId: string): Promise<YaidApp> {
+  const res = await fetch(`/api/company-apps/${appId}`, { cache: "no-store" });
+  return (await asJson(res)) as YaidApp;
+}
+
+export async function createApp(input: CreateAppInput): Promise<YaidAppWithKey> {
+  const res = await fetch("/api/company-apps", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return (await asJson(res)) as YaidAppWithKey;
+}
+
+export async function updateApp(
+  appId: string,
+  input: UpdateAppInput
+): Promise<YaidApp> {
+  const res = await fetch(`/api/company-apps/${appId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return (await asJson(res)) as YaidApp;
+}
+
+export const ENV_LABELS: Record<AppEnv, string> = {
+  dev: "Dev",
+  homol: "Homologação",
+  prod: "Produção",
+};
+
+export const STATUS_LABELS: Record<AppStatus, string> = {
+  enabled: "Habilitado",
+  disabled: "Desabilitado",
+};

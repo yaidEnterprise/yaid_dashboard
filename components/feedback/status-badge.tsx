@@ -6,8 +6,8 @@ export type StatusKind =
   | "pending"
   | "rejected"
   | "expired"
-  | "active"
-  | "inactive"
+  | "enabled"
+  | "disabled"
   | "processing";
 
 const map: Record<StatusKind, { label: string; cls: string; Icon: LucideIcon }> = {
@@ -31,13 +31,13 @@ const map: Record<StatusKind, { label: string; cls: string; Icon: LucideIcon }> 
     cls: "bg-neutral-bg text-neutral-text border-neutral-border",
     Icon: MinusCircle,
   },
-  active: {
-    label: "Active",
+  enabled: {
+    label: "Habilitado",
     cls: "bg-success-bg text-success-text border-success-border",
     Icon: Circle,
   },
-  inactive: {
-    label: "Inactive",
+  disabled: {
+    label: "Desabilitado",
     cls: "bg-neutral-bg text-neutral-text border-neutral-border",
     Icon: MinusCircle,
   },

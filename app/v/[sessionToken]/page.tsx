@@ -1,33 +1,101 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ShieldHalf, Clock, Loader2, CheckCircle2, Lock, QrCode } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import {
+  ShieldHalf,
+  Clock,
+  Loader2,
+  CheckCircle2,
+  Lock,
+  QrCode,
+  ExternalLink,
+  XCircle,
+} from "lucide-react";
 import { StatusBadge } from "@/components/feedback/status-badge";
 
-type SessionState = "valid" | "expired" | "waiting" | "success" | "invalid";
+type ProofSession = {
+  id: string;
+  proofRequestId: string;
+  verificationPageUrl: string;
+  deepLinkUrl: string;
+  status: "waiting_user" | "opened" | "approved_by_user" | "expired" | "cancelled";
+  createdAt: string;
+  expiresAt: string;
+  openedAt: string | null;
+  approvedAt: string | null;
+};
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function VerificationPage() {
-  const [state, setState] = useState<SessionState>("valid");
-  const [countdown, setCountdown] = useState(5);
+  const params = useParams();
+  const sessionToken = params.sessionToken as string;
 
-  // Simulate state transitions for demo
+  const [session, setSession] = useState<ProofSession | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openedApp, setOpenedApp] = useState(false);
+
   useEffect(() => {
-    if (state === "waiting") {
-      const timer = setInterval(() => {
-        setCountdown((c) => {
-          if (c <= 1) {
-            clearInterval(timer);
-            setState("success");
-            return 0;
-          }
-          return c - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [state]);
+    let cancelled = false;
+    fetch(`/api/proof-sessions/${sessionToken}`, { cache: "no-store" })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(json?.error?.message || "Sessão inválida");
+        }
+        return json as ProofSession;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setSession(data);
+        setError(null);
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setError(e.message);
+      })
+      .finally(() => !cancelled && setLoading(false));
 
-  if (state === "expired") {
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionToken]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-trust" />
+      </div>
+    );
+  }
+
+  if (error || !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-error-bg">
+            <XCircle className="h-7 w-7 text-error-text" strokeWidth={1.8} />
+          </div>
+          <StatusBadge status="rejected" label="Inválida" size="md" />
+          <h1 className="mb-2 mt-4 text-xl font-bold text-text-primary">Sessão inválida</h1>
+          <p className="text-sm text-text-secondary">
+            {error || "Este link não corresponde a uma sessão de validação ativa."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (session.status === "expired" || session.status === "cancelled") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-card">
@@ -36,41 +104,15 @@ export default function VerificationPage() {
           </div>
           <StatusBadge status="expired" size="md" />
           <h1 className="mb-2 mt-4 text-xl font-bold text-text-primary">Sessão expirada</h1>
-          <p className="mb-6 text-sm text-text-secondary">
-            Esta solicitação de validação expirou. Volte para a plataforma parceira e solicite uma nova validação.
+          <p className="text-sm text-text-secondary">
+            Esta solicitação expirou ou foi cancelada. Volte para a plataforma parceira e solicite uma nova validação.
           </p>
-          <button
-            onClick={() => setState("valid")}
-            className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Entendi
-          </button>
         </div>
       </div>
     );
   }
 
-  if (state === "waiting") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-card">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-info-bg">
-            <Loader2 className="h-7 w-7 animate-pulse text-info-text" strokeWidth={1.8} />
-          </div>
-          <h1 className="mb-2 text-xl font-bold text-text-primary">Aguardando confirmação no app</h1>
-          <p className="mb-6 text-sm text-text-secondary">
-            Abra o app YaID no seu celular e aprove o compartilhamento da prova solicitada.
-          </p>
-          <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-trust" />
-          </div>
-          <p className="text-xs text-text-tertiary">Simulação: sucesso em {countdown}s</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (state === "success") {
+  if (session.status === "approved_by_user") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-card">
@@ -79,26 +121,18 @@ export default function VerificationPage() {
           </div>
           <StatusBadge status="approved" size="md" />
           <h1 className="mb-2 mt-4 text-xl font-bold text-text-primary">Validação concluída</h1>
-          <p className="mb-6 text-sm text-text-secondary">
+          <p className="text-sm text-text-secondary">
             Sua validação foi processada. Você pode retornar para a plataforma parceira.
           </p>
-          <button
-            onClick={() => setState("valid")}
-            className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Voltar para a plataforma
-          </button>
         </div>
       </div>
     );
   }
 
-  // Valid session — main screen
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-border bg-surface p-8 text-center shadow-card">
-          {/* Logo */}
           <div className="mb-6 flex items-center justify-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <ShieldHalf className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
@@ -111,42 +145,38 @@ export default function VerificationPage() {
             A empresa parceira está solicitando uma validação de personhood.
           </p>
 
-          {/* Info */}
           <div className="mb-6 space-y-2 rounded-xl bg-surface-muted p-4 text-left">
-            <div className="flex justify-between text-sm">
-              <span className="text-text-tertiary">Empresa</span>
-              <span className="font-medium text-text-primary">XPTO Tecnologia</span>
+            <div className="flex justify-between gap-4 text-sm">
+              <span className="text-text-tertiary">Solicitação</span>
+              <span className="truncate font-mono text-xs font-medium text-text-primary">
+                {session.proofRequestId}
+              </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-text-tertiary">Tipo</span>
-              <span className="font-medium text-text-primary">Personhood</span>
+            <div className="flex justify-between gap-4 text-sm">
+              <span className="text-text-tertiary">Expira em</span>
+              <span className="font-medium text-text-primary">{formatTime(session.expiresAt)}</span>
             </div>
           </div>
 
-          {/* QR Code placeholder */}
           <div className="mx-auto mb-4 flex h-40 w-40 items-center justify-center rounded-xl border-2 border-dashed border-border bg-surface-muted">
             <QrCode className="h-10 w-10 text-text-tertiary" strokeWidth={1.5} />
           </div>
 
-          {/* CTA */}
-          <button
-            onClick={() => setState("waiting")}
-            className="mb-3 w-full rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          <a
+            href={session.deepLinkUrl}
+            onClick={() => setOpenedApp(true)}
+            className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
             Abrir app YaID
-          </button>
+            <ExternalLink className="h-4 w-4" />
+          </a>
 
-          {/* State demo buttons */}
-          <div className="flex justify-center gap-2">
-            <button
-              onClick={() => setState("expired")}
-              className="text-[11px] text-text-tertiary underline hover:text-text-secondary"
-            >
-              Simular expirada
-            </button>
-          </div>
+          {openedApp || session.status === "opened" ? (
+            <div className="mt-3 rounded-lg border border-info-border bg-info-bg px-4 py-3 text-left">
+              <p className="text-xs font-medium text-info-text">Aguardando confirmação no app YaID.</p>
+            </div>
+          ) : null}
 
-          {/* Privacy */}
           <div className="mt-6 border-t border-border pt-4">
             <div className="flex items-start gap-2">
               <Lock className="mt-0.5 h-4 w-4 shrink-0 text-privacy" strokeWidth={1.8} />
@@ -160,3 +190,4 @@ export default function VerificationPage() {
     </div>
   );
 }
+

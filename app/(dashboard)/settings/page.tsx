@@ -1,11 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { Building2, LogOut, CreditCard, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+
+    const res = await fetch("/api/auth/sign-out", { method: "POST" });
+
+    if (!res.ok) {
+      toast.error("Não foi possível sair da conta.");
+      setSigningOut(false);
+      return;
+    }
+
+    window.location.replace("/sign-in");
+  }
+
   return (
     <>
       <PageHeader
@@ -117,14 +134,11 @@ export default function SettingsPage() {
         {/* Sair */}
         <button
           type="button"
-          onClick={() => {
-            window.localStorage.removeItem("yaid:session");
-            window.localStorage.removeItem("yaid:apps");
-            window.location.href = "/sign-in";
-          }}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-error-border bg-error-bg px-6 py-5 text-sm font-semibold text-error-text shadow-card transition-colors hover:bg-error-bg/80"
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-error-border bg-error-bg px-6 py-5 text-sm font-semibold text-error-text shadow-card transition-colors hover:bg-error-bg/80 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <LogOut className="h-5 w-5" /> Sair da conta
+          <LogOut className="h-5 w-5" /> {signingOut ? "Saindo..." : "Sair da conta"}
         </button>
       </section>
     </>

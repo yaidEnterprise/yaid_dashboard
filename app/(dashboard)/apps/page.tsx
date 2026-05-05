@@ -2,34 +2,59 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, MoreHorizontal, X, Copy, Check } from "lucide-react";
+import { Plus, Search, X, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { EnvBadge } from "@/components/feedback/environment-badge";
 import { FilterPopover } from "@/components/yaid/filter-popover";
-import { getApps, subscribeApps, type AppEnv, type AppStatus } from "@/lib/apps-store";
+import { listApps, type AppEnv, type AppStatus, type YaidApp } from "@/lib/apps-store";
+
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default function AppsPage() {
   const [query, setQuery] = useState("");
   const [envFilter, setEnvFilter] = useState<AppEnv[]>([]);
   const [statusFilter, setStatusFilter] = useState<AppStatus[]>([]);
-  // Start with empty to avoid hydration mismatch (localStorage differs between server/client)
-  const [apps, setApps] = useState<ReturnType<typeof getApps>>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [apps, setApps] = useState<YaidApp[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setApps(getApps());
-    setHydrated(true);
-    const unsub = subscribeApps(() => setApps(getApps()));
-    return unsub;
+    let cancelled = false;
+    listApps()
+      .then((items) => {
+        if (cancelled) return;
+        setApps(items);
+        setError(null);
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setError(e.message);
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return apps.filter((app) => {
-      if (q && !`${app.name} ${app.description}`.toLowerCase().includes(q)) return false;
-      if (envFilter.length && !envFilter.includes(app.env)) return false;
+      if (q && !app.name.toLowerCase().includes(q) && !app.id.toLowerCase().includes(q)) {
+        return false;
+      }
+      if (envFilter.length && !envFilter.includes(app.environment)) return false;
       if (statusFilter.length && !statusFilter.includes(app.status)) return false;
       return true;
     });
@@ -40,16 +65,7 @@ export default function AppsPage() {
       await navigator.clipboard.writeText(url);
       toast.success("Webhook copiado");
     } catch {
-      // Fallback for non-secure contexts
-      const ta = document.createElement("textarea");
-      ta.value = url;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      toast.success("Webhook copiado");
+      toast.error("Não foi possível copiar");
     }
   }
 
@@ -69,7 +85,6 @@ export default function AppsPage() {
         }
       />
 
-      {/* Filtros */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
@@ -85,8 +100,9 @@ export default function AppsPage() {
           <FilterPopover<AppEnv>
             label="Ambiente"
             options={[
-              { value: "production", label: "Production" },
-              { value: "sandbox", label: "Sandbox" },
+              { value: "prod", label: "Produção" },
+              { value: "homol", label: "Homologação" },
+              { value: "dev", label: "Dev" },
             ]}
             selected={envFilter}
             onChange={setEnvFilter}
@@ -94,8 +110,8 @@ export default function AppsPage() {
           <FilterPopover<AppStatus>
             label="Status"
             options={[
-              { value: "active", label: "Ativo" },
-              { value: "inactive", label: "Inativo" },
+              { value: "enabled", label: "Habilitado" },
+              { value: "disabled", label: "Desabilitado" },
             ]}
             selected={statusFilter}
             onChange={setStatusFilter}
@@ -116,17 +132,16 @@ export default function AppsPage() {
         </div>
       </div>
 
-      {/* Tabela */}
       <section className="rounded-lg border border-border bg-surface shadow-card">
         <div className="overflow-x-auto">
           <table className="w-full table-fixed text-sm">
             <colgroup>
               <col className="w-[28%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
               <col className="w-[28%]" />
               <col className="w-[12%]" />
-              <col className="w-[12%]" />
+              <col className="w-[8%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-border bg-surface-muted/50 text-left text-[11px] uppercase tracking-wider text-text-tertiary">
@@ -139,52 +154,55 @@ export default function AppsPage() {
               </tr>
             </thead>
             <tbody>
-              {!hydrated && (
+              {loading && (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-sm text-text-tertiary">
                     Carregando apps…
                   </td>
                 </tr>
               )}
-              {hydrated && filtered.length === 0 && (
+              {!loading && error && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-text-tertiary">
-                    Nenhum app encontrado com esses filtros.
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-error-text">
+                    {error}
                   </td>
                 </tr>
               )}
-              {filtered.map((app) => (
+              {!loading && !error && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-text-tertiary">
+                    Nenhum app encontrado.
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && filtered.map((app) => (
                 <tr key={app.id} className="yaid-row last:border-0">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="font-medium text-text-primary">{app.name}</span>
-                      <span className="mt-0.5 truncate text-xs text-text-secondary" title={app.description}>
-                        {app.description}
+                      <span className="mt-0.5 truncate font-mono text-[11px] text-text-tertiary" title={app.id}>
+                        {app.id}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <EnvBadge env={app.env} />
+                    <EnvBadge env={app.environment} />
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={app.status} />
                   </td>
                   <td className="px-6 py-4">
-                    {app.webhook === "—" ? (
-                      <span className="text-text-tertiary">—</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => copyWebhook(app.webhook)}
-                        className="group inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-surface-muted px-2 py-0.5 font-mono text-xs text-text-primary transition-colors hover:border-trust/50"
-                        title={`Copiar: ${app.webhook}`}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{app.webhook}</span>
-                        <Copy className="h-3 w-3 shrink-0 text-text-tertiary transition-colors group-hover:text-trust" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => copyWebhook(app.webhookUrl)}
+                      className="group inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-surface-muted px-2 py-0.5 font-mono text-xs text-text-primary transition-colors hover:border-trust/50"
+                      title={`Copiar: ${app.webhookUrl}`}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{app.webhookUrl}</span>
+                      <Copy className="h-3 w-3 shrink-0 text-text-tertiary transition-colors group-hover:text-trust" />
+                    </button>
                   </td>
-                  <td className="px-6 py-4 text-text-secondary">{app.created}</td>
+                  <td className="px-6 py-4 text-text-secondary">{formatDate(app.createdAt)}</td>
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/apps/${app.id}`}

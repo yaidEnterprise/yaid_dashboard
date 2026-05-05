@@ -9,7 +9,7 @@ import { EnvBadge } from "@/components/feedback/environment-badge";
 import { InlineCode } from "@/components/api/code-block";
 import { FilterPopover } from "@/components/yaid/filter-popover";
 
-type Env = "sandbox" | "production";
+type Env = "dev" | "homol" | "prod";
 type Range = "1d" | "7d" | "30d" | "all";
 
 type Row = {
@@ -24,13 +24,13 @@ type Row = {
 };
 
 const rows: Row[] = [
-  { id: "prq_8f2a1c93b4d6", app: "Onboarding Produção", env: "production", type: "Documento + Liveness", status: "approved", created: "29 abr 14:32", expires: "—", daysAgo: 0 },
-  { id: "prq_2b71e0a5d8c1", app: "Portal Sandbox",      env: "sandbox",    type: "Documento",            status: "pending",  created: "29 abr 14:20", expires: "29 abr 16:20", daysAgo: 0 },
-  { id: "prq_a55d9f7c10ab", app: "Onboarding Produção", env: "production", type: "Documento + Liveness", status: "approved", created: "28 abr 14:05", expires: "—", daysAgo: 1 },
-  { id: "prq_7e3c0b4f9912", app: "Backoffice KYC",      env: "production", type: "Reverificação",        status: "rejected", created: "26 abr 13:30", expires: "—", daysAgo: 3 },
-  { id: "prq_1d04ab826f78", app: "Portal Sandbox",      env: "sandbox",    type: "Documento",            status: "expired",  created: "24 abr 11:10", expires: "24 abr 13:10", daysAgo: 5 },
-  { id: "prq_55c81e9a7b04", app: "Onboarding Produção", env: "production", type: "Documento + Liveness", status: "processing", created: "22 abr 10:48", expires: "22 abr 12:48", daysAgo: 7 },
-  { id: "prq_9af402c6dd31", app: "Backoffice KYC",      env: "production", type: "Reverificação",        status: "approved", created: "10 abr 09:22", expires: "—", daysAgo: 19 },
+  { id: "prq_8f2a1c93b4d6", app: "Onboarding Produção", env: "prod", type: "Personhood", status: "approved", created: "29 abr 14:32", expires: "—", daysAgo: 0 },
+  { id: "prq_2b71e0a5d8c1", app: "Portal Dev",          env: "dev",  type: "Personhood", status: "pending",  created: "29 abr 14:20", expires: "29 abr 16:20", daysAgo: 0 },
+  { id: "prq_a55d9f7c10ab", app: "Onboarding Produção", env: "prod", type: "Personhood", status: "approved", created: "28 abr 14:05", expires: "—", daysAgo: 1 },
+  { id: "prq_7e3c0b4f9912", app: "Backoffice KYC",      env: "prod", type: "Personhood", status: "rejected", created: "26 abr 13:30", expires: "—", daysAgo: 3 },
+  { id: "prq_1d04ab826f78", app: "Portal Homologação",  env: "homol", type: "Personhood", status: "expired",  created: "24 abr 11:10", expires: "24 abr 13:10", daysAgo: 5 },
+  { id: "prq_55c81e9a7b04", app: "Onboarding Produção", env: "prod", type: "Personhood", status: "processing", created: "22 abr 10:48", expires: "22 abr 12:48", daysAgo: 7 },
+  { id: "prq_9af402c6dd31", app: "Backoffice KYC",      env: "prod", type: "Personhood", status: "approved", created: "10 abr 09:22", expires: "—", daysAgo: 19 },
 ];
 
 const STATUS_OPTIONS: { value: StatusKind; label: string }[] = [
@@ -133,8 +133,9 @@ export default function ProofRequestsPage() {
           <FilterPopover<Env>
             label="Ambiente"
             options={[
-              { value: "production", label: "Production" },
-              { value: "sandbox", label: "Sandbox" },
+              { value: "prod", label: "Produção" },
+              { value: "homol", label: "Homologação" },
+              { value: "dev", label: "Dev" },
             ]}
             selected={envFilter}
             onChange={setEnvFilter}

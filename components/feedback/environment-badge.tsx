@@ -1,31 +1,51 @@
 import { cn } from "@/lib/utils";
-import { FlaskConical, ShieldCheck } from "lucide-react";
+import { Beaker, FlaskConical, ShieldCheck } from "lucide-react";
+
+export type AppEnvironment = "dev" | "homol" | "prod";
 
 interface EnvBadgeProps {
-  env: "sandbox" | "production";
+  env: AppEnvironment;
   className?: string;
   size?: "sm" | "md";
 }
 
+const config: Record<
+  AppEnvironment,
+  { label: string; cls: string; Icon: typeof FlaskConical }
+> = {
+  dev: {
+    label: "Dev",
+    cls: "bg-env-sandbox-bg text-env-sandbox-text border-env-sandbox-border",
+    Icon: Beaker,
+  },
+  homol: {
+    label: "Homologação",
+    cls: "bg-env-sandbox-bg text-env-sandbox-text border-env-sandbox-border",
+    Icon: FlaskConical,
+  },
+  prod: {
+    label: "Produção",
+    cls: "bg-env-prod-bg text-env-prod-text border-env-prod-border",
+    Icon: ShieldCheck,
+  },
+};
+
 export function EnvBadge({ env, className, size = "sm" }: EnvBadgeProps) {
-  const isSandbox = env === "sandbox";
+  const { label, cls, Icon } = config[env];
   return (
     <span
       className={cn(
         "yaid-badge",
-        isSandbox
-          ? "bg-env-sandbox-bg text-env-sandbox-text border-env-sandbox-border"
-          : "bg-env-prod-bg text-env-prod-text border-env-prod-border",
+        cls,
         size === "md" && "px-3 py-1 text-sm",
-        className,
+        className
       )}
     >
-      {isSandbox ? (
-        <FlaskConical className={cn(size === "md" ? "h-3.5 w-3.5" : "h-3 w-3")} strokeWidth={2.25} />
-      ) : (
-        <ShieldCheck className={cn(size === "md" ? "h-3.5 w-3.5" : "h-3 w-3")} strokeWidth={2.25} />
-      )}
-      {isSandbox ? "Sandbox" : "Production"}
+      <Icon
+        className={cn(size === "md" ? "h-3.5 w-3.5" : "h-3 w-3")}
+        strokeWidth={2.25}
+      />
+      {label}
     </span>
   );
 }

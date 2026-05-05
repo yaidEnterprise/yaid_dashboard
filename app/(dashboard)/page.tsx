@@ -18,11 +18,11 @@ import { EnvBadge } from "@/components/feedback/environment-badge";
 import { InlineCode } from "@/components/api/code-block";
 
 const recentRequests = [
-  { id: "prq_8f2a1c93b4", app: "Onboarding Produção", env: "production" as const, status: "approved" as const, when: "há 4 min" },
-  { id: "prq_2b71e0a5d8", app: "Portal Sandbox", env: "sandbox" as const, status: "pending" as const, when: "há 12 min" },
-  { id: "prq_a55d9f7c10", app: "Onboarding Produção", env: "production" as const, status: "approved" as const, when: "há 27 min" },
-  { id: "prq_7e3c0b4f99", app: "Backoffice KYC", env: "production" as const, status: "rejected" as const, when: "há 1 h" },
-  { id: "prq_1d04ab826f", app: "Portal Sandbox", env: "sandbox" as const, status: "expired" as const, when: "há 3 h" },
+  { id: "prq_8f2a1c93b4", app: "Onboarding Produção", env: "prod" as const, status: "approved" as const, when: "há 4 min" },
+  { id: "prq_2b71e0a5d8", app: "Portal Dev", env: "dev" as const, status: "pending" as const, when: "há 12 min" },
+  { id: "prq_a55d9f7c10", app: "Onboarding Produção", env: "prod" as const, status: "approved" as const, when: "há 27 min" },
+  { id: "prq_7e3c0b4f99", app: "Backoffice KYC", env: "prod" as const, status: "rejected" as const, when: "há 1 h" },
+  { id: "prq_1d04ab826f", app: "Portal Homologação", env: "homol" as const, status: "expired" as const, when: "há 3 h" },
 ];
 
 export default function OverviewPage() {
@@ -111,15 +111,15 @@ export default function OverviewPage() {
           <ul className="mt-4 space-y-2.5">
             <li className="flex items-center justify-between text-sm">
               <span className="truncate text-text-primary">Onboarding Produção</span>
-              <EnvBadge env="production" />
+              <EnvBadge env="prod" />
             </li>
             <li className="flex items-center justify-between text-sm">
               <span className="truncate text-text-primary">Backoffice KYC</span>
-              <EnvBadge env="production" />
+              <EnvBadge env="prod" />
             </li>
             <li className="flex items-center justify-between text-sm">
-              <span className="truncate text-text-primary">Portal Sandbox</span>
-              <EnvBadge env="sandbox" />
+              <span className="truncate text-text-primary">Portal Homologação</span>
+              <EnvBadge env="homol" />
             </li>
           </ul>
           <Link

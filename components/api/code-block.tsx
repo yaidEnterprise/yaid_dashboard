@@ -5,23 +5,17 @@ import { Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-async function copyToClipboard(text: string) {
+async function copyToClipboard(text: string): Promise<"copied" | "manual" | "failed"> {
   try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+    if (!navigator.clipboard?.writeText) {
+      window.prompt("Copie o texto abaixo:", text);
+      return "manual";
     }
-    return true;
+
+    await navigator.clipboard.writeText(text);
+    return "copied";
   } catch {
-    return false;
+    return "failed";
   }
 }
 
@@ -36,11 +30,13 @@ export function CodeBlock({ code, language, copyable = true, className }: CodeBl
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    const ok = await copyToClipboard(code);
-    if (ok) {
+    const result = await copyToClipboard(code);
+    if (result === "copied") {
       setCopied(true);
       toast.success("Copiado para a área de transferência");
       setTimeout(() => setCopied(false), 1500);
+    } else if (result === "manual") {
+      toast.info("Copie manualmente pelo campo exibido");
     } else {
       toast.error("Não foi possível copiar");
     }
@@ -86,11 +82,13 @@ export function InlineCode({ children, className, copyable }: InlineCodeProps) {
   const text = typeof children === "string" ? children : String(children ?? "");
 
   const handleCopy = async () => {
-    const ok = await copyToClipboard(text);
-    if (ok) {
+    const result = await copyToClipboard(text);
+    if (result === "copied") {
       setCopied(true);
       toast.success("Copiado");
       setTimeout(() => setCopied(false), 1500);
+    } else if (result === "manual") {
+      toast.info("Copie manualmente pelo campo exibido");
     } else {
       toast.error("Não foi possível copiar");
     }

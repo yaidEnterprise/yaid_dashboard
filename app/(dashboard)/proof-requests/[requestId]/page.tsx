@@ -68,7 +68,7 @@ export default function ProofRequestDetailPage() {
               Solicitação de validação
             </h1>
             <StatusBadge status="approved" size="md" />
-            <EnvBadge env="production" size="md" />
+            <EnvBadge env="prod" size="md" />
           </div>
           <div className="flex items-center gap-2">
             <InlineCode copyable>{requestId}</InlineCode>

@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getApps, type YaidApp } from "@/lib/apps-store";
+import { listApps, type YaidApp } from "@/lib/apps-store";
 import { EnvBadge } from "@/components/feedback/environment-badge";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { InlineCode } from "@/components/api/code-block";
@@ -24,6 +24,7 @@ type SimStep = "select-app" | "configure" | "waiting" | "result";
 export default function NewProofRequestPage() {
   const [apps, setApps] = useState<YaidApp[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [appsError, setAppsError] = useState<string | null>(null);
 
   const [selectedApp, setSelectedApp] = useState<YaidApp | null>(null);
   const [proofType] = useState("personhood");
@@ -37,8 +38,21 @@ export default function NewProofRequestPage() {
   const [resultStatus, setResultStatus] = useState<"approved" | "rejected">("approved");
 
   useEffect(() => {
-    setApps(getApps().filter((a) => a.status === "active"));
-    setHydrated(true);
+    let cancelled = false;
+    listApps()
+      .then((items) => {
+        if (cancelled) return;
+        setApps(items.filter((a) => a.status === "enabled"));
+        setAppsError(null);
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setAppsError(e.message);
+      })
+      .finally(() => !cancelled && setHydrated(true));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function handleSelectApp(app: YaidApp) {
@@ -63,12 +77,16 @@ export default function NewProofRequestPage() {
   // Countdown timer for "waiting" step
   useEffect(() => {
     if (step !== "waiting") return;
-    if (countdown <= 0) {
-      setResultStatus(Math.random() > 0.2 ? "approved" : "rejected");
-      setStep("result");
-      return;
-    }
-    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    const timer = setTimeout(() => {
+      setCountdown((current) => {
+        if (current <= 1) {
+          setResultStatus(Math.random() > 0.2 ? "approved" : "rejected");
+          setStep("result");
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
     return () => clearTimeout(timer);
   }, [step, countdown]);
 
@@ -109,6 +127,10 @@ export default function NewProofRequestPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-trust" />
             </div>
+          ) : appsError ? (
+            <div className="rounded-lg border border-border bg-surface p-8 text-center">
+              <p className="text-sm text-error-text">{appsError}</p>
+            </div>
           ) : apps.length === 0 ? (
             <div className="rounded-lg border border-border bg-surface p-8 text-center">
               <p className="text-sm text-text-secondary">Nenhum app ativo encontrado.</p>
@@ -130,11 +152,8 @@ export default function NewProofRequestPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-text-primary">{app.name}</span>
-                    <EnvBadge env={app.env} />
+                    <EnvBadge env={app.environment} />
                   </div>
-                  {app.description && (
-                    <span className="text-xs text-text-secondary line-clamp-2">{app.description}</span>
-                  )}
                   <span className="text-[11px] text-text-tertiary">ID: {app.id}</span>
                 </button>
               ))}
@@ -163,7 +182,7 @@ export default function NewProofRequestPage() {
                   <span className="text-xs font-medium text-text-secondary">App selecionado</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-text-primary">{selectedApp.name}</span>
-                    <EnvBadge env={selectedApp.env} />
+                    <EnvBadge env={selectedApp.environment} />
                   </div>
                 </div>
 
