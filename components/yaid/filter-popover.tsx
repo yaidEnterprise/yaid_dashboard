@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter, Check, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 import { useState, useRef, useEffect } from "react";
 
 interface FilterPopoverProps<T extends string> {

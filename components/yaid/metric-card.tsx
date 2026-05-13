@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 import { type LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
 
 interface MetricCardProps {

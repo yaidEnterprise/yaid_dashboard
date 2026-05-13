@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { listApps, type YaidApp } from "@/lib/apps-store";
+import { listApps, type YaidApp } from "@/utils/apps-store";
 import { EnvBadge } from "@/components/feedback/environment-badge";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { InlineCode } from "@/components/api/code-block";

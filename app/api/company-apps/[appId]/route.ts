@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  makeGetCompanyAppController,
-  makeUpdateCompanyAppController,
-} from "@/modules/company-app/factories/makeCompanyAppControllers";
+import { makeGetCompanyAppController } from "@/modules/company-app/app/get_company_app_presenter";
+import { makeUpdateCompanyAppController } from "@/modules/company-app/app/update_company_app_presenter";
 import { requireAuthenticatedUser } from "@/shared/http/requireAuthenticatedUser";
 import { handleHttpError } from "@/shared/http/handleHttpError";
 
