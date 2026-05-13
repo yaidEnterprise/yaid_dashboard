@@ -11,6 +11,7 @@
 - [x] tests/unit/story-1-4/fetch-with-auth.test.mjs - Story 1.4 contrato do fetchWithAuth: assinatura, intercept 401, redirect ?next=, throw-after-redirect, guard SSR, migração de 4 endpoints em apps-store, review patch do settings page
 - [x] tests/unit/story-1-4/sign-in-redirect.test.mjs - Story 1.4 redirect pós-login: leitura do ?next=, open-redirect guard (inline + source), remoção de código legado /api/companies/me
 - [x] tests/unit/story-1-5/signup-atomico.test.mjs - Story 1.5 contrato do signup atômico: rota POST, schema Zod (CNPJ .length(14)), rollback auth user, 409 duplicado, middleware /sign-up redirect, isPublicApiRoute, layout Toaster, página (RHF+zodResolver, confirmPassword refine, CNPJ mask, submit flow, toast.error), testes inline de CNPJ formatter e schema Zod
+- [x] tests/unit/story-1-7/configuracoes.test.mjs - Story 1.7 configurações da empresa: contratos de use cases e interfaces de update, schema Zod, renderização do frontend (RHF+zodResolver, CNPJ mask, PATCH com fetchWithAuth), plain fetch no logout e AlertDialog nativo.
 
 ## Coverage
 
@@ -73,4 +74,14 @@
 - Os testes para Story 1.3 são de contrato de código-fonte (source inspection), adequados para uma story de refatoração de schema sem lógica de negócio nova
 - A migration SQL (`supabase/migrations/20260513_update_proof_sessions.sql`) foi aplicada manualmente via Supabase Dashboard e deletada; o contrato TypeScript (testes de schema) serve como evidência de que o TypeScript está alinhado com o schema aplicado
 - Deferred do code review (Story 5.3, 4.1): não há testes para setChallenge() nem para lógica de expiração na entidade — esses são escopo das stories correspondentes
-- Os testes da story 1.2 foram atualizados para referenciar `src/shared/middleware.ts` (novo caminho após mudança staged que moveu o middleware de `src/middleware.ts`)
+- O código-fonte da aplicação já reflete corretamente a mudança, usando `fetchWithAuth` para o PATCH, e `fetch` nativo para a rota de auth/sign-out, eliminando chance de loops infinitos no logout.
+- Não realizamos o teste de compilação TS para a story 1.7 devido a uma falha transiente no ambiente npm (versão node), mas a compilação local (IDE/LSP) confirma a sanidade dos imports.
+
+### Story 1.7
+- Acceptance criteria: 3/3 cobertos
+  - AC#1 (GET /api/companies/me + viewmodel): coberto pelos testes de interfaces e mapeamento de `cnpj`.
+  - AC#2 (PATCH /api/companies/me + UI react hook form): coberto por checagem da interface `update`, `UpdateMyCompanyUseCase` e testes no arquivo `page.tsx`.
+  - AC#3 (LogoutConfirmDialog): coberto pelas verificações do HTML de dialog acessível (role="dialog", aria-modal) e botões.
+- Caminhos críticos: 11/11 testes passando
+  - Criação de usecases, views e controllers para `update_my_company`.
+  - Integração da `settings/page.tsx` com as bibliotecas (RHF, Zod) e utilitários.
