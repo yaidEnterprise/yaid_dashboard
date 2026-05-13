@@ -17,8 +17,6 @@ import { StatusBadge } from "@/components/feedback/status-badge";
 type ProofSession = {
   id: string;
   proofRequestId: string;
-  verificationPageUrl: string;
-  deepLinkUrl: string;
   status: "waiting_user" | "opened" | "approved_by_user" | "expired" | "cancelled";
   createdAt: string;
   expiresAt: string;
@@ -163,7 +161,7 @@ export default function VerificationPage() {
           </div>
 
           <a
-            href={session.deepLinkUrl}
+            href={`yaid://verify?session=${sessionToken}`}
             onClick={() => setOpenedApp(true)}
             className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
