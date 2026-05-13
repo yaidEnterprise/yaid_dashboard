@@ -26,8 +26,6 @@ export class GetProofSessionUseCase {
     return {
       id: session.id,
       proofRequestId: session.proofRequestId,
-      verificationPageUrl: session.verificationPageUrl,
-      deepLinkUrl: session.deepLinkUrl,
       status: session.expiresAt.getTime() <= Date.now() ? ProofSessionStatus.EXPIRED : session.status,
       createdAt: session.createdAt.toISOString(),
       expiresAt: session.expiresAt.toISOString(),
