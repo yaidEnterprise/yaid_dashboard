@@ -34,12 +34,11 @@ export default function SignInPage() {
       return;
     }
 
-    const res = await fetch("/api/companies/me", { cache: "no-store" });
-    if (res.ok) {
-      window.location.href = "/";
-    } else {
-      window.location.href = "/onboarding/company";
-    }
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+    const safePath =
+      next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    window.location.href = safePath;
   }
 
   const featureCards = [
@@ -146,7 +145,7 @@ export default function SignInPage() {
 
           <p className="mt-6 text-center text-sm text-text-secondary">
             Não tem conta?{" "}
-            <Link href="/onboarding/company" className="font-medium text-trust hover:text-trust/80">
+            <Link href="/sign-up" className="font-medium text-trust hover:text-trust/80">
               Cadastre sua empresa
             </Link>
           </p>

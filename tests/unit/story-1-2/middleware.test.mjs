@@ -15,8 +15,8 @@ const assertFileExists = (rel) =>
 const assertFileMissing = (rel) =>
   assert.equal(existsSync(fromRoot(rel)), false, `${rel} should be deleted`);
 
-test("Story 1.2 creates the Next.js middleware at src/middleware.ts", () => {
-  assertFileExists("src/middleware.ts");
+test("Story 1.2 creates the Next.js middleware at src/shared/middleware.ts", () => {
+  assertFileExists("src/shared/middleware.ts");
 });
 
 test("Story 1.2 creates middleware helper files", () => {
@@ -30,14 +30,14 @@ test("Story 1.2 deletes the dead proxy.ts from the project root", () => {
 });
 
 test("Story 1.2 middleware exports the middleware function and config matcher", () => {
-  const src = readText("src/middleware.ts");
+  const src = readText("src/shared/middleware.ts");
   assert.match(src, /export async function middleware/, "middleware function must be exported");
   assert.match(src, /export const config/, "config matcher must be exported");
   assert.match(src, /_next\/static/, "matcher must exclude _next/static");
 });
 
 test("Story 1.2 middleware imports updateSupabaseSession from the proxy client", () => {
-  const src = readText("src/middleware.ts");
+  const src = readText("src/shared/middleware.ts");
   assert.match(
     src,
     /from\s+["']@\/shared\/clients\/supabase\/proxy["']/,
@@ -47,7 +47,7 @@ test("Story 1.2 middleware imports updateSupabaseSession from the proxy client",
 });
 
 test("Story 1.2 middleware routes POST /api/proof-requests to withApiKeyAuth", () => {
-  const src = readText("src/middleware.ts");
+  const src = readText("src/shared/middleware.ts");
   assert.match(src, /withApiKeyAuth/, "must call withApiKeyAuth");
   assert.match(
     src,
@@ -57,14 +57,14 @@ test("Story 1.2 middleware routes POST /api/proof-requests to withApiKeyAuth", (
 });
 
 test("Story 1.2 middleware routes DID auth paths to withDIDAuth stub", () => {
-  const src = readText("src/middleware.ts");
+  const src = readText("src/shared/middleware.ts");
   assert.match(src, /withDIDAuth/, "must call withDIDAuth");
   assert.match(src, /challenge/, "must route /challenge paths to DIDAuth");
   assert.match(src, /credentials/, "must route /credentials paths to DIDAuth");
 });
 
 test("Story 1.2 middleware redirects unauthenticated dashboard visitors to sign-in", () => {
-  const src = readText("src/middleware.ts");
+  const src = readText("src/shared/middleware.ts");
   assert.match(src, /sign-in/, "must redirect to /sign-in");
   assert.match(src, /isDashboardPage|dashboard/, "must detect dashboard pages");
 });

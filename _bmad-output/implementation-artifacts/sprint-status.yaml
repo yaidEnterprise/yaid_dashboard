@@ -21,6 +21,7 @@
 #   - ready-for-dev: Story file created in stories folder
 #   - in-progress: Developer actively working on implementation
 #   - review: Ready for code review (via Dev's code-review workflow)
+#   - test: The story is ready for unit test implementation
 #   - done: Story completed
 #
 # Retrospective Status:
@@ -47,9 +48,9 @@ development_status:
   epic-1: in-progress
   1-1-reestruturacao-de-codigo-e-ambiente: done
   1-2-middleware-de-autenticacao: done
-  1-3-migration-sql-e-dependencias-de-formulario: backlog
-  1-4-fetchwithauth-e-infraestrutura-de-auth-client: backlog
-  1-5-signup-atomico-de-empresa: backlog
+  1-3-migration-sql-e-dependencias-de-formulario: done
+  1-4-fetchwithauth-e-infraestrutura-de-auth-client: done
+  1-5-signup-atomico-de-empresa: done
   1-6-login-e-protecao-de-rotas: backlog
   1-7-configuracoes-da-empresa: backlog
   epic-1-retrospective: optional

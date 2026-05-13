@@ -38,6 +38,8 @@ export class SupabaseProofSessionRepository implements ProofSessionRepository {
       .from(TABLE)
       .update({
         status: persistence.status,
+        challenge_nonce_hash: persistence.challenge_nonce_hash,
+        challenge_created_at: persistence.challenge_created_at,
         opened_at: persistence.opened_at,
         approved_at: persistence.approved_at,
       })

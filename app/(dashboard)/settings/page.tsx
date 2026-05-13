@@ -5,13 +5,13 @@ import { Building2, LogOut, CreditCard, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { toast } from "sonner";
-
 export default function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
     setSigningOut(true);
 
+    // plain fetch: sign-out must never redirect back to this page on 401
     const res = await fetch("/api/auth/sign-out", { method: "POST" });
 
     if (!res.ok) {
