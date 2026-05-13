@@ -4,8 +4,8 @@ type ProofSessionProps = {
   id: string;
   proofRequestId: string;
   hashSessionToken: string;
-  verificationPageUrl: string;
-  deepLinkUrl: string;
+  challengeNonceHash: string | null;
+  challengeCreatedAt: Date | null;
   status: ProofSessionStatus;
   createdAt: Date;
   expiresAt: Date;
@@ -25,11 +25,11 @@ export class ProofSession {
   get hashSessionToken() {
     return this.props.hashSessionToken;
   }
-  get verificationPageUrl() {
-    return this.props.verificationPageUrl;
+  get challengeNonceHash() {
+    return this.props.challengeNonceHash;
   }
-  get deepLinkUrl() {
-    return this.props.deepLinkUrl;
+  get challengeCreatedAt() {
+    return this.props.challengeCreatedAt;
   }
   get status() {
     return this.props.status;
