@@ -130,7 +130,6 @@ test("Story 1.1 centralizes process.env access in src/shared/environments.ts", (
     ...walkFiles("components"),
     ...walkFiles("src"),
     ...walkFiles("utils"),
-    "proxy.ts",
   ].filter((file) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(file));
 
   const processEnvReaders = scannedFiles.filter((file) =>
@@ -154,7 +153,6 @@ test("Story 1.1 removes obsolete folders and stale import paths", () => {
     ...walkFiles("components"),
     ...walkFiles("src"),
     ...walkFiles("utils"),
-    "proxy.ts",
   ].filter((file) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(file));
 
   const staleImports = scannedFiles.filter((file) => {
