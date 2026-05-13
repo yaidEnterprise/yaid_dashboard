@@ -3,7 +3,6 @@ import { makeCreateProofRequestController } from "@/modules/proof-request/app/cr
 import { makeListProofRequestsController } from "@/modules/proof-request/app/list_proof_requests_presenter";
 import { getApiKeyFromRequest } from "@/shared/http/getApiKeyFromRequest";
 import { handleHttpError } from "@/shared/http/handleHttpError";
-import { requireAuthenticatedUser } from "@/shared/http/requireAuthenticatedUser";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,12 +19,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuthenticatedUser();
+    const companyId = req.headers.get("x-company-id")!;
     const controller = await makeListProofRequestsController();
     const result = await controller.handle({
-      companyId: user.id,
+      companyId,
     });
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
