@@ -145,7 +145,7 @@ export default function SignInPage() {
 
           <p className="mt-6 text-center text-sm text-text-secondary">
             Não tem conta?{" "}
-            <Link href="/onboarding/company" className="font-medium text-trust hover:text-trust/80">
+            <Link href="/sign-up" className="font-medium text-trust hover:text-trust/80">
               Cadastre sua empresa
             </Link>
           </p>
