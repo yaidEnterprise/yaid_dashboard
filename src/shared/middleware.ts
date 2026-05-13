@@ -32,6 +32,7 @@ function isPublicApiRoute(pathname: string, method: string): boolean {
   if (/^\/api\/proof-sessions\/[^/]+$/.test(pathname) && method === "GET")
     return true;
   if (pathname === "/api/webhook-public-key" && method === "GET") return true;
+  if (pathname === "/api/auth/sign-up" && method === "POST") return true;
   return false;
 }
 
@@ -53,7 +54,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   // 1. Public auth pages — redirect authenticated users away from sign-in
   if (isPublicAuthPage(pathname)) {
-    if (user && pathname === "/sign-in") {
+    if (user && (pathname === "/sign-in" || pathname === "/sign-up")) {
       return NextResponse.redirect(new URL("/", request.url));
     }
     return sessionResponse;
