@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { makeGetProofRequestController } from "@/modules/proof-request/factories/makeProofRequestControllers";
+import { makeGetProofRequestController } from "@/modules/proof-request/app/get_proof_request_presenter";
 import { handleHttpError } from "@/shared/http/handleHttpError";
 import { requireAuthenticatedUser } from "@/shared/http/requireAuthenticatedUser";
 

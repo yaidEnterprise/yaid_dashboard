@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ShieldHalf, Loader2, AlertCircle, Code2, Lock, Zap, FlaskConical } from "lucide-react";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/shared/clients/supabase/client";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");

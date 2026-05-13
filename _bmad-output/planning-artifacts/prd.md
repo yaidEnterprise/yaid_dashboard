@@ -84,7 +84,7 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 
 ### Dashboard (frontend)
 
-- Layout autenticado: sidebar fixa (260px desktop, drawer mobile) + topbar + main centralizado `max-w-7xl`. Toaster global (sonner) em `bottom-right`.
+- Layout autenticado: sidebar fixa (260px, `bg-blue-900` — Direção B definida no UX Spec) + topbar + main centralizado `max-w-7xl`. **No MVP o dashboard é Desktop Only (≥1024px) — sem sidebar drawer, sem hambúrguer, sem breakpoints `sm`/`md`.** Toaster global (sonner) em `bottom-right` no dashboard e `bottom-center` na tela coringa. Para o sistema de design completo (paleta, tipografia, componentes shadcn/ui, responsividade e acessibilidade), consulte [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md).
 - `PageHeader` padronizado com `title`, `description`, `actions`. Detalhes têm breadcrumb + back link.
 - Toda listagem cobre 5 estados: loading, erro, vazio-sem-filtros (CTA), vazio-com-filtros, populado.
 - Toda submissão dispara toast de sucesso/erro; botões ficam `disabled` durante envio.

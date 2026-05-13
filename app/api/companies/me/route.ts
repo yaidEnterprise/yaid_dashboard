@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { makeGetMyCompanyController } from "@/modules/company/factories/makeCompanyControllers";
+import { makeGetMyCompanyController } from "@/modules/company/app/get_my_company_presenter";
 import { requireAuthenticatedUser } from "@/shared/http/requireAuthenticatedUser";
 import { handleHttpError } from "@/shared/http/handleHttpError";
 

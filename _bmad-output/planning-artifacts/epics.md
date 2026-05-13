@@ -29,7 +29,7 @@ FR5: O sistema deve permitir criação de novo company_app com formulário de 2 
 
 FR6: O sistema deve exibir detalhe de company_app com nome, badges, cards editáveis (Identificação, Webhook), card de chave (só app_id, nunca secret), e toggle de status com confirmação ao desabilitar.
 
-FR7: O sistema deve exibir listagem de proof_requests em tabela simples (busca tudo, sem filtros nem paginação no MVP).
+FR7: O sistema deve exibir listagem de proof_requests com 4 mini-cards de resumo acima da tabela (total, aprovadas, pendentes, rejeitadas — calculados do conjunto completo retornado por `GET /api/proof-requests`) e tabela simples (busca tudo, sem filtros nem paginação no MVP).
 
 FR8: O sistema deve exibir detalhe de proof_request com header (Request ID + status), resumo, atributos confirmados, JSON da resposta e privacy card (sem timeline no MVP).
 
@@ -131,7 +131,7 @@ FR5: Epic 2 — Criação de app com modal bloqueante de API key one-shot
 FR6: Epic 2 — Detalhe e edição de app, toggle de status
 FR25: Epic 2 — Hash SHA-256 de "<app_id>.<secret>"
 FR3: Epic 3 — Overview página inicial (sem métricas no MVP)
-FR7: Epic 3 — Listagem de proof_requests (sem filtros no MVP)
+FR7: Epic 3 — Listagem de proof_requests com 4 mini-cards de resumo (sem filtros/paginação no MVP)
 FR8: Epic 3 — Detalhe de proof_request (sem timeline no MVP)
 FR9: Epic 3 — Helper /proof-requests/new autenticado por sessão
 FR11: Epic 3 — POST /api/proof-requests via API key B2B
@@ -191,10 +191,10 @@ Empresa parceira recebe notificações automáticas e criptograficamente verific
 
 Empresa parceira pode se registrar em um único formulário atômico, acessar o dashboard de forma segura e gerenciar configurações da conta. A base de código está limpa, com módulos em `src/`, schema correto e `environments.ts` validando chaves no boot.
 
-### Story 1.1: Reestruturação Técnica do Projeto
+### Story 1.1: Reestruturação de Código e Ambiente
 
 Como desenvolvedor,
-Quero migrar a codebase para a estrutura `src/` com path aliases, schema correto e environments validados,
+Quero migrar a codebase para a estrutura `src/` com path aliases e environments validados no boot,
 Para que todo desenvolvimento subsequente siga o padrão arquitetural estabelecido sem ambiguidade.
 
 **Acceptance Criteria:**
@@ -204,15 +204,66 @@ Para que todo desenvolvimento subsequente siga o padrão arquitetural estabeleci
 **Then** o `tsconfig.json` contém path aliases `@/modules/*` → `src/modules/*` e `@/shared/*` → `src/shared/*`
 **And** os módulos `company`, `company-app` e `proof-request` estão em `src/modules/` seguindo a convenção `{action}_{feature}_{usecase|controller|presenter|viewmodel}.ts`
 **And** `src/shared/environments.ts` é o único arquivo que lê `process.env`, exporta config tipada e lança erro no boot se `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY` ou `BLOCKCHAIN_WALLET_PRIVATE_KEY` estiverem ausentes
-**And** `middleware.ts` roteia por prefixo: `/api/company-apps`, `/api/companies`, `/api/proof-requests`, `/api/auth/sign-out` → `withSessionAuth`; `/api/proof-requests` (POST) → `withApiKeyAuth`; rotas `/(dashboard)` → redirect para `/sign-in` se sem sessão
-**And** as pastas `app/(dashboard)/apps/novo/` e `app/onboarding/` são removidas
-**And** `react-hook-form` está listado em `package.json` como dependência instalada
-**And** a migration SQL remove as colunas `verification_page_url` e `deep_link_url` da tabela `proof_sessions` e adiciona `challenge_nonce_hash TEXT` e `challenge_created_at TIMESTAMPTZ` (ambas nullable)
-**And** todos os fluxos existentes (login, listagem de apps, listagem de proof_requests, tela coringa básica) continuam funcionando sem regressão
+**And** as pastas `app/(dashboard)/apps/novo/` e `app/onboarding/` são removidas da codebase
+**And** todos os fluxos existentes (login, listagem de apps, listagem de proof_requests, tela coringa básica) continuam funcionando sem regressão após a migração
 
 ---
 
-### Story 1.2: fetchWithAuth e Infraestrutura de Auth Client
+### Story 1.2: Middleware de Autenticação
+
+Como desenvolvedor,
+Quero um `middleware.ts` centralizado que roteie cada prefixo de rota para o mecanismo de autenticação correto,
+Para que cada camada da API seja protegida de forma consistente sem lógica duplicada nos route handlers.
+
+**Acceptance Criteria:**
+
+**Given** o arquivo `middleware.ts` na raiz do projeto (`src/middleware.ts`)
+**When** uma requisição entra no servidor
+**Then** o middleware roteia por prefixo de rota:
+  - `/api/company-apps`, `/api/companies`, `/api/proof-requests` (GET), `/api/auth/sign-out` → `withSessionAuth` (cookie Supabase)
+  - `POST /api/proof-requests` → `withApiKeyAuth` (bearer token)
+  - `/api/proof-sessions/{token}/challenge`, `/api/presentations/verify`, `/api/credentials/*`, `/api/proof-sessions/{token}/cancel` → `withDIDAuth` (DID signature — implementado no Epic 5)
+  - `GET /api/proof-sessions/{token}`, `GET /api/webhook-public-key` → público (sem middleware de auth)
+  - Rotas `/(dashboard)` → redirect para `/sign-in?next=<path>` se sem sessão Supabase válida
+
+**Given** um usuário autenticado acessando qualquer rota de `/(dashboard)`
+**When** o middleware valida a sessão
+**Then** a requisição prossegue normalmente; nenhum dado de sessão é exposto para rotas públicas
+
+**Given** a codebase após a implementação do middleware
+**When** qualquer route handler autenticado por sessão é revisado
+**Then** não há lógica de validação de sessão duplicada dentro do handler — essa responsabilidade pertence exclusivamente ao middleware
+
+---
+
+### Story 1.3: Migration SQL e Dependências de Formulário
+
+Como desenvolvedor,
+Quero aplicar as migrações de schema e instalar as dependências de formulário necessárias,
+Para que o banco esteja correto e os formulários do dashboard possam usar validação tipada via React Hook Form + Zod.
+
+**Acceptance Criteria:**
+
+**Given** o banco de dados Supabase do projeto
+**When** a migration SQL é aplicada
+**Then** as colunas `verification_page_url` e `deep_link_url` são removidas da tabela `proof_sessions`
+**And** as colunas `challenge_nonce_hash TEXT` (nullable) e `challenge_created_at TIMESTAMPTZ` (nullable) são adicionadas à tabela `proof_sessions`
+**And** os dados existentes são preservados (migration não-destrutiva para dados existentes nas demais colunas)
+
+**Given** o `package.json` do projeto
+**When** as dependências são instaladas
+**Then** `react-hook-form` e `@hookform/resolvers` estão listados como dependências
+**And** `npm run build` completa sem erros após a instalação
+
+**Given** qualquer formulário existente na codebase (login, signup, criação de app)
+**When** revisado após esta story
+**Then** mantém seu comportamento atual — nenhum formulário existente precisa ser migrado nesta story (a adoção de React Hook Form é incremental, feita story a story)
+
+---
+
+### Story 1.4: fetchWithAuth e Infraestrutura de Auth Client
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seção "Navigation Patterns" (redirect pós-401) e "Feedback Patterns" (tratamento de erros transparente ao usuário).
 
 Como usuário do dashboard,
 Quero que sessões expiradas sejam tratadas automaticamente,
@@ -236,7 +287,9 @@ Para que eu seja redirecionado ao login sem perder contexto da página que tenta
 
 ---
 
-### Story 1.3: Signup Atômico de Empresa
+### Story 1.5: Signup Atômico de Empresa
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Signup Atômico sem Onboarding", "Form Patterns" (validação inline, Label acima de Input, Zod onBlur+submit), "Feedback Patterns" (toast de erro, botão disabled durante envio) e "Design Direction Decision" (paleta azul, CSS variables).
 
 Como nova empresa parceira,
 Quero me cadastrar com um único formulário contendo email, senha e nome da empresa,
@@ -264,7 +317,9 @@ Para que minha conta e company sejam criadas atomicamente — sem estados interm
 
 ---
 
-### Story 1.4: Login e Proteção de Rotas
+### Story 1.6: Login e Proteção de Rotas
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Form Patterns" (validação inline, Label acima de Input), "Feedback Patterns" (toast de erro genérico sem detalhar email/senha, botão disabled durante envio) e "Navigation Patterns" (redirect pós-login para `/` ou `?next=<path>`).
 
 Como empresa parceira cadastrada,
 Quero fazer login e ser redirecionada ao dashboard,
@@ -291,7 +346,9 @@ Para que eu acesse meus dados de forma segura sem que usuários não autenticado
 
 ---
 
-### Story 1.5: Configurações da Empresa
+### Story 1.7: Configurações da Empresa
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Form Patterns" (cards de configuração segmentados, botões Salvar/Cancelar), "Modal Patterns" (AlertDialog para logout — ação destrutiva com confirmação), "Feedback Patterns" (toast de sucesso/erro, permanecer na página após salvar) e "Navigation Patterns" (redirects pós-ação).
 
 Como empresa parceira autenticada,
 Quero visualizar e editar os dados da minha empresa e fazer logout com confirmação,
@@ -326,6 +383,8 @@ Empresa pode criar e gerenciar suas aplicações integradas, obtendo API keys de
 
 ### Story 2.1: Listagem de Aplicações
 
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Table Patterns" (colunas, badges de status, hover, IDs truncados), "Empty States" (componente `EmptyState` com CTA "Criar primeiro app") e "Feedback Patterns" (Skeleton de loading, Alert de erro com retry).
+
 Como empresa parceira autenticada,
 Quero visualizar todas as minhas aplicações cadastradas,
 Para que eu tenha uma visão geral dos meus apps e seus status sem precisar consultar a API manualmente.
@@ -356,6 +415,8 @@ Para que eu tenha uma visão geral dos meus apps e seus status sem precisar cons
 ---
 
 ### Story 2.2: Criação de App com API Key One-Shot
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Component Strategy" (componentes `ApiKeyModal` e `CopyButton` — especificações de focus trap, sem ESC/clique-fora, checkbox obrigatório), "Form Patterns" (cards segmentados Identificação + Webhook), "Modal Patterns" (categoria ApiKeyModal bloqueante) e "Feedback Patterns" (botão disabled durante envio, toast de sucesso após fechar modal).
 
 Como empresa parceira,
 Quero criar uma nova aplicação e receber a API key em uma exibição única e segura,
@@ -395,6 +456,8 @@ Para que eu possa integrar meu sistema com a YaID sem risco de exposição inadv
 ---
 
 ### Story 2.3: Detalhe e Edição de App
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Form Patterns" (cards editáveis por contexto, botões Salvar/Cancelar), "Modal Patterns" (AlertDialog para desabilitar app — ação com impacto assimétrico, confirmação seletiva), "Component Strategy" (`CopyButton` para app_id) e "Feedback Patterns" (toast de sucesso/erro sem resetar os campos).
 
 Como empresa parceira,
 Quero visualizar os detalhes de um app, editar suas informações e controlar seu status,
@@ -469,6 +532,8 @@ Para que eu possa redirecionar meu usuário ao fluxo de validação da YaID sem 
 
 ### Story 3.2: Listagem de Proof Requests no Dashboard
 
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Table Patterns" (colunas, badges semânticos, IDs truncados, hover), "Empty States" (componente `EmptyState` sem CTA — instruir via API), "Feedback Patterns" (Skeleton de loading, Alert de erro) e "Design System Foundation" (componente `MetricCard` para os 4 mini-cards de resumo acima da tabela).
+
 Como empresa parceira autenticada,
 Quero visualizar todas as minhas proof requests em uma tabela,
 Para que eu acompanhe o status de cada validação solicitada sem precisar consultar a API manualmente.
@@ -477,8 +542,15 @@ Para que eu acompanhe o status de cada validação solicitada sem precisar consu
 
 **Given** a página `/(dashboard)/proof-requests` para um usuário autenticado
 **When** a página carrega
-**Then** `GET /api/proof-requests` é chamado e as proof_requests da company são exibidas em tabela com colunas: ID (truncado), proof_type, status (badge), external_reference (se presente) e data de criação
+**Then** `GET /api/proof-requests` é chamado e os dados são usados para renderizar:
+  - 4 mini-cards de resumo acima da tabela, usando o componente `MetricCard` existente:
+    - "Total" — contagem total de proof_requests da company
+    - "Aprovadas" — contagem com status `approved`
+    - "Pendentes" — contagem com status `waiting_user`, `opened` ou `processing`
+    - "Rejeitadas" — contagem com status `rejected` ou `expired`
+  - Tabela com colunas: ID (truncado), proof_type, status (badge), external_reference (se presente) e data de criação
 **And** apenas proof_requests da company autenticada são retornadas (isolamento por `company_id` server-side)
+**And** durante o carregamento, tanto os mini-cards quanto as linhas da tabela exibem estado Skeleton
 
 **Given** a listagem enquanto os dados carregam
 **When** o request ainda não completou
@@ -499,6 +571,8 @@ Para que eu acompanhe o status de cada validação solicitada sem precisar consu
 ---
 
 ### Story 3.3: Detalhe de Proof Request
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Privacy Pattern" (componente `PrivacyCard` — bg-blue-50, ícone ShieldCheck, texto de privacidade), "Component Strategy" (layout de grid 2 colunas), "Feedback Patterns" (Skeleton de loading) e "Desired Emotional Response" (linguagem de status clara, sem jargão técnico).
 
 Como empresa parceira autenticada,
 Quero ver os detalhes de uma proof request específica,
@@ -531,6 +605,8 @@ Para que eu entenda o resultado da validação sem receber dados pessoais do hol
 
 ### Story 3.4: Helper de Criação de Proof Request (Dashboard)
 
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Form Patterns" (Select para app e proof_type, validação inline Zod), "Feedback Patterns" (botão disabled, toast de sucesso, `CopyButton` para exibir verificationUrl gerada) e "Component Strategy" (componente `EmptyState` se não houver apps ativos).
+
 Como empresa parceira autenticada,
 Quero criar proof requests diretamente pelo dashboard para testes,
 Para que eu valide minha integração sem precisar configurar um sistema externo para chamar a API B2B.
@@ -559,6 +635,8 @@ Para que eu valide minha integração sem precisar configurar um sistema externo
 ---
 
 ### Story 3.5: Overview do Dashboard
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Design Opportunities" (card "próximo passo" como onboarding progressivo), "Empty States" (estado inicial guia a próxima ação), "Privacy Pattern" (aviso institucional de privacidade) e "Experience Mechanics" (jornada "Do cadastro à API key em mãos").
 
 Como empresa parceira autenticada,
 Quero ver uma página inicial informativa ao acessar o dashboard,
@@ -619,6 +697,8 @@ Para que eu exiba ao holder o estado correto da verificação sem expor informa�
 ---
 
 ### Story 4.2: Tela Coringa com Polling e 6 Estados Visuais
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — seções "Component Strategy" (componentes `VerificationLayout`, `VerificationStateCard` e `DeepLinkButton` — especificações completas de cada estado visual), "Tela Coringa — Clareza e Confiança, não Urgência", "Jornada 3: Tela Coringa — Todos os Estados do Holder" e "Responsive Design" (Mobile Only: classes sem prefixo de breakpoint, `size="lg"` para touch targets 48px, `lang="pt-BR"` no layout, `aria-live` para mudanças de estado).
 
 Como holder,
 Quero abrir o link de verificação no browser e ser guiado ao app YaID Wallet,
@@ -817,14 +897,14 @@ Para que apenas holders legítimos com credenciais válidas e não-revogadas sej
 **Then** `proof_session.status` transiciona para `approved_by_user`
 **And** `proof_request.status` transiciona para `approved`
 **And** `proof_request.updated_at` é atualizado
-**And** a entrega de webhook é disparada de forma assíncrona (não bloqueia a resposta)
 **And** a resposta retorna `{ valid: true }` ao app mobile
+**And** o disparo de webhook para este status será integrado pela Story 6.1
 
 **Given** qualquer validação falha
 **When** o use case conclui
 **Then** `proof_request.status` transiciona para `rejected`
-**And** webhook é disparado com resultado `rejected`
 **And** a resposta retorna `{ valid: false }` — sem detalhar qual regra falhou para o app mobile
+**And** o disparo de webhook para este status será integrado pela Story 6.1
 
 ---
 
@@ -840,8 +920,8 @@ Para que eu tenha controle total sobre minha identidade digital.
 **When** a sessão está em status `waiting_user` ou `opened`
 **Then** `proof_session.status` transiciona para `cancelled`
 **And** `proof_request.status` transiciona para `rejected`
-**And** webhook é disparado com resultado `rejected`
 **And** a resposta retorna HTTP 200
+**And** o disparo de webhook para este status será integrado pela Story 6.1
 
 **Given** uma chamada de cancel para sessão já em status terminal (`approved_by_user`, `expired`, `cancelled`)
 **When** o use case valida
@@ -882,15 +962,19 @@ Para que meu sistema seja atualizado automaticamente sem precisar fazer polling 
 **And** assina o body JSON bruto sem re-serializar (preserva bytes exatos do payload)
 **And** retorna a assinatura base64 e o timestamp Unix atual
 
-**Given** uma transição de `proof_request` para `approved`, `rejected` ou `expired`
-**When** o use case correspondente conclui com sucesso
-**Then** `DeliverWebhookUseCase` é disparado de forma assíncrona (não bloqueia a resposta ao caller)
+**Given** a implementação de `DeliverWebhookUseCase` concluída nesta story
+**When** `DeliverWebhookUseCase` é integrado aos use cases das Stories 5.5 e 5.6 que já transitam os status de `proof_request` para `approved` e `rejected`
+**Then** `DeliverWebhookUseCase` é chamado de forma assíncrona ao final de cada transição (não bloqueia a resposta ao caller)
 **And** o use case verifica se o app da proof_request possui `webhook_url` configurado — se não tiver, não faz nada
 **And** se `webhook_url` existe, envia `POST {webhook_url}` com:
   - Body JSON: `{ proofRequestId, status, proofType, externalReference?, updatedAt }`
   - Header `X-YaID-Signature: <assinatura-base64>`
   - Header `X-YaID-Timestamp: <unix-timestamp>`
   - O body nunca contém: VC, VP, DID do holder, nonce ou qualquer PII
+
+**Given** a transição de `proof_request` para `expired` (sessão expirada — verificada no endpoint da Story 4.1)
+**When** o status é atualizado para `expired`
+**Then** `DeliverWebhookUseCase` também é integrado a este ponto de transição nesta story
 
 **Given** falha na entrega do webhook (timeout, connection refused, 4xx/5xx da empresa)
 **When** o use case trata o erro

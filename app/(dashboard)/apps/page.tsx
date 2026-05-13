@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { EnvBadge } from "@/components/feedback/environment-badge";
 import { FilterPopover } from "@/components/yaid/filter-popover";
-import { listApps, type AppEnv, type AppStatus, type YaidApp } from "@/lib/apps-store";
+import { listApps, type AppEnv, type AppStatus, type YaidApp } from "@/utils/apps-store";
 
 function formatDate(iso: string) {
   try {

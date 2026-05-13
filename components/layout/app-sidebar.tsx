@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LayoutDashboard, Boxes, ShieldCheck, User, ShieldHalf, PanelLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 
 const navItems = [
   { title: "Overview", url: "/", icon: LayoutDashboard },

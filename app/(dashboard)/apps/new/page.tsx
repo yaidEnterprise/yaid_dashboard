@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, ChevronLeft, Info, ShieldCheck, KeyRound, Copy, Check, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { EnvBadge } from "@/components/feedback/environment-badge";
-import { createApp, type AppEnv, type YaidAppWithKey } from "@/lib/apps-store";
+import { createApp, type AppEnv, type YaidAppWithKey } from "@/utils/apps-store";
 
 export default function CreateAppPage() {
   const router = useRouter();

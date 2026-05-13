@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  makeCreateProofRequestController,
-  makeListProofRequestsController,
-} from "@/modules/proof-request/factories/makeProofRequestControllers";
+import { makeCreateProofRequestController } from "@/modules/proof-request/app/create_proof_request_presenter";
+import { makeListProofRequestsController } from "@/modules/proof-request/app/list_proof_requests_presenter";
 import { getApiKeyFromRequest } from "@/shared/http/getApiKeyFromRequest";
 import { handleHttpError } from "@/shared/http/handleHttpError";
 import { requireAuthenticatedUser } from "@/shared/http/requireAuthenticatedUser";

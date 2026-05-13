@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSupabaseSession } from "@/lib/supabase/proxy";
+import { updateSupabaseSession } from "@/shared/clients/supabase/proxy";
 
 const PUBLIC_PATHS = ["/sign-in", "/onboarding", "/v"];
 const PUBLIC_API_PREFIXES = ["/api/proof-requests", "/api/proof-sessions"];

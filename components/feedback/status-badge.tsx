@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 import { CheckCircle2, Clock, XCircle, AlertTriangle, Circle, MinusCircle, type LucideIcon } from "lucide-react";
 
 export type StatusKind =

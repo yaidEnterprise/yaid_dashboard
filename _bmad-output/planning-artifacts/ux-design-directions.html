@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YaID Dashboard — Direções de Design</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; background: #f1f5f9; }
+  .direction-nav button { transition: all 0.15s; }
+  .direction-nav button.active { background: #2563EB; color: white; }
+  .direction-panel { display: none; }
+  .direction-panel.active { display: block; }
+  .mockup-frame { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.10); background: white; }
+  .sidebar-item { cursor: pointer; transition: background 0.1s; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; }
+  .badge-green  { background: #dcfce7; color: #15803d; }
+  .badge-red    { background: #fee2e2; color: #b91c1c; }
+  .badge-amber  { background: #fef3c7; color: #b45309; }
+  .badge-gray   { background: #f3f4f6; color: #4b5563; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .table-row:hover { background: #f9fafb; }
+  .copy-btn { cursor: pointer; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #f3f4f6; border: 1px solid #e5e7eb; color: #374151; }
+  .copy-btn:hover { background: #e5e7eb; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; padding: 8px 16px 4px; }
+</style>
+</head>
+<body class="p-6 min-h-screen">
+
+<!-- Header -->
+<div class="max-w-7xl mx-auto mb-8">
+  <div class="mb-2 text-sm text-slate-500 font-medium">YaID Dashboard · UX Design Directions</div>
+  <h1 class="text-3xl font-bold text-slate-900 mb-1">Direções de Design</h1>
+  <p class="text-slate-500 mb-6">Explore as variações e escolha a direção que melhor representa a identidade do yaid_dashboard.</p>
+
+  <!-- Navigation -->
+  <div class="direction-nav flex flex-wrap gap-2 mb-8">
+    <button onclick="showDirection('a')" class="active px-4 py-2 rounded-lg text-sm font-medium border border-transparent">A — Sidebar Neutra</button>
+    <button onclick="showDirection('b')" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-700">B — Sidebar Azul</button>
+    <button onclick="showDirection('c')" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-700">C — Topbar Navegável</button>
+    <button onclick="showDirection('d')" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-700">D — Tela Coringa</button>
+  </div>
+</div>
+
+<!-- ===================== DIREÇÃO A: SIDEBAR NEUTRA ===================== -->
+<div id="dir-a" class="direction-panel active max-w-7xl mx-auto">
+  <div class="mb-4">
+    <h2 class="text-xl font-semibold text-slate-800">A — Sidebar Neutra (Gray-50)</h2>
+    <p class="text-slate-500 text-sm mt-1">Sidebar em gray-50 com itens de navegação em texto escuro e destaque azul no item ativo. Layout clean, similar ao Supabase.</p>
+  </div>
+
+  <!-- Tela: Apps list -->
+  <div class="mockup-frame mb-6" style="height: 580px; display: flex; flex-direction: column;">
+    <!-- Topbar -->
+    <div style="height:56px; border-bottom: 1px solid #e5e7eb; display:flex; align-items:center; padding: 0 24px; justify-content: space-between; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <img src="../../static/yaid_icon.png" style="width:28px; height:28px; border-radius:6px; object-fit:cover;" alt="YaID">
+        <span style="font-weight:700; font-size:15px; color:#111827;">YaID</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:32px; height:32px; background:#f3f4f6; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#374151;">A</div>
+      </div>
+    </div>
+    <!-- Body -->
+    <div style="display:flex; flex:1; overflow:hidden;">
+      <!-- Sidebar -->
+      <div style="width:260px; background:#f9fafb; border-right:1px solid #e5e7eb; flex-shrink:0; padding: 16px 0; display:flex; flex-direction:column;">
+        <div class="section-label">Principal</div>
+        <div class="sidebar-item" style="padding: 8px 16px; display:flex; align-items:center; gap:10px; background:#eff6ff; border-right: 2px solid #2563EB;">
+          <span style="font-size:15px;">⊞</span>
+          <span style="font-size:14px; font-weight:500; color:#2563EB;">Aplicações</span>
+        </div>
+        <div class="sidebar-item" style="padding: 8px 16px; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:15px;">◫</span>
+          <span style="font-size:14px; color:#374151;">Proof Requests</span>
+        </div>
+        <div style="margin-top:auto; padding:0;">
+          <div class="section-label" style="margin-top:8px;">Conta</div>
+          <div class="sidebar-item" style="padding: 8px 16px; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:15px;">⚙</span>
+            <span style="font-size:14px; color:#374151;">Configurações</span>
+          </div>
+        </div>
+      </div>
+      <!-- Main -->
+      <div style="flex:1; overflow:auto; padding:32px; background:white;">
+        <!-- Page Header -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+          <div>
+            <h1 style="font-size:22px; font-weight:600; color:#111827; margin:0;">Aplicações</h1>
+            <p style="font-size:14px; color:#6b7280; margin:4px 0 0;">Gerencie suas aplicações e chaves de API.</p>
+          </div>
+          <button style="background:#2563EB; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer;">+ Criar app</button>
+        </div>
+        <!-- Table -->
+        <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:hidden;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Nome</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">App ID</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Status</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Criado em</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="table-row" style="border-bottom:1px solid #f3f4f6; cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">App Mobile iOS</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_k9x2mf…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-green">Ativo</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">12 mai. 2026</td>
+              </tr>
+              <tr class="table-row" style="border-bottom:1px solid #f3f4f6; cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">Integração Web</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_p3nqvr…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-green">Ativo</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">8 mai. 2026</td>
+              </tr>
+              <tr class="table-row" style="cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">API Legada</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_h7cwtj…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-gray">Desabilitado</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">2 abr. 2026</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size:12px; color:#9ca3af; margin-top:10px;">3 aplicações</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tela: Modal API Key -->
+  <div class="mockup-frame mb-6" style="height:520px; display:flex; align-items:center; justify-content:center; background:#00000033; position:relative; overflow:hidden;">
+    <div style="position:absolute; inset:0; background:rgba(0,0,0,0.45);"></div>
+    <div style="position:relative; background:white; border-radius:12px; padding:32px; width:480px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <h2 style="font-size:18px; font-weight:600; color:#111827; margin:0 0 4px;">Sua API Key foi criada</h2>
+      <p style="font-size:14px; color:#6b7280; margin:0 0 20px;">Guarde em local seguro — ela não será exibida novamente.</p>
+      <!-- Warning -->
+      <div style="background:#fefce8; border:1px solid #fde047; border-radius:8px; padding:12px 16px; margin-bottom:16px; display:flex; gap:10px; align-items:flex-start;">
+        <span style="font-size:16px;">⚠</span>
+        <p style="font-size:13px; color:#854d0e; margin:0;">Esta é a <strong>única vez</strong> que sua API key será exibida. Copie agora antes de continuar.</p>
+      </div>
+      <!-- API Key -->
+      <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <code style="font-family:monospace; font-size:13px; color:#111827; word-break:break-all; flex:1;">app_k9x2mf.sk_9f3jKpLmNxQrTvWyZaBcDeGhIjOu</code>
+          <button class="copy-btn" style="white-space:nowrap; flex-shrink:0;">Copiar</button>
+        </div>
+      </div>
+      <!-- Checkbox -->
+      <label style="display:flex; align-items:center; gap:10px; margin-bottom:20px; cursor:pointer;">
+        <input type="checkbox" id="chkA" onchange="toggleBtnA(this)" style="width:16px; height:16px; accent-color:#2563EB;">
+        <span style="font-size:14px; color:#374151;">Confirmo que copiei minha API key</span>
+      </label>
+      <!-- Button -->
+      <button id="btnA" disabled style="width:100%; background:#9ca3af; color:white; border:none; padding:10px; border-radius:8px; font-size:14px; font-weight:500; cursor:not-allowed;">Concluir</button>
+    </div>
+  </div>
+  <p style="font-size:12px; color:#94a3b8; text-align:center; margin-bottom:32px;">↑ Modal bloqueante de API key — ESC e clique fora não fecham. Botão habilitado apenas após checkbox.</p>
+</div>
+
+<!-- ===================== DIREÇÃO B: SIDEBAR AZUL ===================== -->
+<div id="dir-b" class="direction-panel max-w-7xl mx-auto">
+  <div class="mb-4">
+    <h2 class="text-xl font-semibold text-slate-800">B — Sidebar Azul (Blue-800)</h2>
+    <p class="text-slate-500 text-sm mt-1">Sidebar em azul escuro (blue-800/900) com texto branco. Alto contraste entre navegação e conteúdo. Identidade visual forte.</p>
+  </div>
+
+  <div class="mockup-frame mb-6" style="height:580px; display:flex; flex-direction:column;">
+    <!-- Topbar -->
+    <div style="height:56px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; padding:0 24px; justify-content:space-between; flex-shrink:0;">
+      <div></div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:13px; color:#6b7280;">Acme Corp</span>
+        <div style="width:32px; height:32px; background:#2563EB; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:white;">A</div>
+      </div>
+    </div>
+    <div style="display:flex; flex:1; overflow:hidden;">
+      <!-- Sidebar azul -->
+      <div style="width:260px; background:#1e3a8a; flex-shrink:0; padding:16px 0; display:flex; flex-direction:column;">
+        <div style="padding:12px 20px 20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <img src="../../static/yaid_icon.png" style="width:28px; height:28px; border-radius:6px; object-fit:cover;" alt="YaID">
+          <span style="font-weight:700; font-size:15px; color:white;">YaID</span>
+        </div>
+        <div style="padding:16px 0 0;">
+          <div class="section-label" style="color:rgba(255,255,255,0.4);">Principal</div>
+          <div class="sidebar-item" style="padding:8px 20px; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.15); margin: 0 8px; border-radius:6px;">
+            <span style="font-size:15px; color:rgba(255,255,255,0.7);">⊞</span>
+            <span style="font-size:14px; font-weight:500; color:white;">Aplicações</span>
+          </div>
+          <div class="sidebar-item" style="padding:8px 20px; display:flex; align-items:center; gap:10px; margin:2px 8px; border-radius:6px;">
+            <span style="font-size:15px; color:rgba(255,255,255,0.5);">◫</span>
+            <span style="font-size:14px; color:rgba(255,255,255,0.7);">Proof Requests</span>
+          </div>
+        </div>
+        <div style="margin-top:auto; padding-bottom:8px;">
+          <div class="sidebar-item" style="padding:8px 20px; display:flex; align-items:center; gap:10px; margin:2px 8px; border-radius:6px;">
+            <span style="font-size:15px; color:rgba(255,255,255,0.5);">⚙</span>
+            <span style="font-size:14px; color:rgba(255,255,255,0.7);">Configurações</span>
+          </div>
+        </div>
+      </div>
+      <!-- Main -->
+      <div style="flex:1; overflow:auto; padding:32px; background:white;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+          <div>
+            <h1 style="font-size:22px; font-weight:600; color:#111827; margin:0;">Aplicações</h1>
+            <p style="font-size:14px; color:#6b7280; margin:4px 0 0;">Gerencie suas aplicações e chaves de API.</p>
+          </div>
+          <button style="background:#2563EB; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer;">+ Criar app</button>
+        </div>
+        <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:hidden;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Nome</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">App ID</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Status</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Criado em</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="table-row" style="border-bottom:1px solid #f3f4f6; cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">App Mobile iOS</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_k9x2mf…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-green">Ativo</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">12 mai. 2026</td>
+              </tr>
+              <tr class="table-row" style="border-bottom:1px solid #f3f4f6; cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">Integração Web</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_p3nqvr…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-green">Ativo</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">8 mai. 2026</td>
+              </tr>
+              <tr class="table-row" style="cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">API Legada</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_h7cwtj…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-gray">Desabilitado</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">2 abr. 2026</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalhe do app -->
+  <div class="mockup-frame mb-6" style="height:520px; display:flex; flex-direction:column;">
+    <div style="height:56px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; padding:0 24px; justify-content:space-between; flex-shrink:0;">
+      <div></div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:13px; color:#6b7280;">Acme Corp</span>
+        <div style="width:32px; height:32px; background:#2563EB; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:white;">A</div>
+      </div>
+    </div>
+    <div style="display:flex; flex:1; overflow:hidden;">
+      <div style="width:260px; background:#1e3a8a; flex-shrink:0; padding:16px 0; display:flex; flex-direction:column;">
+        <div style="padding:12px 20px 20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+          <img src="../../static/yaid_icon.png" style="width:28px; height:28px; border-radius:6px; object-fit:cover;" alt="YaID">
+          <span style="font-weight:700; font-size:15px; color:white;">YaID</span>
+        </div>
+        <div style="padding:16px 0 0;">
+          <div class="section-label" style="color:rgba(255,255,255,0.4);">Principal</div>
+          <div class="sidebar-item" style="padding:8px 20px; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.15); margin:0 8px; border-radius:6px;">
+            <span style="font-size:15px; color:rgba(255,255,255,0.7);">⊞</span>
+            <span style="font-size:14px; font-weight:500; color:white;">Aplicações</span>
+          </div>
+          <div class="sidebar-item" style="padding:8px 20px; display:flex; align-items:center; gap:10px; margin:2px 8px; border-radius:6px;">
+            <span style="font-size:15px; color:rgba(255,255,255,0.5);">◫</span>
+            <span style="font-size:14px; color:rgba(255,255,255,0.7);">Proof Requests</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1; overflow:auto; padding:28px; background:white;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <a href="#" style="font-size:13px; color:#2563EB; text-decoration:none;">← Aplicações</a>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <h1 style="font-size:20px; font-weight:600; color:#111827; margin:0;">App Mobile iOS</h1>
+            <span class="badge badge-green">Ativo</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button style="background:white; border:1px solid #e5e7eb; color:#374151; padding:6px 14px; border-radius:8px; font-size:13px; cursor:pointer;">Desabilitar</button>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div style="border:1px solid #e5e7eb; border-radius:10px; padding:20px;">
+            <h3 style="font-size:14px; font-weight:600; color:#111827; margin:0 0 16px;">Identificação</h3>
+            <div style="margin-bottom:12px;">
+              <label style="font-size:12px; color:#6b7280; display:block; margin-bottom:4px;">Nome</label>
+              <input style="width:100%; border:1px solid #e5e7eb; border-radius:6px; padding:8px 10px; font-size:13px; color:#111827;" value="App Mobile iOS">
+            </div>
+          </div>
+          <div style="border:1px solid #e5e7eb; border-radius:10px; padding:20px;">
+            <h3 style="font-size:14px; font-weight:600; color:#111827; margin:0 0 16px;">Chave da API</h3>
+            <div style="margin-bottom:12px;">
+              <label style="font-size:12px; color:#6b7280; display:block; margin-bottom:4px;">App ID</label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <code style="font-family:monospace; font-size:12px; color:#374151; background:#f9fafb; padding:6px 10px; border-radius:6px; border:1px solid #e5e7eb; flex:1;">app_k9x2mfp8</code>
+                <button class="copy-btn">Copiar</button>
+              </div>
+            </div>
+            <p style="font-size:11px; color:#9ca3af; margin:8px 0 0;">O secret nunca é exibido novamente.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:12px; color:#94a3b8; text-align:center; margin-bottom:32px;">↑ Sidebar azul escuro cria contraste forte com o conteúdo branco. Identidade visual robusta.</p>
+</div>
+
+<!-- ===================== DIREÇÃO C: TOPBAR NAVEGÁVEL ===================== -->
+<div id="dir-c" class="direction-panel max-w-7xl mx-auto">
+  <div class="mb-4">
+    <h2 class="text-xl font-semibold text-slate-800">C — Topbar com Navegação + Sidebar de Contexto</h2>
+    <p class="text-slate-500 text-sm mt-1">Navegação principal na topbar (horizontal). Sidebar menor aparece apenas em páginas de detalhe para contexto. Mais espaço de conteúdo.</p>
+  </div>
+
+  <div class="mockup-frame mb-6" style="height:580px; display:flex; flex-direction:column;">
+    <!-- Topbar com nav -->
+    <div style="height:56px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; padding:0 24px; gap:32px; flex-shrink:0; background:white;">
+      <div style="display:flex; align-items:center; gap:8px; margin-right:8px;">
+        <img src="../../static/yaid_icon.png" style="width:28px; height:28px; border-radius:6px; object-fit:cover;" alt="YaID">
+        <span style="font-weight:700; font-size:15px; color:#111827;">YaID</span>
+      </div>
+      <nav style="display:flex; gap:4px; flex:1;">
+        <a style="padding:6px 14px; font-size:14px; font-weight:500; color:#2563EB; border-bottom:2px solid #2563EB; text-decoration:none;">Aplicações</a>
+        <a style="padding:6px 14px; font-size:14px; color:#6b7280; text-decoration:none;">Proof Requests</a>
+        <a style="padding:6px 14px; font-size:14px; color:#6b7280; text-decoration:none;">Configurações</a>
+      </nav>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:13px; color:#6b7280;">Acme Corp</span>
+        <div style="width:32px; height:32px; background:#2563EB; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:white;">A</div>
+      </div>
+    </div>
+    <!-- Content full width -->
+    <div style="flex:1; overflow:auto; padding:32px; background:#f9fafb;">
+      <div style="max-width:900px; margin:0 auto;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+          <div>
+            <h1 style="font-size:22px; font-weight:600; color:#111827; margin:0;">Aplicações</h1>
+            <p style="font-size:14px; color:#6b7280; margin:4px 0 0;">Gerencie suas aplicações e chaves de API.</p>
+          </div>
+          <button style="background:#2563EB; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer;">+ Criar app</button>
+        </div>
+        <div style="border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Nome</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">App ID</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Status</th>
+                <th style="text-align:left; padding:10px 16px; font-weight:500; color:#374151;">Criado em</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="table-row" style="border-bottom:1px solid #f3f4f6; cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">App Mobile iOS</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_k9x2mf…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-green">Ativo</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">12 mai. 2026</td>
+              </tr>
+              <tr class="table-row" style="border-bottom:1px solid #f3f4f6; cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">Integração Web</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_p3nqvr…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-green">Ativo</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">8 mai. 2026</td>
+              </tr>
+              <tr class="table-row" style="cursor:pointer;">
+                <td style="padding:12px 16px; color:#111827; font-weight:500;">API Legada</td>
+                <td style="padding:12px 16px; font-family:monospace; color:#6b7280; font-size:12px;">app_h7cwtj…</td>
+                <td style="padding:12px 16px;"><span class="badge badge-gray">Desabilitado</span></td>
+                <td style="padding:12px 16px; color:#6b7280;">2 abr. 2026</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:12px; color:#94a3b8; text-align:center; margin-bottom:32px;">↑ Navegação horizontal libera mais espaço horizontal para o conteúdo. Menos adequado para expansão futura do menu.</p>
+</div>
+
+<!-- ===================== DIREÇÃO D: TELA CORINGA ===================== -->
+<div id="dir-d" class="direction-panel max-w-7xl mx-auto">
+  <div class="mb-4">
+    <h2 class="text-xl font-semibold text-slate-800">D — Tela Coringa (todos os estados)</h2>
+    <p class="text-slate-500 text-sm mt-1">Layout independente, sem sidebar ou topbar. Container centrado ~520px. Um estado por vez. Sem QR code no MVP.</p>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+    <!-- Estado: waiting_user -->
+    <div class="mockup-frame" style="height:460px; display:flex; align-items:center; justify-content:center; background:#f9fafb;">
+      <div style="width:300px; text-align:center; padding:32px 24px;">
+        <img src="../../static/yaid_icon.png" style="width:48px; height:48px; border-radius:12px; object-fit:cover; margin:0 auto 20px; display:block;" alt="YaID">
+        <div style="font-size:11px; color:#9ca3af; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:8px;">Acme Corp solicita</div>
+        <h2 style="font-size:18px; font-weight:600; color:#111827; margin:0 0 8px;">Verificação de identidade</h2>
+        <p style="font-size:14px; color:#6b7280; margin:0 0 28px; line-height:1.5;">Abra o YaID Wallet para continuar com a verificação.</p>
+        <button style="width:100%; background:#2563EB; color:white; border:none; padding:12px; border-radius:8px; font-size:15px; font-weight:500; cursor:pointer; margin-bottom:12px;">Abrir YaID Wallet</button>
+        <p style="font-size:12px; color:#9ca3af; margin:0;">Não tem o app? <a href="#" style="color:#2563EB;">Saiba mais</a></p>
+      </div>
+    </div>
+
+    <!-- Estado: opened (aguardando) -->
+    <div class="mockup-frame" style="height:460px; display:flex; align-items:center; justify-content:center; background:#f9fafb;">
+      <div style="width:300px; text-align:center; padding:32px 24px;">
+        <img src="../../static/yaid_icon.png" style="width:48px; height:48px; border-radius:12px; object-fit:cover; margin:0 auto 20px; display:block;" alt="YaID">
+        <div style="width:40px; height:40px; border:3px solid #2563EB; border-top-color:transparent; border-radius:50%; margin:0 auto 20px; animation:spin 0.8s linear infinite;"></div>
+        <h2 style="font-size:18px; font-weight:600; color:#111827; margin:0 0 8px;">Aguardando confirmação</h2>
+        <p style="font-size:14px; color:#6b7280; margin:0; line-height:1.5;">Complete a verificação no YaID Wallet.</p>
+      </div>
+    </div>
+
+    <!-- Estado: approved -->
+    <div class="mockup-frame" style="height:460px; display:flex; align-items:center; justify-content:center; background:#f9fafb;">
+      <div style="width:300px; text-align:center; padding:32px 24px;">
+        <img src="../../static/yaid_icon.png" style="width:48px; height:48px; border-radius:12px; object-fit:cover; margin:0 auto 20px; display:block;" alt="YaID">
+        <div style="width:48px; height:48px; background:#dcfce7; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+          <span style="color:#16a34a; font-size:22px;">✓</span>
+        </div>
+        <h2 style="font-size:18px; font-weight:600; color:#111827; margin:0 0 8px;">Identidade verificada</h2>
+        <p style="font-size:14px; color:#6b7280; margin:0 0 24px; line-height:1.5;">Sua verificação foi concluída com sucesso.</p>
+        <button style="width:100%; background:#2563EB; color:white; border:none; padding:12px; border-radius:8px; font-size:15px; font-weight:500; cursor:pointer;">Voltar para Acme Corp</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px;">
+    <!-- Estado: rejected/cancelled -->
+    <div class="mockup-frame" style="height:400px; display:flex; align-items:center; justify-content:center; background:#f9fafb;">
+      <div style="width:300px; text-align:center; padding:32px 24px;">
+        <div style="width:48px; height:48px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+          <span style="color:#b91c1c; font-size:22px;">✕</span>
+        </div>
+        <h2 style="font-size:18px; font-weight:600; color:#111827; margin:0 0 8px;">Verificação não concluída</h2>
+        <p style="font-size:14px; color:#6b7280; margin:0; line-height:1.5;">A verificação não foi completada. Solicite um novo link à empresa.</p>
+      </div>
+    </div>
+
+    <!-- Estado: expired -->
+    <div class="mockup-frame" style="height:400px; display:flex; align-items:center; justify-content:center; background:#f9fafb;">
+      <div style="width:300px; text-align:center; padding:32px 24px;">
+        <div style="width:48px; height:48px; background:#fef3c7; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+          <span style="color:#b45309; font-size:22px;">⏱</span>
+        </div>
+        <h2 style="font-size:18px; font-weight:600; color:#111827; margin:0 0 8px;">Link expirado</h2>
+        <p style="font-size:14px; color:#6b7280; margin:0; line-height:1.5;">Este link não é mais válido. Solicite um novo link à Acme Corp.</p>
+      </div>
+    </div>
+
+    <!-- Estado: inválido -->
+    <div class="mockup-frame" style="height:400px; display:flex; align-items:center; justify-content:center; background:#f9fafb;">
+      <div style="width:300px; text-align:center; padding:32px 24px;">
+        <img src="../../static/yaid_icon.png" style="width:48px; height:48px; border-radius:12px; object-fit:cover; margin:0 auto 20px; display:block;" alt="YaID">
+        <h2 style="font-size:18px; font-weight:600; color:#111827; margin:0 0 8px;">Link inválido</h2>
+        <p style="font-size:14px; color:#6b7280; margin:0; line-height:1.5;">Este link de verificação não é válido. Verifique com a empresa que enviou.</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:12px; color:#94a3b8; text-align:center; margin-bottom:32px;">↑ Tela coringa: 6 estados visuais. Logo YaID sempre presente. Sem navegação, sem sidebar. Um estado, uma mensagem, uma ação.</p>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+function showDirection(id) {
+  document.querySelectorAll('.direction-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.direction-nav button').forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('border-slate-200', 'bg-white', 'text-slate-700');
+    b.classList.remove('border-transparent');
+  });
+  document.getElementById('dir-' + id).classList.add('active');
+  const btns = document.querySelectorAll('.direction-nav button');
+  const idx = ['a','b','c','d'].indexOf(id);
+  btns[idx].classList.add('active');
+  btns[idx].classList.remove('border-slate-200', 'bg-white', 'text-slate-700');
+  btns[idx].classList.add('border-transparent');
+}
+
+function toggleBtnA(chk) {
+  const btn = document.getElementById('btnA');
+  btn.disabled = !chk.checked;
+  btn.style.background = chk.checked ? '#2563EB' : '#9ca3af';
+  btn.style.cursor = chk.checked ? 'pointer' : 'not-allowed';
+}
+</script>
+</body>
+</html>

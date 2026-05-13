@@ -13,7 +13,7 @@ import {
   PowerOff,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getApp, updateApp, type YaidApp } from "@/lib/apps-store";
+import { getApp, updateApp, type YaidApp } from "@/utils/apps-store";
 import { EnvBadge } from "@/components/feedback/environment-badge";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { InlineCode } from "@/components/api/code-block";
