@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from "next/server";
+import { updateSupabaseSession } from "@/shared/clients/supabase/proxy";
+import { withSessionAuth } from "@/shared/middlewares/withSessionAuth";
+import { withApiKeyAuth } from "@/shared/middlewares/withApiKeyAuth";
+import { withDIDAuth } from "@/shared/middlewares/withDIDAuth";
+
+function isDashboardPage(pathname: string): boolean {
+  const dashboardPaths = ["/", "/apps", "/proof-requests", "/settings"];
+  return dashboardPaths.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+function isPublicAuthPage(pathname: string): boolean {
+  return (
+    pathname === "/sign-in" ||
+    pathname === "/sign-up" ||
+    pathname.startsWith("/v/")
+  );
+}
+
+function isSessionAuthApiRoute(pathname: string, method: string): boolean {
+  if (pathname.startsWith("/api/company-apps")) return true;
+  if (pathname.startsWith("/api/companies")) return true;
+  if (pathname.startsWith("/api/auth/sign-out")) return true;
+  if (pathname.startsWith("/api/proof-requests") && method === "GET")
+    return true;
+  return false;
+}
+
+function isPublicApiRoute(pathname: string, method: string): boolean {
+  if (/^\/api\/proof-sessions\/[^/]+$/.test(pathname) && method === "GET")
+    return true;
+  if (pathname === "/api/webhook-public-key" && method === "GET") return true;
+  return false;
+}
+
+function isDIDAuthRoute(pathname: string): boolean {
+  if (/^\/api\/proof-sessions\/[^/]+\/challenge$/.test(pathname)) return true;
+  if (/^\/api\/proof-sessions\/[^/]+\/cancel$/.test(pathname)) return true;
+  if (pathname.startsWith("/api/presentations/verify")) return true;
+  if (pathname.startsWith("/api/credentials/")) return true;
+  return false;
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const { pathname } = request.nextUrl;
+  const method = request.method;
+
+  // Always refresh Supabase session cookies on every request
+  const { response: sessionResponse, user } =
+    await updateSupabaseSession(request);
+
+  // 1. Public auth pages — redirect authenticated users away from sign-in
+  if (isPublicAuthPage(pathname)) {
+    if (user && pathname === "/sign-in") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return sessionResponse;
+  }
+
+  // 2. Dashboard pages — redirect to sign-in if not authenticated
+  if (isDashboardPage(pathname)) {
+    return withSessionAuth(request, sessionResponse, user, {
+      redirectOnFail: "/sign-in",
+    });
+  }
+
+  // 3. POST /api/proof-requests — API key auth
+  if (pathname === "/api/proof-requests" && method === "POST") {
+    return withApiKeyAuth(request);
+  }
+
+  // 4. DID auth routes — stub (Epic 5 implements)
+  if (isDIDAuthRoute(pathname)) {
+    return withDIDAuth(request);
+  }
+
+  // 5. Session-auth API routes — require authenticated user
+  if (isSessionAuthApiRoute(pathname, method)) {
+    return withSessionAuth(request, sessionResponse, user, {
+      redirectOnFail: null,
+    });
+  }
+
+  // 6. Explicit public API routes (no auth)
+  if (isPublicApiRoute(pathname, method)) {
+    return sessionResponse;
+  }
+
+  // 7. Everything else — pass through
+  return sessionResponse;
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
