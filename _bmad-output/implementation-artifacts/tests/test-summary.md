@@ -10,6 +10,7 @@
 - [x] tests/unit/story-1-3/dependencies.test.mjs - Story 1.3 dependências de formulário: react-hook-form, @hookform/resolvers, compilação TypeScript
 - [x] tests/unit/story-1-4/fetch-with-auth.test.mjs - Story 1.4 contrato do fetchWithAuth: assinatura, intercept 401, redirect ?next=, throw-after-redirect, guard SSR, migração de 4 endpoints em apps-store, review patch do settings page
 - [x] tests/unit/story-1-4/sign-in-redirect.test.mjs - Story 1.4 redirect pós-login: leitura do ?next=, open-redirect guard (inline + source), remoção de código legado /api/companies/me
+- [x] tests/unit/story-1-5/signup-atomico.test.mjs - Story 1.5 contrato do signup atômico: rota POST, schema Zod (CNPJ .length(14)), rollback auth user, 409 duplicado, middleware /sign-up redirect, isPublicApiRoute, layout Toaster, página (RHF+zodResolver, confirmPassword refine, CNPJ mask, submit flow, toast.error), testes inline de CNPJ formatter e schema Zod
 
 ## Coverage
 
@@ -53,8 +54,20 @@
 - `npm run test:story:1.4`: **passed** — 21/21
 - `npm test` após story 1.3: **passed** — 45/45 (Stories 1.1, 1.2, 1.3)
 - `npm test` após story 1.4: **passed** — 66/66 (Stories 1.1, 1.2, 1.3, 1.4)
+- `npm run test:story:1.5`: **passed** — 36/36
+- `npm test` após story 1.5: **passed** — 102/102 (Stories 1.1, 1.2, 1.3, 1.4, 1.5)
 
-## Notes
+### Story 1.5
+- Acceptance criteria: 3/3 cobertos
+  - AC#1 (signup atômico — POST /api/auth/sign-up): coberto pelos contratos do route handler (admin createUser, CreateCompanyUseCase, rollback deleteUser, null guard, 409 duplicado, 201 sucesso)
+  - AC#2 (validação de formulário + feedback): coberto pelos contratos da página (RHF + zodResolver, confirmPassword refinement, CNPJ mask + strip, submit fetch, signInWithPassword, window.location.href, toast.error, disabled button)
+  - AC#3 (redirect de usuário autenticado em /sign-up): coberto pelo contrato do middleware
+- Caminhos críticos: 36/36 testes passando
+  - Review patches: CNPJ `.length(14)` (rejeita 11–13 dígitos), null guard em `authData.user`, `console.error` no rollback, `POST /api/auth/sign-up` como rota pública no middleware
+  - Testes inline comportamentais: CNPJ formatter (formatação completa, truncamento a 14 dígitos, strip de caracteres), schema Zod (senhas iguais/diferentes, CNPJ 14 dígitos vs curto vs null)
+  - TypeScript clean: `npx tsc --noEmit` sem erros
+
+## Validation
 
 - Todos os testes usam `node:test` + `node:assert/strict` (framework nativo Node.js, sem dependências externas)
 - Os testes para Story 1.3 são de contrato de código-fonte (source inspection), adequados para uma story de refatoração de schema sem lógica de negócio nova
