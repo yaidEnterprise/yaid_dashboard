@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const CreateCompanySchema = z.object({
   name: z.string().min(1).max(50),
+  email: z.string().email(),
   documentNumber: z
     .string()
     .min(11)

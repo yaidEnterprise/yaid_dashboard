@@ -4,7 +4,6 @@ import { CompanyOutputDTO, CreateCompanySchema } from "./create_company_viewmode
 type Input = {
   body: unknown;
   authUserId: string;
-  email: string;
 };
 
 export class CreateCompanyController {
@@ -15,7 +14,6 @@ export class CreateCompanyController {
     return this.useCase.execute({
       ...parsed,
       authUserId: input.authUserId,
-      email: input.email,
     });
   }
 }
