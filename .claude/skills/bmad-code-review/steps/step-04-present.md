@@ -86,7 +86,7 @@ Skip this section if `{spec_file}` is not set.
 
 #### Determine new status based on review outcome
 
-- If all `decision-needed` and `patch` findings were resolved (fixed or dismissed) AND no unresolved HIGH/MEDIUM issues remain: set `{new_status}` = `done`. Update the story file Status section to `done`.
+- If all `decision-needed` and `patch` findings were resolved (fixed or dismissed) AND no unresolved HIGH/MEDIUM issues remain: set `{new_status}` = `test`. Update the story file Status section to `test`.
 - If `patch` findings were left as action items, or unresolved issues remain: set `{new_status}` = `in-progress`. Update the story file Status section to `in-progress`.
 
 Save the story file.
@@ -116,14 +116,10 @@ If `{sprint_status}` file does not exist, note that story status was updated in 
 
 ### 7. Next steps
 
-Present the user with follow-up options:
+The pipeline continues automatically. Do not halt or ask for user input.
 
-> **What would you like to do next?**
-> 1. **Start the next story** — run `dev-story` to pick up the next `ready-for-dev` story
-> 2. **Re-run code review** — address findings and review again
-> 3. **Done** — end the workflow
-
-**HALT** — I am waiting for your choice. Do not proceed until the user selects an option.
+- If `{new_status}` = `test`: the pipeline will invoke `bmad-qa-generate-unit-tests` next. Simply return from this skill so the pipeline can proceed.
+- If `{new_status}` = `in-progress`: HALT — inform the user that unresolved findings require action before the pipeline can continue.
 
 ## On Complete
 
