@@ -30,13 +30,18 @@ type CompanyData = {
 
 const settingsSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  cnpj: z
-    .string()
-    .optional()
-    .transform((v: string | undefined) => (v === "" ? null : v ?? null)),
+  cnpj: z.string().optional(),
 });
 
-type SettingsFormValues = z.input<typeof settingsSchema>;
+type SettingsFormValues = z.infer<typeof settingsSchema>;
+
+// Transforms the raw form values into the API payload shape
+function toApiPayload(values: SettingsFormValues): { name: string; cnpj: string | null } {
+  return {
+    name: values.name,
+    cnpj: values.cnpj === "" || values.cnpj === undefined ? null : values.cnpj,
+  };
+}
 
 // ─── CNPJ mask ───────────────────────────────────────────────────────────────
 
@@ -175,7 +180,7 @@ export default function SettingsPage() {
       const res = await fetchWithAuth("/api/companies/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: values.name, cnpj: values.cnpj ?? null }),
+        body: JSON.stringify(toApiPayload(values)),
       });
 
       if (!res.ok) {

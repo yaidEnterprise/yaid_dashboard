@@ -445,9 +445,11 @@ test("Story 1.5 API SignUpSchema rejects CNPJ shorter than 14 digits (review pat
 // ─── TypeScript compilation ───────────────────────────────────────────────────
 
 test("Story 1.5 all new files compile without TypeScript errors", { timeout: 120_000 }, () => {
-  execFileSync("npx", ["tsc", "--noEmit"], {
+  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+  execFileSync(npx, ["tsc", "--noEmit"], {
     cwd: projectRoot,
     env: { ...process.env, STAGE: "TEST" },
     stdio: "pipe",
+    shell: process.platform === "win32",
   });
 });

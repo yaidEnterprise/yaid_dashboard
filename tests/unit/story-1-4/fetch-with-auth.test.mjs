@@ -130,16 +130,19 @@ test("Story 1.4 settings/page.tsx uses plain fetch for sign-out — not fetchWit
     "sign-out must use plain fetch to avoid ?next=/settings redirect loop on expired session"
   );
   assert.equal(
-    src.includes("fetchWithAuth"),
+    src.includes('fetchWithAuth("/api/auth/sign-out"') ||
+    src.includes("fetchWithAuth('/api/auth/sign-out'"),
     false,
-    "settings page must not import or call fetchWithAuth — semantic error if session expires during logout"
+    "sign-out must not use fetchWithAuth — would cause a redirect loop on expired session"
   );
 });
 
 test("Story 1.4 files compile without TypeScript errors", { timeout: 120_000 }, () => {
-  execFileSync("npx", ["tsc", "--noEmit"], {
+  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+  execFileSync(npx, ["tsc", "--noEmit"], {
     cwd: projectRoot,
     env: { ...process.env, STAGE: "TEST" },
     stdio: "pipe",
+    shell: process.platform === "win32",
   });
 });

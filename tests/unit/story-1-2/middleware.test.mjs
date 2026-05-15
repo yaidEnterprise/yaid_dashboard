@@ -132,9 +132,11 @@ test("Story 1.2 withApiKeyAuth checks for bearer token or x-api-key header", () 
 });
 
 test("Story 1.2 middleware files compile without TypeScript errors", { timeout: 120_000 }, () => {
-  execFileSync("npx", ["tsc", "--noEmit"], {
+  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+  execFileSync(npx, ["tsc", "--noEmit"], {
     cwd: projectRoot,
     env: { ...process.env, STAGE: "TEST" },
     stdio: "pipe",
+    shell: process.platform === "win32",
   });
 });
