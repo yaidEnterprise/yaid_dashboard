@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YaID Dashboard — Protótipo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue-50:  #eff6ff;
+      --blue-100: #dbeafe;
+      --blue-200: #bfdbfe;
+      --blue-600: #2563eb;
+      --blue-700: #1d4ed8;
+      --blue-800: #1e40af;
+      --blue-900: #1e3a8a;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --green-100:#dcfce7;
+      --green-700:#15803d;
+      --red-100:  #fee2e2;
+      --red-600:  #dc2626;
+      --red-700:  #b91c1c;
+      --amber-100:#fef3c7;
+      --amber-700:#b45309;
+      --white:    #ffffff;
+      --sidebar-w: 260px;
+      --topbar-h: 56px;
+      --radius: 6px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+      --shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+    }
+    body { font-family: 'Inter', sans-serif; font-size: 14px; color: var(--gray-900); background: var(--gray-50); line-height: 1.5; }
+
+    /* ── Layout Shell ── */
+    .shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--blue-900);
+      display: flex; flex-direction: column;
+      padding: 0;
+      overflow-y: auto;
+    }
+    .sidebar-brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .sidebar-logo {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: var(--blue-600);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 13px; flex-shrink: 0;
+    }
+    .sidebar-brand-name { color: white; font-weight: 600; font-size: 15px; }
+    .sidebar-brand-sub { color: rgba(255,255,255,.5); font-size: 11px; margin-top: 1px; }
+
+    .sidebar-section { padding: 16px 12px 8px; }
+    .sidebar-section-label {
+      color: rgba(255,255,255,.4); font-size: 10px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 0 8px; margin-bottom: 4px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 6px;
+      color: rgba(255,255,255,.7); font-size: 13.5px; font-weight: 400;
+      cursor: pointer; transition: background .12s, color .12s;
+      margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.10); color: white; }
+    .nav-item.active { background: rgba(255,255,255,.15); color: white; font-weight: 500; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: .8; }
+    .nav-item.active svg { opacity: 1; }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 12px;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    }
+    .sidebar-user:hover { background: rgba(255,255,255,.08); }
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--blue-600); display: flex; align-items: center;
+      justify-content: center; color: white; font-size: 12px; font-weight: 600; flex-shrink: 0;
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; }
+    .sidebar-user-name { color: white; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { color: rgba(255,255,255,.45); font-size: 11px; }
+
+    /* ── Main Area ── */
+    .main-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .topbar {
+      height: var(--topbar-h); background: white;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; padding: 0 24px;
+      flex-shrink: 0;
+    }
+    .topbar-breadcrumb { color: var(--gray-500); font-size: 13px; flex: 1; }
+    .topbar-breadcrumb span { color: var(--gray-900); font-weight: 500; }
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
+    .topbar-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--gray-200); background: white; color: var(--gray-700);
+      transition: background .12s;
+    }
+    .topbar-btn:hover { background: var(--gray-50); }
+    .topbar-btn svg { width: 14px; height: 14px; }
+
+    .main-content { flex: 1; overflow-y: auto; padding: 32px; }
+    .content-inner { max-width: 1200px; margin: 0 auto; }
+
+    /* ── Pages ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Page Header ── */
+    .page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .page-title { font-size: 22px; font-weight: 600; color: var(--gray-900); }
+    .page-desc { color: var(--gray-500); font-size: 13.5px; margin-top: 4px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius); font-size: 13.5px;
+      font-weight: 500; cursor: pointer; border: none; transition: background .12s, box-shadow .12s;
+    }
+    .btn svg { width: 15px; height: 15px; }
+    .btn-primary { background: var(--blue-600); color: white; }
+    .btn-primary:hover { background: var(--blue-700); }
+    .btn-outline { background: white; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-outline:hover { background: var(--gray-50); }
+    .btn-ghost { background: transparent; color: var(--gray-600); }
+    .btn-ghost:hover { background: var(--gray-100); }
+    .btn-destructive { background: var(--red-600); color: white; }
+    .btn-destructive:hover { background: var(--red-700); }
+    .btn-sm { padding: 5px 10px; font-size: 12.5px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Cards ── */
+    .card {
+      background: white; border: 1px solid var(--gray-200);
+      border-radius: 8px; padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .card-header { margin-bottom: 16px; }
+    .card-title { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+    .card-desc { font-size: 12.5px; color: var(--gray-500); margin-top: 2px; }
+
+    /* ── Metrics ── */
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .metric-card { background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 18px 20px; }
+    .metric-label { font-size: 12px; color: var(--gray-500); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+    .metric-value { font-size: 28px; font-weight: 700; color: var(--gray-900); margin-top: 6px; }
+    .metric-sub { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+    .metric-trend { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 500; }
+    .metric-trend.up { color: var(--green-700); }
+    .metric-trend.neutral { color: var(--gray-500); }
+
+    /* ── Grid 2 cols ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; padding: 10px 14px;
+      font-size: 11.5px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: .06em;
+      border-bottom: 1px solid var(--gray-200); white-space: nowrap;
+    }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gray-50); }
+    .td-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--gray-700); }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 11.5px; font-weight: 500;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .badge-green  { background: var(--green-100); color: var(--green-700); }
+    .badge-red    { background: var(--red-100);   color: var(--red-700); }
+    .badge-amber  { background: var(--amber-100); color: var(--amber-700); }
+    .badge-gray   { background: var(--gray-100);  color: var(--gray-600); }
+    .badge-blue   { background: var(--blue-100);  color: var(--blue-800); }
+
+    /* ── Empty State ── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 56px 24px; color: var(--gray-400); text-align: center;
+    }
+    .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; stroke: var(--gray-300); }
+    .empty-state-title { font-size: 15px; font-weight: 500; color: var(--gray-700); margin-bottom: 6px; }
+    .empty-state-desc  { font-size: 13.5px; color: var(--gray-500); margin-bottom: 20px; max-width: 340px; }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-700); margin-bottom: 6px; }
+    .label-optional { font-weight: 400; color: var(--gray-400); font-size: 12px; margin-left: 4px; }
+    input[type="text"], input[type="email"], input[type="password"], input[type="url"], textarea, select {
+      width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300);
+      border-radius: var(--radius); font-size: 13.5px; color: var(--gray-900);
+      background: white; outline: none; transition: border-color .12s, box-shadow .12s;
+      font-family: 'Inter', sans-serif;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--blue-600);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .form-hint { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+    .form-error { font-size: 12px; color: var(--red-600); margin-top: 4px; }
+    input.has-error { border-color: var(--red-600); }
+
+    /* ── Inline code / copy ── */
+    .copy-row {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: var(--radius); padding: 8px 12px;
+    }
+    .copy-row code { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--gray-700); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .copy-btn {
+      flex-shrink: 0; padding: 4px 8px; border-radius: 4px;
+      border: 1px solid var(--gray-200); background: white; cursor: pointer;
+      display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--gray-600);
+      transition: background .12s;
+    }
+    .copy-btn:hover { background: var(--gray-100); }
+    .copy-btn svg { width: 13px; height: 13px; }
+    .copy-btn.copied { color: var(--green-700); border-color: var(--green-700); background: var(--green-100); }
+
+    /* ── Alert ── */
+    .alert {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px; border-radius: var(--radius); border: 1px solid;
+    }
+    .alert svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+    .alert-amber { background: var(--amber-100); border-color: #fcd34d; color: var(--amber-700); }
+    .alert-blue  { background: var(--blue-50);   border-color: var(--blue-200); color: var(--blue-800); }
+    .alert-green { background: var(--green-100); border-color: #86efac; color: var(--green-700); }
+    .alert-title { font-weight: 600; font-size: 13px; }
+    .alert-body  { font-size: 12.5px; margin-top: 2px; }
+
+    /* ── Switch ── */
+    .switch-wrap { display: flex; align-items: center; gap: 10px; }
+    .switch {
+      position: relative; width: 40px; height: 22px;
+      border-radius: 999px; cursor: pointer;
+      background: var(--gray-300); transition: background .2s;
+      border: none; flex-shrink: 0;
+    }
+    .switch.on { background: var(--blue-600); }
+    .switch::after {
+      content: ''; position: absolute; width: 16px; height: 16px;
+      border-radius: 50%; background: white;
+      top: 3px; left: 3px; transition: left .2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    }
+    .switch.on::after { left: 21px; }
+    .switch-label { font-size: 13.5px; color: var(--gray-700); }
+
+    /* ── Separator ── */
+    .sep { border: none; border-top: 1px solid var(--gray-200); margin: 20px 0; }
+
+    /* ── Privacy card ── */
+    .privacy-card {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--blue-50); border: 1px solid var(--blue-200);
+      border-radius: 8px; padding: 14px 16px;
+    }
+    .privacy-card svg { width: 18px; height: 18px; color: var(--blue-600); flex-shrink: 0; margin-top: 1px; }
+    .privacy-card-text { font-size: 13px; color: var(--blue-800); }
+    .privacy-card-text strong { font-weight: 600; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: none; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white; border-radius: 10px; width: 100%; max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18); overflow: hidden;
+    }
+    .modal-header { padding: 20px 24px 0; }
+    .modal-title { font-size: 17px; font-weight: 600; color: var(--gray-900); }
+    .modal-desc { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer {
+      padding: 16px 24px; background: var(--gray-50);
+      border-top: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .modal-footer-right { display: flex; gap: 8px; }
+
+    .checkbox-wrap { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; }
+    .checkbox-wrap input[type="checkbox"] { width: 16px; height: 16px; margin-top: 1px; accent-color: var(--blue-600); flex-shrink: 0; cursor: pointer; }
+    .checkbox-label { font-size: 13px; color: var(--gray-700); cursor: pointer; }
+
+    /* ── Next Step Card ── */
+    .next-step-card {
+      background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-800) 100%);
+      border-radius: 10px; padding: 24px; color: white; position: relative; overflow: hidden;
+    }
+    .next-step-card::after {
+      content: ''; position: absolute; right: -20px; bottom: -20px;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,.06);
+    }
+    .next-step-tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; opacity: .7; margin-bottom: 10px; }
+    .next-step-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .next-step-desc { font-size: 13px; opacity: .8; margin-bottom: 18px; line-height: 1.6; }
+
+    /* ── Activity Feed ── */
+    .activity-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .activity-dot.green { background: var(--green-700); }
+    .activity-dot.red { background: var(--red-600); }
+    .activity-dot.blue { background: var(--blue-600); }
+    .activity-dot.amber { background: var(--amber-700); }
+    .activity-dot.gray { background: var(--gray-400); }
+    .activity-text { font-size: 13px; color: var(--gray-700); flex: 1; }
+    .activity-text strong { color: var(--gray-900); }
+    .activity-time { font-size: 12px; color: var(--gray-400); white-space: nowrap; }
+
+    /* ── App Detail ── */
+    .detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    .card-section { margin-bottom: 16px; }
+    .card-section:last-child { margin-bottom: 0; }
+    .field-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+    .field-row:last-child { border-bottom: none; }
+    .field-label { font-size: 12.5px; color: var(--gray-500); font-weight: 500; }
+    .field-value { font-size: 13.5px; color: var(--gray-900); }
+
+    /* ── Tabs (Settings) ── */
+    .tabs { display: flex; border-bottom: 1px solid var(--gray-200); margin-bottom: 24px; }
+    .tab-btn {
+      padding: 10px 16px; font-size: 13.5px; font-weight: 500; cursor: pointer;
+      border: none; background: none; color: var(--gray-500);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .12s, border-color .12s;
+    }
+    .tab-btn:hover { color: var(--gray-900); }
+    .tab-btn.active { color: var(--blue-600); border-bottom-color: var(--blue-600); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Proof Requests filter ── */
+    .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .filter-bar input[type="text"] { max-width: 280px; }
+    .filter-select { width: 140px !important; }
+
+    /* ── Tag ── */
+    .tag { display: inline-flex; align-items: center; padding: 2px 8px; background: var(--gray-100); border-radius: 4px; font-size: 12px; color: var(--gray-600); font-weight: 500; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--gray-900); color: white;
+      padding: 12px 18px; border-radius: 8px;
+      font-size: 13.5px; font-weight: 500;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.2);
+      transform: translateY(100px); opacity: 0;
+      transition: transform .25s, opacity .25s;
+      z-index: 2000; max-width: 340px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { background: #166534; }
+    #toast.error   { background: #991b1b; }
+    #toast svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* ── Skeleton ── */
+    .skeleton { background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ── Page transition ── */
+    .page.active { animation: fadein .15s ease; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gray-500); margin-bottom: 24px; }
+    .breadcrumb a { color: var(--gray-500); text-decoration: none; cursor: pointer; }
+    .breadcrumb a:hover { color: var(--blue-600); text-decoration: underline; }
+    .breadcrumb-sep { color: var(--gray-300); }
+    .breadcrumb-current { color: var(--gray-900); font-weight: 500; }
+
+    /* ── Prototype note ── */
+    .proto-note {
+      position: fixed; top: 12px; right: 12px; z-index: 999;
+      background: rgba(0,0,0,.75); color: white; border-radius: 20px;
+      padding: 4px 12px; font-size: 11px; font-weight: 500;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════ LAYOUT SHELL ════════════ -->
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">Y</div>
+      <div>
+        <div class="sidebar-brand-name">YaID</div>
+        <div class="sidebar-brand-sub">Dashboard</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Principal</div>
+      <button class="nav-item active" onclick="navigate('overview', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Visão Geral
+      </button>
+      <button class="nav-item" onclick="navigate('apps', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        Aplicações
+      </button>
+      <button class="nav-item" onclick="navigate('proof-requests', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9c0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Proof Requests
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Configurações</div>
+      <button class="nav-item" onclick="navigate('settings', this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+        Configurações
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="avatar">AC</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">Acme Corp</div>
+          <div class="sidebar-user-role">admin@acme.com.br</div>
+        </div>
+        <svg style="width:14px;height:14px;color:rgba(255,255,255,.4)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN WRAP -->
+  <div class="main-wrap">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-breadcrumb" id="topbar-breadcrumb">
+        <span>Visão Geral</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn" onclick="showToast('Documentação aberta em nova aba', 'success')">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+          Docs
+        </button>
+        <div class="avatar" style="cursor:pointer" onclick="showToast('Menu de perfil em desenvolvimento', '')">AC</div>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <div class="content-inner">
+
+        <!-- ═══════ PAGE: OVERVIEW ═══════ -->
+        <div class="page active" id="page-overview">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Visão Geral</div>
+              <div class="page-desc">Bem-vindo ao YaID Dashboard, Acme Corp.</div>
+            </div>
+            <button class="btn btn-primary" onclick="navigate('apps-new', document.querySelector('.nav-item:nth-child(2)'))">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+              Criar primeiro app
+            </button>
+          </div>
+
+          <!-- Metrics -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-label">Apps Ativos</div>
+              <div class="metric-value">2</div>
+              <div class="metric-sub"><span class="metric-trend neutral">de 3 criados</span></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Proof Requests</div>
+              <div class="metric-value">148</div>
+              <div class="metric-sub"><span class="metric-trend up">↑ 23% este mês</span></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Taxa de Aprovação</div>
+              <div class="metric-value">91%</div>
+              <div class="metric-sub"><span class="metric-trend up">↑ 3pts vs. mês passado</span></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Webhooks Entregues</div>
+              <div class="metric-value">147</div>
+              <div class="metric-sub"><span class="metric-trend neutral">99.3% de sucesso</span></div>
+            </div>
+          </div>
+
+          <!-- Main grid -->
+          <div class="grid-3-1" style="gap:20px">
+            <!-- Next step -->
+            <div>
+              <div class="next-step-card" style="margin-bottom:20px">
+                <div class="next-step-tag">Próximo Passo Recomendado</div>
+                <div class="next-step-title">Configure seu webhook endpoint</div>
+                <div class="next-step-desc">Seu app <strong>kyc-prod</strong> ainda não tem um webhook URL. Adicione um endpoint para receber <code style="background:rgba(255,255,255,.15);padding:1px 5px;border-radius:3px">valid: true | false</code> em tempo real.</div>
+                <button class="btn" style="background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.25)" onclick="navigate('app-detail', document.querySelectorAll('.nav-item')[1])">
+                  Configurar webhook →
+                </button>
+              </div>
+
+              <!-- Recent activity -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Atividade Recente</div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot green"></div>
+                  <div class="activity-text"><strong>Proof request aprovado</strong> — kyc-prod · holder 0x8f2a</div>
+                  <div class="activity-time">2m atrás</div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot blue"></div>
+                  <div class="activity-text"><strong>Nova proof request criada</strong> — kyc-prod</div>
+                  <div class="activity-time">8m atrás</div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot red"></div>
+                  <div class="activity-text"><strong>Proof request rejeitada</strong> — onboard-dev · assinatura inválida</div>
+                  <div class="activity-time">14m atrás</div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot amber"></div>
+                  <div class="activity-text"><strong>Proof request expirada</strong> — kyc-prod · holder não abriu o app</div>
+                  <div class="activity-time">1h atrás</div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot green"></div>
+                  <div class="activity-text"><strong>Webhook entregue</strong> — kyc-prod · valid: true</div>
+                  <div class="activity-time">1h atrás</div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot blue"></div>
+                  <div class="activity-text"><strong>App criado</strong> — onboard-dev</div>
+                  <div class="activity-time">2d atrás</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Apps summary -->
+            <div>
+              <div class="card" style="margin-bottom:20px">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+                  <div class="card-title">Suas Aplicações</div>
+                  <button class="btn btn-ghost btn-sm" onclick="navigate('apps', document.querySelectorAll('.nav-item')[1])">Ver todas →</button>
+                </div>
+                <div style="padding:10px 0">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-100)">
+                    <div style="width:32px;height:32px;background:var(--blue-100);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--blue-700);font-size:11px;font-weight:700;flex-shrink:0">KP</div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:13.5px;font-weight:500;color:var(--gray-900)">kyc-prod</div>
+                      <div style="font-size:11.5px;color:var(--gray-400)">112 requests este mês</div>
+                    </div>
+                    <span class="badge badge-green">Ativo</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-100)">
+                    <div style="width:32px;height:32px;background:var(--blue-100);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--blue-700);font-size:11px;font-weight:700;flex-shrink:0">OD</div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:13.5px;font-weight:500;color:var(--gray-900)">onboard-dev</div>
+                      <div style="font-size:11.5px;color:var(--gray-400)">36 requests este mês</div>
+                    </div>
+                    <span class="badge badge-green">Ativo</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 0">
+                    <div style="width:32px;height:32px;background:var(--gray-100);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--gray-400);font-size:11px;font-weight:700;flex-shrink:0">LG</div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:13.5px;font-weight:500;color:var(--gray-500)">legacy-test</div>
+                      <div style="font-size:11.5px;color:var(--gray-400)">desabilitado</div>
+                    </div>
+                    <span class="badge badge-gray">Inativo</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Privacy card -->
+              <div class="privacy-card">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9c0-1.042-.133-2.052-.382-3.016z"/></svg>
+                <div class="privacy-card-text">
+                  <strong>Privacidade por design.</strong> A YaID não armazena dados pessoais dos seus usuários. Você recebe apenas <code style="background:var(--blue-100);padding:1px 4px;border-radius:3px;font-family:monospace">valid: true | false</code>.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ PAGE: APPS LIST ═══════ -->
+        <div class="page" id="page-apps">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Aplicações</div>
+              <div class="page-desc">Gerencie seus apps e API keys de integração.</div>
+            </div>
+            <button class="btn btn-primary" onclick="navigate('apps-new', this)">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+              Novo app
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>App ID</th>
+                    <th>Webhook URL</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr onclick="navigate('app-detail', document.querySelectorAll('.nav-item')[1])" style="cursor:pointer">
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:30px;height:30px;background:var(--blue-100);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--blue-700);font-size:10px;font-weight:700">KP</div>
+                        <span style="font-weight:500">kyc-prod</span>
+                      </div>
+                    </td>
+                    <td><span class="td-mono">app_a1b2c3d4e5f6</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">https://api.acme.com.br/webhooks/y…</span></td>
+                    <td><span class="badge badge-green">Ativo</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">12 mai 2026</span></td>
+                    <td>
+                      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();navigate('app-detail', document.querySelectorAll('.nav-item')[1])">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 0 1 3.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                  <tr style="cursor:pointer">
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:30px;height:30px;background:var(--blue-100);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--blue-700);font-size:10px;font-weight:700">OD</div>
+                        <span style="font-weight:500">onboard-dev</span>
+                      </div>
+                    </td>
+                    <td><span class="td-mono">app_f6e5d4c3b2a1</span></td>
+                    <td><span style="font-size:12.5px;color:var(--amber-700);display:flex;align-items:center;gap:4px">
+                      <svg style="width:13px;height:13px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                      Não configurado
+                    </span></td>
+                    <td><span class="badge badge-green">Ativo</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">10 mai 2026</span></td>
+                    <td>
+                      <button class="btn btn-ghost btn-sm">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 0 1 3.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                  <tr style="opacity:.65">
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:30px;height:30px;background:var(--gray-100);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--gray-400);font-size:10px;font-weight:700">LG</div>
+                        <span style="font-weight:500;color:var(--gray-500)">legacy-test</span>
+                      </div>
+                    </td>
+                    <td><span class="td-mono" style="color:var(--gray-400)">app_zzz111222333</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-400)">—</span></td>
+                    <td><span class="badge badge-gray">Inativo</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-400)">03 mai 2026</span></td>
+                    <td>
+                      <button class="btn btn-ghost btn-sm">Reativar</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ PAGE: NEW APP ═══════ -->
+        <div class="page" id="page-apps-new">
+          <nav class="breadcrumb">
+            <a onclick="navigate('apps', document.querySelectorAll('.nav-item')[1])">Aplicações</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current">Novo app</span>
+          </nav>
+          <div class="page-header">
+            <div>
+              <div class="page-title">Criar novo app</div>
+              <div class="page-desc">Um app representa uma integração com a API YaID.</div>
+            </div>
+          </div>
+
+          <div style="max-width:640px">
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-header">
+                <div class="card-title">Identificação</div>
+                <div class="card-desc">Nome interno do app — visível apenas no dashboard.</div>
+              </div>
+              <div class="form-group">
+                <label>Nome do app <span style="color:var(--red-600)">*</span></label>
+                <input type="text" placeholder="ex: kyc-prod" id="new-app-name" />
+                <div class="form-hint">Use um nome descritivo. Ex: kyc-prod, onboard-staging.</div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-header">
+                <div class="card-title">Webhook</div>
+                <div class="card-desc">Endpoint que receberá o resultado de cada proof request.</div>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>Webhook URL <span class="label-optional">(opcional)</span></label>
+                <input type="url" placeholder="https://api.suaempresa.com.br/webhooks/yaID" />
+                <div class="form-hint">Pode ser configurado ou alterado depois. Recomendamos HTTPS.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+              <button class="btn btn-outline" onclick="navigate('apps', document.querySelectorAll('.nav-item')[1])">Cancelar</button>
+              <button class="btn btn-primary" id="create-app-btn" onclick="handleCreateApp()">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+                Criar app
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ PAGE: APP DETAIL ═══════ -->
+        <div class="page" id="page-app-detail">
+          <nav class="breadcrumb">
+            <a onclick="navigate('apps', document.querySelectorAll('.nav-item')[1])">Aplicações</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current">kyc-prod</span>
+          </nav>
+          <div class="page-header">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:40px;height:40px;background:var(--blue-100);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--blue-700);font-size:13px;font-weight:700">KP</div>
+              <div>
+                <div class="page-title">kyc-prod</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                  <span class="badge badge-green">Ativo</span>
+                  <span style="font-size:12px;color:var(--gray-400)">Criado em 12 mai 2026</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline" onclick="openDisableModal()">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                Desabilitar app
+              </button>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <!-- Left column -->
+            <div>
+              <div class="card" style="margin-bottom:16px">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <div class="card-title">Identificação</div>
+                    <div class="card-desc">Dados de identificação do app na plataforma YaID.</div>
+                  </div>
+                  <button class="btn btn-outline btn-sm">Salvar</button>
+                </div>
+                <div class="form-group">
+                  <label>Nome do app</label>
+                  <input type="text" value="kyc-prod" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>App ID</label>
+                  <div class="copy-row">
+                    <code>app_a1b2c3d4e5f6g7h8i9j0k</code>
+                    <button class="copy-btn" onclick="copyText('app_a1b2c3d4e5f6g7h8i9j0k', this)">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      Copiar
+                    </button>
+                  </div>
+                  <div class="form-hint">Use o App ID ao criar proof requests via API.</div>
+                </div>
+              </div>
+
+              <div class="card" style="margin-bottom:16px">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <div class="card-title">Webhook</div>
+                    <div class="card-desc">Endpoint que recebe <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:1px 4px;border-radius:3px">valid: true | false</code> após cada verificação.</div>
+                  </div>
+                  <button class="btn btn-outline btn-sm" onclick="showToast('Webhook salvo com sucesso', 'success')">Salvar</button>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Webhook URL</label>
+                  <input type="url" value="https://api.acme.com.br/webhooks/yaID" />
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Proof Requests recentes</div>
+                  <div class="card-desc">Últimas 5 solicitações deste app.</div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>ID</th><th>Status</th><th>Criado</th></tr></thead>
+                    <tbody>
+                      <tr>
+                        <td><span class="td-mono">pr_kKq8mN2xP</span></td>
+                        <td><span class="badge badge-green">Aprovado</span></td>
+                        <td><span style="font-size:12px;color:var(--gray-500)">18 mai · 14:32</span></td>
+                      </tr>
+                      <tr>
+                        <td><span class="td-mono">pr_jL9wRt5yZ</span></td>
+                        <td><span class="badge badge-amber">Aguardando</span></td>
+                        <td><span style="font-size:12px;color:var(--gray-500)">18 mai · 14:28</span></td>
+                      </tr>
+                      <tr>
+                        <td><span class="td-mono">pr_hM7vSn4xW</span></td>
+                        <td><span class="badge badge-red">Rejeitado</span></td>
+                        <td><span style="font-size:12px;color:var(--gray-500)">18 mai · 13:59</span></td>
+                      </tr>
+                      <tr>
+                        <td><span class="td-mono">pr_gN6uRm3wV</span></td>
+                        <td><span class="badge badge-gray">Expirado</span></td>
+                        <td><span style="font-size:12px;color:var(--gray-500)">18 mai · 11:02</span></td>
+                      </tr>
+                      <tr>
+                        <td><span class="td-mono">pr_fO5tQl2vU</span></td>
+                        <td><span class="badge badge-green">Aprovado</span></td>
+                        <td><span style="font-size:12px;color:var(--gray-500)">17 mai · 18:44</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right column -->
+            <div>
+              <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                  <div class="card-title">Status do App</div>
+                </div>
+                <div class="switch-wrap">
+                  <button class="switch on" id="app-switch" onclick="toggleAppSwitch(this)"></button>
+                  <span class="switch-label" id="app-switch-label">App ativo</span>
+                </div>
+                <div class="form-hint" style="margin-top:10px">Desabilitar impede novos proof requests para este app.</div>
+              </div>
+
+              <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                  <div class="card-title">API Key</div>
+                  <div class="card-desc">A chave secreta nunca é exibida novamente após a criação.</div>
+                </div>
+                <div class="copy-row" style="margin-bottom:10px">
+                  <code>sk_live_••••••••••••••••••••••</code>
+                  <button class="copy-btn" style="color:var(--gray-400);cursor:not-allowed" disabled>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/></svg>
+                    Ocultada
+                  </button>
+                </div>
+                <div class="alert alert-amber" style="font-size:12px">
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  <div>Não é possível recuperar a API key após fechar o modal de criação. Se perdeu acesso, crie um novo app.</div>
+                </div>
+              </div>
+
+              <div class="privacy-card">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9c0-1.042-.133-2.052-.382-3.016z"/></svg>
+                <div class="privacy-card-text">
+                  <strong>Privacidade garantida.</strong> Nenhum dado pessoal do usuário é armazenado. Você recebe apenas o resultado da verificação.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ PAGE: PROOF REQUESTS ═══════ -->
+        <div class="page" id="page-proof-requests">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Proof Requests</div>
+              <div class="page-desc">Histórico de todas as solicitações de verificação criadas via API.</div>
+            </div>
+          </div>
+
+          <div class="filter-bar">
+            <input type="text" placeholder="Buscar por ID ou App ID…" style="flex:1;max-width:320px" />
+            <select class="filter-select" style="width:140px">
+              <option>Todos os status</option>
+              <option>Aprovado</option>
+              <option>Rejeitado</option>
+              <option>Aguardando</option>
+              <option>Expirado</option>
+              <option>Cancelado</option>
+            </select>
+            <select class="filter-select" style="width:160px">
+              <option>Todas as apps</option>
+              <option>kyc-prod</option>
+              <option>onboard-dev</option>
+            </select>
+          </div>
+
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID da Solicitação</th>
+                    <th>App</th>
+                    <th>Status</th>
+                    <th>Webhook</th>
+                    <th>Criado em</th>
+                    <th>Concluído</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="td-mono">pr_kKq8mN2xP4rT</span></td>
+                    <td><span class="tag">kyc-prod</span></td>
+                    <td><span class="badge badge-green">Aprovado</span></td>
+                    <td><span class="badge badge-green" style="font-size:11px">Entregue</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">18 mai 14:32</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">14:34</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-mono">pr_jL9wRt5yZqS</span></td>
+                    <td><span class="tag">kyc-prod</span></td>
+                    <td><span class="badge badge-blue">Aguardando</span></td>
+                    <td><span class="badge badge-gray" style="font-size:11px">Pendente</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">18 mai 14:28</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-400)">—</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-mono">pr_iP8vSm4xWnR</span></td>
+                    <td><span class="tag">onboard-dev</span></td>
+                    <td><span class="badge badge-red">Rejeitado</span></td>
+                    <td><span class="badge badge-red" style="font-size:11px">Falhou</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">18 mai 13:59</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">14:01</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-mono">pr_hM7uQl3wVmQ</span></td>
+                    <td><span class="tag">kyc-prod</span></td>
+                    <td><span class="badge badge-gray">Expirado</span></td>
+                    <td><span class="badge badge-green" style="font-size:11px">Entregue</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">18 mai 11:02</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">11:32</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-mono">pr_gN6tPk2vUlP</span></td>
+                    <td><span class="tag">kyc-prod</span></td>
+                    <td><span class="badge badge-green">Aprovado</span></td>
+                    <td><span class="badge badge-green" style="font-size:11px">Entregue</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">17 mai 18:44</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">18:46</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-mono">pr_fO5sOj1uTkO</span></td>
+                    <td><span class="tag">onboard-dev</span></td>
+                    <td><span class="badge badge-amber">Cancelado</span></td>
+                    <td><span class="badge badge-green" style="font-size:11px">Entregue</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">17 mai 15:10</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">15:12</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="td-mono">pr_eN4rNi0tSjN</span></td>
+                    <td><span class="tag">kyc-prod</span></td>
+                    <td><span class="badge badge-green">Aprovado</span></td>
+                    <td><span class="badge badge-green" style="font-size:11px">Entregue</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">17 mai 09:22</span></td>
+                    <td><span style="font-size:12.5px;color:var(--gray-500)">09:24</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 0;border-top:1px solid var(--gray-100);margin-top:4px">
+              <span style="font-size:12.5px;color:var(--gray-500)">Mostrando 7 de 148 resultados</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" disabled>← Anterior</button>
+                <button class="btn btn-outline btn-sm">Próxima →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state (hidden by default — toggle to show) -->
+          <div id="proof-requests-empty" style="display:none">
+            <div class="card">
+              <div class="empty-state">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2"/></svg>
+                <div class="empty-state-title">Nenhuma solicitação ainda</div>
+                <div class="empty-state-desc">Proof requests criadas via API aparecerão aqui com seu status em tempo real.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ PAGE: SETTINGS ═══════ -->
+        <div class="page" id="page-settings">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Configurações</div>
+              <div class="page-desc">Gerencie os dados da sua empresa e conta.</div>
+            </div>
+          </div>
+
+          <div style="max-width:680px">
+            <div class="tabs">
+              <button class="tab-btn active" onclick="switchTab('empresa', this)">Empresa</button>
+              <button class="tab-btn" onclick="switchTab('seguranca', this)">Segurança</button>
+              <button class="tab-btn" onclick="switchTab('conta', this)">Conta</button>
+            </div>
+
+            <div class="tab-content active" id="tab-empresa">
+              <div class="card" style="margin-bottom:16px">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <div class="card-title">Dados da Empresa</div>
+                    <div class="card-desc">Informações cadastradas no signup. Usadas na tela de verificação do usuário.</div>
+                  </div>
+                  <button class="btn btn-outline btn-sm" onclick="showToast('Dados salvos com sucesso', 'success')">Salvar</button>
+                </div>
+                <div class="form-group">
+                  <label>Nome da empresa</label>
+                  <input type="text" value="Acme Corp" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>CNPJ <span class="label-optional">(opcional)</span></label>
+                  <input type="text" value="12.345.678/0001-99" />
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Privacidade</div>
+                  <div class="card-desc">Como a YaID trata os dados da sua empresa e dos seus usuários.</div>
+                </div>
+                <div class="alert alert-blue">
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9c0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  <div>
+                    <div class="alert-title">Dados pessoais nunca são armazenados</div>
+                    <div class="alert-body">A YaID não armazena documentos, fotos ou qualquer PII dos seus usuários. Você recebe apenas <code style="font-family:monospace;font-size:11px;background:var(--blue-100);padding:1px 4px;border-radius:3px">valid: true | false</code> via webhook. Cumprindo LGPD por design.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-content" id="tab-seguranca">
+              <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                  <div class="card-title">Alterar senha</div>
+                  <div class="card-desc">Sua senha deve ter no mínimo 8 caracteres.</div>
+                </div>
+                <div class="form-group">
+                  <label>Senha atual</label>
+                  <input type="password" placeholder="••••••••" />
+                </div>
+                <div class="form-group">
+                  <label>Nova senha</label>
+                  <input type="password" placeholder="••••••••" />
+                </div>
+                <div class="form-group" style="margin-bottom:16px">
+                  <label>Confirmar nova senha</label>
+                  <input type="password" placeholder="••••••••" />
+                </div>
+                <div style="display:flex;justify-content:flex-end">
+                  <button class="btn btn-primary" onclick="showToast('Senha alterada com sucesso', 'success')">Salvar senha</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-content" id="tab-conta">
+              <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                  <div class="card-title">Dados da conta</div>
+                </div>
+                <div class="form-group">
+                  <label>E-mail</label>
+                  <input type="email" value="admin@acme.com.br" />
+                </div>
+                <div style="display:flex;justify-content:flex-end">
+                  <button class="btn btn-primary" onclick="showToast('E-mail atualizado com sucesso', 'success')">Salvar</button>
+                </div>
+              </div>
+
+              <div class="card" style="border-color:var(--red-200)">
+                <div class="card-header">
+                  <div class="card-title" style="color:var(--red-700)">Zona de perigo</div>
+                  <div class="card-desc">Ações irreversíveis para sua conta.</div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0">
+                  <div>
+                    <div style="font-size:13.5px;font-weight:500;color:var(--gray-900)">Encerrar conta</div>
+                    <div style="font-size:12.5px;color:var(--gray-500)">Remove permanentemente sua empresa e todos os apps.</div>
+                  </div>
+                  <button class="btn btn-destructive btn-sm" onclick="showToast('Ação bloqueada no protótipo', 'error')">Encerrar conta</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /content-inner -->
+    </main>
+  </div><!-- /main-wrap -->
+</div><!-- /shell -->
+
+<!-- ════════════ MODAL: API KEY ONE-SHOT ════════════ -->
+<div class="modal-overlay" id="modal-apikey">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">API key gerada com sucesso</div>
+      <div class="modal-desc">Esta é a única vez que sua API key será exibida.</div>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-amber" style="margin-bottom:16px">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div>
+          <div class="alert-title">Salve agora — sem segunda chance</div>
+          <div class="alert-body">Esta chave não pode ser recuperada após fechar esta janela. Copie e guarde em local seguro antes de continuar.</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:6px">
+        <label>API Key</label>
+      </div>
+      <div class="copy-row" style="margin-bottom:16px;background:var(--gray-50);padding:12px 14px">
+        <code style="font-size:13px;color:var(--gray-800)">sk_live_9xKmN2pQrT5vY8wA1cE4gH7jL</code>
+        <button class="copy-btn" onclick="copyText('sk_live_9xKmN2pQrT5vY8wA1cE4gH7jL', this)" style="padding:6px 10px">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar
+        </button>
+      </div>
+
+      <div class="checkbox-wrap">
+        <input type="checkbox" id="apikey-confirm" onchange="updateModalBtn()" />
+        <label class="checkbox-label" for="apikey-confirm">
+          Confirmo que copiei e salvei minha API key em local seguro.
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:var(--gray-400)">Esta janela não pode ser fechada com ESC ou clique fora.</span>
+      <div class="modal-footer-right">
+        <button class="btn btn-primary" id="modal-concluir-btn" disabled onclick="closeApiKeyModal()">
+          Concluir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ MODAL: DISABLE APP ════════════ -->
+<div class="modal-overlay" id="modal-disable">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Desabilitar kyc-prod?</div>
+      <div class="modal-desc" style="color:var(--red-600)">Esta ação impedirá novos proof requests para este app.</div>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-amber">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div>
+          <div class="alert-body">Proof requests existentes não serão afetadas, mas novas solicitações serão rejeitadas com erro 422 até que o app seja reativado.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span></span>
+      <div class="modal-footer-right">
+        <button class="btn btn-outline" onclick="closeDisableModal()">Cancelar</button>
+        <button class="btn btn-destructive" onclick="confirmDisable()">Desabilitar app</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ TOAST ════════════ -->
+<div id="toast">
+  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+  <span id="toast-text"></span>
+</div>
+
+<script>
+  // ── Navigation ──
+  function navigate(page, clickedItem) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    const target = document.getElementById('page-' + page);
+    if (target) target.classList.add('active');
+
+    if (clickedItem && clickedItem.classList && clickedItem.classList.contains('nav-item')) {
+      clickedItem.classList.add('active');
+    }
+
+    const breadcrumbs = {
+      'overview': '<span>Visão Geral</span>',
+      'apps': '<a onclick="navigate(\'apps\', document.querySelectorAll(\'.nav-item\')[1])">Aplicações</a>',
+      'apps-new': '<a onclick="navigate(\'apps\', document.querySelectorAll(\'.nav-item\')[1])">Aplicações</a> <span style="color:var(--gray-300);margin:0 4px">/</span> <span>Novo app</span>',
+      'app-detail': '<a onclick="navigate(\'apps\', document.querySelectorAll(\'.nav-item\')[1])">Aplicações</a> <span style="color:var(--gray-300);margin:0 4px">/</span> <span>kyc-prod</span>',
+      'proof-requests': '<span>Proof Requests</span>',
+      'settings': '<span>Configurações</span>',
+    };
+    document.getElementById('topbar-breadcrumb').innerHTML = breadcrumbs[page] || '';
+  }
+
+  // ── Tab switching ──
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+  }
+
+  // ── Copy button ──
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    const orig = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> Copiado!`;
+    showToast('Copiado para a área de transferência', 'success');
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 2000);
+  }
+
+  // ── Toast ──
+  let toastTimer;
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    const icon = type === 'success'
+      ? `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>`
+      : `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+    document.getElementById('toast-text').textContent = msg;
+    t.className = 'show ' + (type || '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+  }
+
+  // ── API Key Modal ──
+  function handleCreateApp() {
+    const name = document.getElementById('new-app-name').value.trim();
+    if (!name) {
+      document.getElementById('new-app-name').classList.add('has-error');
+      document.getElementById('new-app-name').focus();
+      return;
+    }
+    const btn = document.getElementById('create-app-btn');
+    btn.disabled = true;
+    btn.textContent = 'Criando…';
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg> Criar app`;
+      document.getElementById('modal-apikey').classList.add('open');
+      document.getElementById('apikey-confirm').checked = false;
+      document.getElementById('modal-concluir-btn').disabled = true;
+    }, 900);
+  }
+
+  function updateModalBtn() {
+    document.getElementById('modal-concluir-btn').disabled = !document.getElementById('apikey-confirm').checked;
+  }
+
+  function closeApiKeyModal() {
+    document.getElementById('modal-apikey').classList.remove('open');
+    navigate('app-detail', document.querySelectorAll('.nav-item')[1]);
+    showToast('App criado com sucesso!', 'success');
+  }
+
+  // Prevent accidental close via backdrop click
+  document.getElementById('modal-apikey').addEventListener('click', function(e) {
+    if (e.target === this) { /* intentionally blocked */ }
+  });
+
+  // ── Disable Modal ──
+  function openDisableModal() {
+    document.getElementById('modal-disable').classList.add('open');
+  }
+
+  function closeDisableModal() {
+    document.getElementById('modal-disable').classList.remove('open');
+  }
+
+  document.getElementById('modal-disable').addEventListener('click', function(e) {
+    if (e.target === this) closeDisableModal();
+  });
+
+  function confirmDisable() {
+    closeDisableModal();
+    document.getElementById('app-switch').classList.remove('on');
+    document.getElementById('app-switch-label').textContent = 'App inativo';
+    showToast('App kyc-prod desabilitado', '');
+  }
+
+  // ── App Switch ──
+  function toggleAppSwitch(btn) {
+    if (btn.classList.contains('on')) {
+      openDisableModal();
+    } else {
+      btn.classList.add('on');
+      document.getElementById('app-switch-label').textContent = 'App ativo';
+      showToast('App kyc-prod reativado', 'success');
+    }
+  }
+
+  // ── Input cleanup ──
+  document.getElementById('new-app-name').addEventListener('input', function() {
+    this.classList.remove('has-error');
+  });
+
+  // Keyboard hint
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const disable = document.getElementById('modal-disable');
+      if (disable.classList.contains('open')) closeDisableModal();
+      // ApiKey modal: ESC intentionally does NOT close
+    }
+  });
+</script>
+</body>
+</html>
