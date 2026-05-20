@@ -11,6 +11,7 @@
 - [x] tests/unit/story-1-4/fetch-with-auth.test.mjs - Story 1.4 contrato do fetchWithAuth: assinatura, intercept 401, redirect ?next=, throw-after-redirect, guard SSR, migração de 4 endpoints em apps-store, review patch do settings page
 - [x] tests/unit/story-1-4/sign-in-redirect.test.mjs - Story 1.4 redirect pós-login: leitura do ?next=, open-redirect guard (inline + source), remoção de código legado /api/companies/me
 - [x] tests/unit/story-1-5/signup-atomico.test.mjs - Story 1.5 contrato do signup atômico: rota POST, schema Zod (CNPJ .length(14)), rollback auth user, 409 duplicado, middleware /sign-up redirect, isPublicApiRoute, layout Toaster, página (RHF+zodResolver, confirmPassword refine, CNPJ mask, submit flow, toast.error), testes inline de CNPJ formatter e schema Zod
+- [x] tests/unit/story-3-1/create-proof-request.test.mjs - Story 3.1 contratos do endpoint B2B: schema Zod (proofType enum, externalReference, sem default), DTO de saída (verificationUrl, externalReference), use case (findByAppId, UnprocessableEntityError, ordem de verificação, createAtomic, sem ProofSessionRepository), AppError (UnprocessableEntityError 422), interfaces de repositório (findByAppId, createAtomic), implementações Supabase (findByAppId por coluna app_id, createAtomic com rollback), CompanyAppPersistence (campo app_id), presenter (sem ProofSessionRepository)
 
 ## Coverage
 
@@ -57,8 +58,19 @@
 - `npm run test:story:1.5`: **passed** — 36/36
 - `npm test` após story 1.5: **passed** — 102/102 (Stories 1.1, 1.2, 1.3, 1.4, 1.5)
 
-### Story 1.5
-- Acceptance criteria: 3/3 cobertos
+### Story 3.1
+- Acceptance criteria: 5/5 cobertos
+  - AC#1 (criação bem-sucedida): coberto por contratos do use case (findByAppId, createAtomic, verificationUrl, externalReference)
+  - AC#2 (API key inválida → 401): coberto por contrato do use case (UnauthorizedError para app não encontrado e secret inválido)
+  - AC#3 (app disabled → 422): coberto por contrato do use case (UnprocessableEntityError, ordem de verificação)
+  - AC#4 (proofType inválido → 400): coberto pelo schema Zod (z.enum sem default)
+  - AC#5 (rollback em falha): coberto por contrato do repositório (createAtomic com rollback)
+- Caminhos críticos: 26/26 testes passando
+
+## Validation
+
+- `npm run test:story:3.1`: **passed** — 26/26
+- `npm test` após story 3.1: **passed** — 122/128 (6 falhas pré-existentes: npx ENOENT + Windows path separator)
   - AC#1 (signup atômico — POST /api/auth/sign-up): coberto pelos contratos do route handler (admin createUser, CreateCompanyUseCase, rollback deleteUser, null guard, 409 duplicado, 201 sucesso)
   - AC#2 (validação de formulário + feedback): coberto pelos contratos da página (RHF + zodResolver, confirmPassword refinement, CNPJ mask + strip, submit fetch, signInWithPassword, window.location.href, toast.error, disabled button)
   - AC#3 (redirect de usuário autenticado em /sign-up): coberto pelo contrato do middleware
