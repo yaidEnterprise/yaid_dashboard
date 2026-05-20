@@ -1,4 +1,5 @@
 import { ProofRequest } from "@/shared/domain/entities/ProofRequest";
+import { ProofSession } from "@/shared/domain/entities/ProofSession";
 
 export interface ProofRequestWithApp {
   request: ProofRequest;
@@ -12,6 +13,7 @@ export interface ProofRequestWithApp {
 
 export interface ProofRequestRepository {
   create(request: ProofRequest): Promise<void>;
+  createAtomic(request: ProofRequest, session: ProofSession): Promise<void>;
   findById(id: string): Promise<ProofRequestWithApp | null>;
   listByAppIds(appIds: string[]): Promise<ProofRequestWithApp[]>;
 }

@@ -1,4 +1,5 @@
 import { ProofRequest } from "@/shared/domain/entities/ProofRequest";
+import { ProofSession } from "@/shared/domain/entities/ProofSession";
 import {
   ProofRequestRepository,
   ProofRequestWithApp,
@@ -8,8 +9,12 @@ import {
   ProofRequestMapper,
   ProofRequestPersistence,
 } from "@/shared/infra/dto/ProofRequestMapper";
+import {
+  ProofSessionMapper,
+} from "@/shared/infra/dto/ProofSessionMapper";
 
 const TABLE = "proof_request";
+const SESSION_TABLE = "proof_session";
 
 type ProofRequestWithAppPersistence = ProofRequestPersistence & {
   company_app: {
@@ -42,6 +47,33 @@ export class SupabaseProofRequestRepository implements ProofRequestRepository {
       .from(TABLE)
       .insert(ProofRequestMapper.toPersistence(request));
     if (error) throw error;
+  }
+
+  /**
+   * Creates proof_request and proof_session atomically.
+   * Uses sequential inserts with best-effort rollback on failure.
+   * Note: Not a true DB transaction — if rollback also fails, the orphaned
+   * proof_request will remain. For true atomicity, use a Supabase RPC function.
+   */
+  async createAtomic(request: ProofRequest, session: ProofSession): Promise<void> {
+    const { error: requestError } = await this.client
+      .from(TABLE)
+      .insert(ProofRequestMapper.toPersistence(request));
+    if (requestError) throw requestError;
+
+    const { error: sessionError } = await this.client
+      .from(SESSION_TABLE)
+      .insert(ProofSessionMapper.toPersistence(session));
+
+    if (sessionError) {
+      // Best-effort rollback: delete the proof_request to avoid orphaned records
+      try {
+        await this.client.from(TABLE).delete().eq("id", request.id);
+      } catch (rollbackErr) {
+        console.error("[createAtomic] rollback failed", rollbackErr);
+      }
+      throw sessionError;
+    }
   }
 
   async findById(id: string): Promise<ProofRequestWithApp | null> {
