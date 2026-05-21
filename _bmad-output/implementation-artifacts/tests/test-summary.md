@@ -11,6 +11,7 @@
 - [x] tests/unit/story-1-4/fetch-with-auth.test.mjs - Story 1.4 contrato do fetchWithAuth: assinatura, intercept 401, redirect ?next=, throw-after-redirect, guard SSR, migração de 4 endpoints em apps-store, review patch do settings page
 - [x] tests/unit/story-1-4/sign-in-redirect.test.mjs - Story 1.4 redirect pós-login: leitura do ?next=, open-redirect guard (inline + source), remoção de código legado /api/companies/me
 - [x] tests/unit/story-1-5/signup-atomico.test.mjs - Story 1.5 contrato do signup atômico: rota POST, schema Zod (CNPJ .length(14)), rollback auth user, 409 duplicado, middleware /sign-up redirect, isPublicApiRoute, layout Toaster, página (RHF+zodResolver, confirmPassword refine, CNPJ mask, submit flow, toast.error), testes inline de CNPJ formatter e schema Zod
+- [x] tests/unit/story-5-2/blockchain-client.test.mjs - Story 5.2 contratos do wrapper BlockchainClient: existência de arquivos, interface (4 métodos), ABI (4 assinaturas com bytes32), EthersBlockchainClient (JsonRpcProvider, Wallet, address validation, receipt null/status=0 check, sem process.env, ethers.id()), environments.ts (schema, TEST_ENV, getters, getBlockchainClient factory, throws em TEST), compilação TypeScript
 
 ## Coverage
 
@@ -56,6 +57,8 @@
 - `npm test` após story 1.4: **passed** — 66/66 (Stories 1.1, 1.2, 1.3, 1.4)
 - `npm run test:story:1.5`: **passed** — 36/36
 - `npm test` após story 1.5: **passed** — 102/102 (Stories 1.1, 1.2, 1.3, 1.4, 1.5)
+- `npm run test:story:5.2`: **passed** — 32/32
+- `npm test` após story 5.2: **passed** — 134/134 (Stories 1.1, 1.2, 1.3, 1.4, 1.5, 5.2)
 
 ### Story 1.5
 - Acceptance criteria: 3/3 cobertos
@@ -74,3 +77,18 @@
 - A migration SQL (`supabase/migrations/20260513_update_proof_sessions.sql`) foi aplicada manualmente via Supabase Dashboard e deletada; o contrato TypeScript (testes de schema) serve como evidência de que o TypeScript está alinhado com o schema aplicado
 - Deferred do code review (Story 5.3, 4.1): não há testes para setChallenge() nem para lógica de expiração na entidade — esses são escopo das stories correspondentes
 - Os testes da story 1.2 foram atualizados para referenciar `src/shared/middleware.ts` (novo caminho após mudança staged que moveu o middleware de `src/middleware.ts`)
+
+### Story 5.2
+- Acceptance criteria: 4/4 cobertos
+  - AC#1 (interface BlockchainClient com 4 métodos): coberto por contratos de source inspection (registerDID, revokeVC, isDIDRegistered, isVCRevoked com tipos corretos)
+  - AC#2 (implementação em shared/clients/blockchain/, instanciada via environments.ts): coberto por contratos de EthersBlockchainClient (JsonRpcProvider, Wallet, writeContract/readContract) e environments.ts (schema, getters, getBlockchainClient)
+  - AC#3 (funciona contra Hardhat local — BLOCKCHAIN_RPC_URL default): coberto pelo contrato de BLOCKCHAIN_RPC_URL com default `127.0.0.1:8545`
+  - AC#4 (erro propagado ao use case): coberto pelos testes de receipt null + status=0 que verificam o throw em registerDID e revokeVC
+- Patches do code review cobertos: address validation (`ethers.isAddress`), receipt null/status=0 check em 2 métodos de escrita
+- Caminhos críticos: 32/32 testes passando
+  - Estrutura: 4 novos arquivos criados
+  - Interface: 4 métodos com tipos corretos
+  - ABI: 4 assinaturas (bytes32 para vcHash nas operações de revogação, view para leituras)
+  - EthersBlockchainClient: implementa interface, usa ethers v6, separa read/write contracts, valida address, checa receipt
+  - environments.ts: 2 novas vars no schema, TEST_ENV, getters, factory method com lazy import e throw para TEST stage
+  - TypeScript: `npx tsc --noEmit` sem erros
