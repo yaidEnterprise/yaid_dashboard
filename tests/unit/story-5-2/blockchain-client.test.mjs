@@ -83,39 +83,39 @@ test("Story 5.2 BlockchainClient interface defines isVCRevoked method", () => {
 
 // ─── ABI do contrato YaIDRegistry ─────────────────────────────────────────────
 
-test("Story 5.2 ABI includes registerDID function signature", () => {
+test("Story 5.2 ABI includes registerDID function signature with bytes32 didHash", () => {
   const src = readText("src/shared/clients/blockchain/abi.ts");
   assert.ok(
-    src.includes("function registerDID(string did)"),
-    "ABI must include registerDID(string did)"
+    src.includes("function registerDID(bytes32 didHash)"),
+    "ABI must include registerDID(bytes32 didHash) — contrato armazena hash, não string"
   );
 });
 
-test("Story 5.2 ABI includes revokeVC function signature with bytes32", () => {
+test("Story 5.2 ABI includes revokeCredential function signature (nome real no contrato)", () => {
   const src = readText("src/shared/clients/blockchain/abi.ts");
   assert.ok(
-    src.includes("function revokeVC(bytes32 vcHash)"),
-    "ABI must include revokeVC(bytes32 vcHash)"
+    src.includes("function revokeCredential(bytes32 credentialId)"),
+    "ABI must include revokeCredential(bytes32 credentialId) — nome real da função no contrato"
   );
 });
 
-test("Story 5.2 ABI includes isDIDRegistered view function signature", () => {
+test("Story 5.2 ABI includes activeDIDs view mapping accessor (isDIDRegistered)", () => {
   const src = readText("src/shared/clients/blockchain/abi.ts");
   assert.ok(
-    src.includes("function isDIDRegistered(string did)") &&
+    src.includes("function activeDIDs(bytes32)") &&
       src.includes("view") &&
       src.includes("returns (bool)"),
-    "ABI must include isDIDRegistered as a view function returning bool"
+    "ABI must include activeDIDs(bytes32) view returns (bool) — mapping público do contrato"
   );
 });
 
-test("Story 5.2 ABI includes isVCRevoked view function signature", () => {
+test("Story 5.2 ABI includes revokedCredentials view mapping accessor (isVCRevoked)", () => {
   const src = readText("src/shared/clients/blockchain/abi.ts");
   assert.ok(
-    src.includes("function isVCRevoked(bytes32 vcHash)") &&
+    src.includes("function revokedCredentials(bytes32)") &&
       src.includes("view") &&
       src.includes("returns (bool)"),
-    "ABI must include isVCRevoked as a view function returning bool"
+    "ABI must include revokedCredentials(bytes32) view returns (bool) — mapping público do contrato"
   );
 });
 
@@ -192,11 +192,37 @@ test("Story 5.2 EthersBlockchainClient does not access process.env directly", ()
   );
 });
 
-test("Story 5.2 EthersBlockchainClient converts vcId to bytes32 via ethers.id() for revokeVC", () => {
+test("Story 5.2 EthersBlockchainClient converts all string args to bytes32 via ethers.id()", () => {
+  const src = readText("src/shared/clients/blockchain/EthersBlockchainClient.ts");
+  // registerDID hashes the DID, revokeVC hashes the vcId, isVCRevoked hashes too
+  const idCalls = (src.match(/ethers\.id\(/g) || []).length;
+  assert.ok(
+    idCalls >= 4,
+    "All 4 methods must convert string inputs to bytes32 via ethers.id() — contrato só aceita bytes32"
+  );
+});
+
+test("Story 5.2 EthersBlockchainClient calls revokeCredential (nome real no contrato)", () => {
   const src = readText("src/shared/clients/blockchain/EthersBlockchainClient.ts");
   assert.ok(
-    src.includes("ethers.id(vcId)"),
-    "revokeVC must convert vcId to bytes32 via ethers.id()"
+    src.includes("revokeCredential("),
+    "revokeVC must call contract.revokeCredential — nome real da função no contrato"
+  );
+});
+
+test("Story 5.2 EthersBlockchainClient calls activeDIDs for isDIDRegistered", () => {
+  const src = readText("src/shared/clients/blockchain/EthersBlockchainClient.ts");
+  assert.ok(
+    src.includes("activeDIDs("),
+    "isDIDRegistered must call contract.activeDIDs — mapping público do contrato"
+  );
+});
+
+test("Story 5.2 EthersBlockchainClient calls revokedCredentials for isVCRevoked", () => {
+  const src = readText("src/shared/clients/blockchain/EthersBlockchainClient.ts");
+  assert.ok(
+    src.includes("revokedCredentials("),
+    "isVCRevoked must call contract.revokedCredentials — mapping público do contrato"
   );
 });
 

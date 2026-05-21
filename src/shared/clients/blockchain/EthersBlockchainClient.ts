@@ -5,6 +5,15 @@ import { YAID_REGISTRY_ABI } from "./abi";
 /**
  * Implementação concreta de BlockchainClient usando ethers.js v6.
  *
+ * Mapeamento interface → contrato YaidRegistry:
+ *  - registerDID(did)     → contract.registerDID(keccak256(did))
+ *  - revokeVC(vcId)       → contract.revokeCredential(keccak256(vcId))
+ *  - isDIDRegistered(did) → contract.activeDIDs(keccak256(did))
+ *  - isVCRevoked(vcId)    → contract.revokedCredentials(keccak256(vcId))
+ *
+ * O contrato armazena apenas hashes (bytes32). A conversão string → bytes32
+ * via ethers.id() (keccak256) é feita nesta camada — os use cases passam strings.
+ *
  * - Escritas (registerDID, revokeVC): usam Wallet com private key → pagam gas.
  * - Leituras (isDIDRegistered, isVCRevoked): usam JsonRpcProvider → sem gas.
  * - Erros da chain são propagados sem captura — o use case é responsável por tratá-los.
@@ -45,7 +54,9 @@ export class EthersBlockchainClient implements BlockchainClient {
   }
 
   async registerDID(did: string): Promise<void> {
-    const tx = await this.writeContract.registerDID(did);
+    // Contrato espera bytes32: converte DID string → keccak256
+    const didHash = ethers.id(did);
+    const tx = await this.writeContract.registerDID(didHash);
     // [Review patch] Verifica receipt: null = tx dropped do mempool, status=0 = EVM revert.
     // Ambos são falhas — propagar como exceção para o use case tratar.
     const receipt = await tx.wait();
@@ -57,9 +68,9 @@ export class EthersBlockchainClient implements BlockchainClient {
   }
 
   async revokeVC(vcId: string): Promise<void> {
-    // Converte vcId para bytes32 via keccak256, conforme esperado pelo contrato
-    const vcHash = ethers.id(vcId);
-    const tx = await this.writeContract.revokeVC(vcHash);
+    // Contrato usa revokeCredential(bytes32 credentialId): converte vcId → keccak256
+    const credentialId = ethers.id(vcId);
+    const tx = await this.writeContract.revokeCredential(credentialId);
     // [Review patch] Verifica receipt: null = tx dropped, status=0 = EVM revert.
     const receipt = await tx.wait();
     if (!receipt || receipt.status === 0) {
@@ -70,11 +81,14 @@ export class EthersBlockchainClient implements BlockchainClient {
   }
 
   async isDIDRegistered(did: string): Promise<boolean> {
-    return await this.readContract.isDIDRegistered(did);
+    // Contrato expõe o mapping activeDIDs(bytes32) → bool
+    const didHash = ethers.id(did);
+    return await this.readContract.activeDIDs(didHash);
   }
 
   async isVCRevoked(vcId: string): Promise<boolean> {
-    const vcHash = ethers.id(vcId);
-    return await this.readContract.isVCRevoked(vcHash);
+    // Contrato expõe o mapping revokedCredentials(bytes32) → bool
+    const credentialId = ethers.id(vcId);
+    return await this.readContract.revokedCredentials(credentialId);
   }
 }

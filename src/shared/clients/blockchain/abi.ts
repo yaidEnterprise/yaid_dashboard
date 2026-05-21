@@ -1,15 +1,18 @@
 /**
- * ABI mínima do contrato YaIDRegistry.
+ * ABI mínima do contrato YaidRegistry (YaidRegistry.sol).
  *
- * Expõe apenas os 4 métodos necessários para o BlockchainClient:
- *  - registerDID  — escrita (usa wallet, paga gas)
- *  - revokeVC     — escrita (usa wallet, paga gas; vcHash = keccak256 do vcId)
- *  - isDIDRegistered — leitura (view, sem gas)
- *  - isVCRevoked     — leitura (view, sem gas)
+ * Funções expostas pelo contrato:
+ *  - registerDID(bytes32 didHash)   — escrita; recebe keccak256 do DID string
+ *  - revokeCredential(bytes32 credentialId) — escrita; recebe keccak256 do vcId
+ *  - activeDIDs(bytes32) view returns (bool)       — leitura do mapping de DIDs ativos
+ *  - revokedCredentials(bytes32) view returns (bool) — leitura do mapping de credenciais revogadas
+ *
+ * Nota: o contrato armazena hashes (bytes32), nunca strings.
+ * A conversão string → bytes32 via ethers.id() (keccak256) é feita no EthersBlockchainClient.
  */
 export const YAID_REGISTRY_ABI = [
-  "function registerDID(string did) external",
-  "function revokeVC(bytes32 vcHash) external",
-  "function isDIDRegistered(string did) external view returns (bool)",
-  "function isVCRevoked(bytes32 vcHash) external view returns (bool)",
+  "function registerDID(bytes32 didHash) external",
+  "function revokeCredential(bytes32 credentialId) external",
+  "function activeDIDs(bytes32) external view returns (bool)",
+  "function revokedCredentials(bytes32) external view returns (bool)",
 ] as const;
