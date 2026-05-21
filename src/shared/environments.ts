@@ -4,6 +4,7 @@ import type { CompanyAppRepository } from "@/shared/domain/interfaces/repositori
 import type { ProofRequestRepository } from "@/shared/domain/interfaces/repositories/ProofRequestRepository";
 import type { ProofSessionRepository } from "@/shared/domain/interfaces/repositories/ProofSessionRepository";
 import type { ApiKeyHasher } from "@/shared/domain/interfaces/ApiKeyHasher";
+import type { BlockchainClient } from "@/shared/domain/interfaces/BlockchainClient";
 
 export enum Stage {
   DOTENV = "DOTENV",
@@ -28,6 +29,8 @@ const envSchema = z.object({
   ISSUER_PRIVATE_KEY: z.string().min(1),
   WEBHOOK_SIGNING_PRIVATE_KEY: z.string().min(1),
   BLOCKCHAIN_WALLET_PRIVATE_KEY: z.string().min(1),
+  BLOCKCHAIN_CONTRACT_ADDRESS: z.string().min(1),
+  BLOCKCHAIN_RPC_URL: z.string().url().default("http://127.0.0.1:8545"),
 });
 
 export type EnvValues = z.infer<typeof envSchema>;
@@ -42,6 +45,8 @@ const TEST_ENV: EnvValues = {
   ISSUER_PRIVATE_KEY: "test-issuer-private-key",
   WEBHOOK_SIGNING_PRIVATE_KEY: "test-webhook-signing-private-key",
   BLOCKCHAIN_WALLET_PRIVATE_KEY: "test-blockchain-wallet-private-key",
+  BLOCKCHAIN_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000001",
+  BLOCKCHAIN_RPC_URL: "http://127.0.0.1:8545",
 };
 
 let cachedEnvironments: Environments | null = null;
@@ -64,6 +69,8 @@ function readProcessEnv() {
     ISSUER_PRIVATE_KEY: process.env.ISSUER_PRIVATE_KEY,
     WEBHOOK_SIGNING_PRIVATE_KEY: process.env.WEBHOOK_SIGNING_PRIVATE_KEY,
     BLOCKCHAIN_WALLET_PRIVATE_KEY: process.env.BLOCKCHAIN_WALLET_PRIVATE_KEY,
+    BLOCKCHAIN_CONTRACT_ADDRESS: process.env.BLOCKCHAIN_CONTRACT_ADDRESS,
+    BLOCKCHAIN_RPC_URL: process.env.BLOCKCHAIN_RPC_URL,
   };
 }
 
@@ -128,6 +135,14 @@ export class Environments {
     return this.values.BLOCKCHAIN_WALLET_PRIVATE_KEY;
   }
 
+  get BLOCKCHAIN_CONTRACT_ADDRESS() {
+    return this.values.BLOCKCHAIN_CONTRACT_ADDRESS;
+  }
+
+  get BLOCKCHAIN_RPC_URL() {
+    return this.values.BLOCKCHAIN_RPC_URL;
+  }
+
   toJSON() {
     return { ...this.values };
   }
@@ -185,6 +200,20 @@ export class Environments {
       "@/shared/infra/providers/Sha256ApiKeyHasher"
     );
     return new Sha256ApiKeyHasher();
+  }
+
+  async getBlockchainClient(): Promise<BlockchainClient> {
+    if (this.stage === Stage.TEST) {
+      throw new Error("No blockchain client configured for TEST stage");
+    }
+    const { EthersBlockchainClient } = await import(
+      "@/shared/clients/blockchain/EthersBlockchainClient"
+    );
+    return new EthersBlockchainClient(
+      this.BLOCKCHAIN_CONTRACT_ADDRESS,
+      this.BLOCKCHAIN_WALLET_PRIVATE_KEY,
+      this.BLOCKCHAIN_RPC_URL
+    );
   }
 
   static getEnvs() {
