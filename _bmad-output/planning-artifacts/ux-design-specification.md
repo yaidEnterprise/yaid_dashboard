@@ -632,11 +632,11 @@ no topo da sidebar. Conteúdo principal em fundo branco com max-w-7xl.
 
 ```mermaid
 flowchart TD
-    A([Acessa /sign-up]) --> B[Preenche: email, senha, confirmação, nome da empresa, CNPJ opcional]
+    A([Acessa /sign-up]) --> B[Preenche: email, senha, confirmação, nome da empresa, CNPJ obrigatório]
     B --> C{Validação Zod client-side}
     C -- Erro --> B
     C -- OK --> D[POST /api/auth/sign-up]
-    D --> E{Criação atômica\nauth.users + companies}
+    D --> E{Criação atômica\nauth.users + company}
     E -- Falha --> F[Toast de erro\nFormulário preservado]
     F --> B
     E -- Sucesso --> G([Redirect → /])

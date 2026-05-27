@@ -50,6 +50,11 @@ export default function SignUpPage() {
   async function onSubmit(data: SignUpFormData) {
     const rawCnpj = cnpjDisplay.replace(/\D/g, "") || undefined;
 
+    if (!rawCnpj || rawCnpj.length !== 14) {
+      toast.error("Informe um CNPJ com 14 dígitos.");
+      return;
+    }
+
     const res = await fetch("/api/auth/sign-up", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -57,7 +62,7 @@ export default function SignUpPage() {
         email: data.email,
         password: data.password,
         name: data.companyName,
-        cnpj: rawCnpj ?? null,
+        cnpj: rawCnpj,
       }),
     });
 
@@ -224,14 +229,13 @@ export default function SignUpPage() {
               )}
             </div>
 
-            {/* CNPJ (opcional) */}
+            {/* CNPJ */}
             <div>
               <label
                 htmlFor="cnpj"
                 className="mb-1.5 block text-sm font-medium text-text-primary"
               >
-                CNPJ{" "}
-                <span className="font-normal text-text-tertiary">(opcional)</span>
+                CNPJ
               </label>
               <input
                 id="cnpj"

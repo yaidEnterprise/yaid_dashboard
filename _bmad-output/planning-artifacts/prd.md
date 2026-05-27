@@ -40,7 +40,7 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 ### Escopo e organização
 
 - O sistema fica em **uma codebase Next.js** (App Router + Route Handlers) que entrega frontend B2B, tela coringa e backend REST. App mobile e smart contract ficam em codebases separadas, fora deste PRD.
-- Tenant model: **1 Supabase auth user = 1 Company** (identidade conceitual, não relação 1:1 separável). `companies.id === auth.users.id` (mesmo UUID, sem coluna `auth_user_id` adicional). **Não existe estado "usuário sem company"**: o cadastro cria as duas rows em uma operação atômica única — se uma falhar, a outra é desfeita. Não há tela ou guard para "completar onboarding"; a sessão é sempre acompanhada de uma company existente. `company_members` para multi-usuário é decisão pós-MVP.
+- Tenant model: **1 Supabase auth user = 1 Company** (identidade conceitual, não relação 1:1 separável). `company.id === auth.users.id` (mesmo UUID, sem coluna `auth_user_id` adicional). **Não existe estado "usuário sem company"**: o cadastro cria as duas rows em uma operação atômica única — se uma falhar, a outra é desfeita. Não há tela ou guard para "completar onboarding"; a sessão é sempre acompanhada de uma company existente. `company_members` para multi-usuário é decisão pós-MVP.
 - Arquitetura em camadas conforme já existente: route handler → controller → use case → repository/service interface → infra. Cada domínio funcional em seu próprio módulo (`modules/company`, `modules/company-app`, `modules/proof-request`, etc.). **Isso vai ter uma skill própria para implementação**
 
 ### Domínio e modelo de dados
@@ -80,6 +80,7 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
   - `ISSUER_PRIVATE_KEY` (Ed25519) — assina VCs.
   - `WEBHOOK_SIGNING_PRIVATE_KEY` (Ed25519) — assina webhooks.
   - `BLOCKCHAIN_WALLET_PRIVATE_KEY` (secp256k1) — assina transações on-chain.
+- Em `PROD` e `HOMOLOG`, essas chaves e `BLOCKCHAIN_CONTRACT_ADDRESS` são obrigatórias no boot. Em `DOTENV`/`DEV`, elas podem ficar ausentes até o fluxo específico usar o getter correspondente; isso permite rodar signup/dashboard local sem depender de blockchain/issuer.
 - Migração para KMS/Vault fica como roadmap.
 
 ### Dashboard (frontend)
@@ -96,7 +97,7 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 ### Telas do dashboard
 
 - `/sign-in`: login Supabase. Pós-login redireciona sempre para `/` (ou `?next=<path>` se preenchido). **Não há fluxo de "usuário sem company"** — se a sessão existe, a company existe (invariante garantido pelo signup atômico).
-- `/sign-up`: form único com email, senha, confirmação de senha, **nome da empresa (required)** e CNPJ (opcional com máscara). Submit chama um endpoint atômico (ex: `POST /api/auth/sign-up`) que cria `auth.users` e `public.companies` na mesma operação — qualquer falha aborta ambos. Pós-cadastro redireciona direto para `/`.
+- `/sign-up`: form único com email, senha, confirmação de senha, **nome da empresa (required)** e **CNPJ obrigatório com máscara**. Submit chama um endpoint atômico (ex: `POST /api/auth/sign-up`) que cria `auth.users` e `public.company` na mesma operação — qualquer falha aborta ambos. Pós-cadastro redireciona direto para `/`.
 - ~~`/onboarding/company`~~: **rota descontinuada**. Os campos da company foram absorvidos pelo form de signup. A pasta `app/onboarding/` existente hoje deve ser removida ou redirecionar 301 para `/sign-up`.
 - `/(dashboard)` overview: 4 metric cards (total/aprovadas/pendentes/rejeitadas dos últimos 30 dias), card "próximo passo recomendado" adaptativo, card "apps ativos", tabela "solicitações recentes" (top 5), aviso institucional de privacidade. **Hoje usa dados mockados — migrar para API.**
 - `/(dashboard)/apps`: tabela com busca por nome/id e filtro multi-select por status, footer com contador. **Hoje usa localStorage — migrar para `GET /api/company-apps`.**
@@ -205,7 +206,7 @@ Hoje a codebase não tem testes automatizados estabelecidos. A introdução deve
 
 ### Estado de implementação na codebase em 2026-05-11
 
-**Implementado e estável:** auth Supabase, criação de `auth.users` e `public.companies` (hoje em duas etapas: signup + tela `/onboarding/company` — **precisa ser fundido em um signup atômico único**, ver seção de ajustes), CRUD de company_apps com revelação one-shot, `POST /api/proof-requests` por API key, `GET /api/proof-requests` + filtros básicos no dashboard, `GET /api/proof-requests/{id}`, tela coringa básica, `GET /api/proof-sessions/{sessionToken}`, estrutura modular em camadas.
+**Implementado e estável:** auth Supabase, criação de `auth.users` e `public.company` via signup atômico, CRUD de company_apps com revelação one-shot, `POST /api/proof-requests` por API key, `GET /api/proof-requests` + filtros básicos no dashboard, `GET /api/proof-requests/{id}`, tela coringa básica, `GET /api/proof-sessions/{sessionToken}`, estrutura modular em camadas.
 
 **Implementado mas precisa ajuste:** `proof_sessions` ainda persiste `verification_page_url` e `deep_link_url` (remover, derivar do token); falta `challenge_nonce_hash` e `challenge_created_at`; hash da API key é SHA-256 simples (avaliar Argon2/bcrypt); Overview/Settings/Apps usam dados mockados ou localStorage (migrar para API real); falta fetch wrapper 401-redirect; faltam confirmações destrutivas; tela coringa sem polling/QR/estados completos; pasta duplicada `/apps/novo`.
 
@@ -213,4 +214,4 @@ Hoje a codebase não tem testes automatizados estabelecidos. A introdução deve
 
 ### Definição de pronto do MVP
 
-Demo ponta a ponta: empresa cria conta em um formulário único (email + senha + nome + CNPJ → `auth.users` + `public.companies` criados atomicamente), cai direto no overview, cria um app, copia API key, chama `POST /api/proof-requests`, recebe verification_url, holder abre no app mobile (já com VC emitida em fluxo separado contra documento, com DID registrado em Sepolia), assina VP, backend valida tudo (incluindo lookup on-chain de DID e revogação), envia webhook Ed25519, empresa vê request approved no dashboard com timeline. Holder revoga VC; tentativa subsequente da empresa é rejected. Nenhum dado pessoal aparece em qualquer tabela do Supabase. Os três envs de chave estão configurados e validados no boot. **Em nenhum momento existe uma sessão sem company associada.**
+Demo ponta a ponta: empresa cria conta em um formulário único (email + senha + nome + CNPJ obrigatório → `auth.users` + `public.company` criados atomicamente), cai direto no overview, cria um app, copia API key, chama `POST /api/proof-requests`, recebe verification_url, holder abre no app mobile (já com VC emitida em fluxo separado contra documento, com DID registrado em Sepolia), assina VP, backend valida tudo (incluindo lookup on-chain de DID e revogação), envia webhook Ed25519, empresa vê request approved no dashboard com timeline. Holder revoga VC; tentativa subsequente da empresa é rejected. Nenhum dado pessoal aparece em qualquer tabela do Supabase. Os envs de chave estão configurados e validados no boot em `PROD`/`HOMOLOG`; em dev local, fluxos que não usam issuer/blockchain não dependem deles. **Em nenhum momento existe uma sessão sem company associada.**
