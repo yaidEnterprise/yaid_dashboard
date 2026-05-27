@@ -72,9 +72,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return withApiKeyAuth(request);
   }
 
-  // 4. DID auth routes — stub (Epic 5 implements)
+  // 4. DID auth routes — DID signature validation (Epic 5)
   if (isDIDAuthRoute(pathname)) {
-    return withDIDAuth(request);
+    return await withDIDAuth(request);
   }
 
   // 5. Session-auth API routes — require authenticated user
