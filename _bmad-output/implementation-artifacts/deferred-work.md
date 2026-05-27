@@ -1,3 +1,13 @@
+## Deferred from: code review de 1-6-login-e-protecao-de-rotas (2026-05-27)
+
+- **Open redirect via slashes codificados (`/%2F`)** — Guard `startsWith("/") && !startsWith("//")` é padrão pré-existente na codebase (fetchWithAuth, sign-up). Para segurança maior, considerar `new URL(next, origin).origin === origin`. Impacto baixo no contexto B2B do MVP [app/sign-in/page.tsx].
+
+- **`isSubmitting` permanece `true` se `window.location.href` travar** — Padrão intencional: a página deve desaparecer antes do reset. Se navegação falhar (CSP, `beforeunload`), botão fica preso. Mesmo comportamento em sign-up. Resolver se monitoramento detectar reclamações [app/sign-in/page.tsx].
+
+- **Erro de rede exibe mesmo toast que credencial inválida** — "E-mail ou senha inválidos." aparece em falhas de rede/timeout também. Intencional por spec ("mensagem genérica"). Melhorar distinção se Supabase expuser código de erro estruturado em produção [app/sign-in/page.tsx].
+
+- **Toast não anuncia corretamente para todos os leitores de tela** — Remoção do AlertCircle inline em favor de toast quebra anúncio via ARIA em alguns screen readers. Trade-off arquitetural aceito; considerar `aria-live` region paralela se acessibilidade for requisito crítico.
+
 ## Deferred from: code review de 5-2-wrapper-blockchainclient (2026-05-21)
 
 - **getBlockchainClient() sem cache** — cria nova instância de `EthersBlockchainClient` (e novo `JsonRpcProvider`) por chamada. Consistente com padrão dos outros getters em `Environments`, mas providers blockchain mantêm conexões. Adicionar cache se chamadas forem frequentes. [`src/shared/environments.ts`]
