@@ -39,9 +39,9 @@ Para que eu seja redirecionado ao login sem perder contexto da página que tenta
   - [x] Substituir `fetch(...)` por `fetchWithAuth(...)` em `createApp()` (POST /api/company-apps)
   - [x] Substituir `fetch(...)` por `fetchWithAuth(...)` em `updateApp()` (PATCH /api/company-apps/{appId})
 
-- [x] Task 3: Migrar `app/(dashboard)/settings/page.tsx` para `fetchWithAuth` (AC: #3)
-  - [x] Importar `fetchWithAuth` de `@/utils/fetch-with-auth`
-  - [x] Substituir `fetch("/api/auth/sign-out", { method: "POST" })` por `fetchWithAuth` em `handleSignOut`
+- [x] Task 3: Manter `app/(dashboard)/settings/page.tsx` com `fetch` direto para sign-out (AC: #3)
+  - [x] Não importar `fetchWithAuth` na página de settings
+  - [x] Usar `fetch("/api/auth/sign-out", { method: "POST" })` em `handleSignOut` para evitar loop `?next=/settings` quando a sessão já expirou
 
 - [x] Task 4: Corrigir redirect pós-login em `app/sign-in/page.tsx` (AC: #1)
   - [x] Importar `useSearchParams` do Next.js
@@ -104,16 +104,13 @@ Aplicar mesma substituição em `getApp`, `createApp` e `updateApp`. A função 
 
 **Compatibilidade com error handling existente:** `asJson` lança `Error` se `!res.ok`. `fetchWithAuth` também lança `Error` em 401. Ambos são capturados pelo mesmo `.catch()` nos componentes — sem necessidade de alterar as páginas que já usam `listApps()`, `getApp()`, etc.
 
-### Migração de `settings/page.tsx`
+### `settings/page.tsx` e sign-out
 
 ```typescript
-// ANTES
 const res = await fetch("/api/auth/sign-out", { method: "POST" });
-// DEPOIS
-const res = await fetchWithAuth("/api/auth/sign-out", { method: "POST" });
 ```
 
-Nota: `/api/auth/sign-out` é protegida por session auth no middleware. Se a sessão expirar entre a abertura da página e o clique no logout, a resposta seria 401 — sem `fetchWithAuth`, o usuário veria "Não foi possível sair da conta" em vez de ser redirecionado ao sign-in.
+Nota: `/api/auth/sign-out` usa `fetch` direto, não `fetchWithAuth`. Logout não deve redirecionar de volta para `/settings` via `?next=/settings` quando a sessão já expirou; se a API falhar, a página mostra toast e libera o botão.
 
 ### Correção de `sign-in/page.tsx`
 
@@ -169,7 +166,7 @@ Esta abordagem evita a dependência em `useSearchParams` e Suspense, e é sempre
 |---------|------|---------|
 | `utils/fetch-with-auth.ts` | **NOVO** | Criar wrapper com redirect 401 |
 | `utils/apps-store.ts` | MODIFICAR | Substituir 4 `fetch()` por `fetchWithAuth()` |
-| `app/(dashboard)/settings/page.tsx` | MODIFICAR | Substituir 1 `fetch()` por `fetchWithAuth()` |
+| `app/(dashboard)/settings/page.tsx` | MANTER | Sign-out usa `fetch()` direto; exceção intencional ao wrapper |
 | `app/sign-in/page.tsx` | MODIFICAR | Remover check /api/companies/me; implementar `?next=` redirect |
 
 **NÃO alterar:**
@@ -218,7 +215,7 @@ window.location.href = safePath;
 
 ### Relação com o middleware
 
-O middleware (`src/middleware.ts`) já protege rotas de dashboard com redirect para `/sign-in?next=<path>` (implementado na Story 1.2). O `fetchWithAuth` complementa esse mecanismo para chamadas **API** autenticadas que retornam 401 — casos onde a sessão expirou após o carregamento inicial da página mas antes de uma chamada fetch.
+O proxy (`proxy.ts`, delegando para `src/shared/middleware.ts`) já protege rotas de dashboard com redirect para `/sign-in?next=<path>` (implementado na Story 1.2). O `fetchWithAuth` complementa esse mecanismo para chamadas **API** autenticadas que retornam 401 — casos onde a sessão expirou após o carregamento inicial da página mas antes de uma chamada fetch.
 
 O middleware cuida de: acesso a páginas sem sessão.
 O `fetchWithAuth` cuida de: chamadas de API com sessão expirada durante uso.
@@ -245,7 +242,7 @@ O `fetchWithAuth` cuida de: chamadas de API com sessão expirada durante uso.
 - [Código a modificar: utils/apps-store.ts](utils/apps-store.ts)
 - [Código a modificar: app/(dashboard)/settings/page.tsx](app/(dashboard)/settings/page.tsx)
 - [Código a modificar: app/sign-in/page.tsx](app/sign-in/page.tsx)
-- [Middleware (referência): src/middleware.ts](src/middleware.ts)
+- [Middleware compartilhado (referência): src/shared/middleware.ts](src/shared/middleware.ts)
 
 ### Review Findings
 
@@ -254,7 +251,7 @@ O `fetchWithAuth` cuida de: chamadas de API com sessão expirada durante uso.
 - [x] [Review][Defer] Query string/hash descartados no `?next=` — `window.location.pathname` não captura `?query` — impacto mínimo pois filtros no dashboard são client-side state [utils/fetch-with-auth.ts:8] — deferred, pre-existing
 - [x] [Review][Defer] Error flash transitório antes do redirect — `.catch()` captura o throw de `"Session expired"` e exibe mensagem brevemente antes da navegação completar — inerente ao padrão throw-after-redirect — deferred, pre-existing
 - [x] [Review][Defer] Open redirect teórico via `/\evil.com` — guard atual alinhado com spec ("começa com / mas não com //"); `/\` não coberto em browsers antigos — deferred, pre-existing
-- [x] [Review][Defer] `setSigningOut(false)` nunca chamado quando `fetchWithAuth` lança — botão fica preso em "Saindo..." se navegação for bloqueada pelo browser — raro em prod [app/(dashboard)/settings/page.tsx:13] — deferred, pre-existing
+- [x] [Review][Patch] `setSigningOut(false)` é chamado quando o `fetch` direto de sign-out falha; `fetchWithAuth` não é usado neste fluxo [app/(dashboard)/settings/page.tsx]
 - [x] [Review][Defer] Inconsistência de encoding no `?next=` entre middleware (raw pathname) e `fetchWithAuth` (encodeURIComponent) — round-trip correto via `URLSearchParams.get()`, inconsistência cosmética — deferred, pre-existing
 
 ## Dev Agent Record
@@ -269,7 +266,7 @@ claude-sonnet-4-6
 
 - `utils/fetch-with-auth.ts` criado: exporta `fetchWithAuth` com mesma assinatura de `fetch` nativa; intercepta 401, redireciona para `/sign-in?next=<path>` e lança `Error('Session expired')` para interromper a cadeia de execução
 - `utils/apps-store.ts` migrado: 4 chamadas `fetch()` substituídas por `fetchWithAuth()` nas funções `listApps`, `getApp`, `createApp` e `updateApp`; `asJson` helper preservado sem alterações
-- `app/(dashboard)/settings/page.tsx` migrado: `handleSignOut` usa `fetchWithAuth` no lugar de `fetch` para `/api/auth/sign-out`
+- `app/(dashboard)/settings/page.tsx`: `handleSignOut` usa `fetch` direto para `/api/auth/sign-out` para evitar loop `?next=/settings` em sessão expirada
 - `app/sign-in/page.tsx` corrigido: removido check legado a `/api/companies/me` (onboarding removido na Story 1.1); pós-login redireciona para `?next=<path>` (se URL relativa segura) ou `/`; proteção contra open redirect via `startsWith('/') && !startsWith('//')`
 - 45/45 testes passando — zero regressões
 - `npm run build` limpo: TypeScript sem erros; aviso `node:crypto` no Edge Runtime é pré-existente (documentado na Story 1.3)

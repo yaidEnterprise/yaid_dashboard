@@ -24,7 +24,7 @@ _Este documento é construído colaborativamente através de descoberta passo a 
 
 O sistema entrega cinco domínios funcionais integrados em uma única codebase Next.js:
 
-1. **Gestão Empresarial** — Cadastro atômico (auth.users + public.companies em uma transação única), CRUD de company_apps com revelação one-shot de API key, settings de webhook por app. Invariante central: toda sessão autenticada pressupõe company existente — não existe estado intermediário.
+1. **Gestão Empresarial** — Cadastro atômico (auth.users + public.company em uma transação única), CRUD de company_apps com revelação one-shot de API key, settings de webhook por app. Invariante central: toda sessão autenticada pressupõe company existente — não existe estado intermediário.
 
 2. **Proof Requests (API B2B)** — Empresa parceira cria proof_request via API key, recebe verification_url e deep_link_url (derivadas, não persistidas), aguarda webhook assinado ou polling. Proof_type é enum de valor único (`personhood` | `age_over_18`). Ciclo de vida: `pending_user → processing → approved | rejected | expired`.
 
@@ -144,7 +144,7 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 ### Autenticação & Segurança
 
 - **Hash de API key:** SHA-256 — mantém implementação atual. Adequado para keys longas e aleatórias.
-- **Middleware de auth:** `middleware.ts` global com roteamento por prefixo de rota. Cada mecanismo de auth (sessão Supabase, API key, DID signature, session token) é resolvido pelo prefixo correspondente.
+- **Proxy de auth:** `proxy.ts` global (convenção Next.js 16) com roteamento por prefixo de rota. A lógica vive em `src/shared/middleware.ts` e cada mecanismo de auth (sessão Supabase, API key, DID signature, session token) é resolvido pelo prefixo correspondente.
 
 ### API & Comunicação
 
@@ -169,12 +169,12 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 Quatro tabelas centralizadas — todas sobre o lado empresarial. Nenhuma tabela sobre o holder.
 
 ```sql
--- companies
+-- company
 -- id = auth.users.id (mesmo UUID — vínculo estrutural, sem coluna auth_user_id separada)
-CREATE TABLE companies (
+CREATE TABLE company (
   id          UUID PRIMARY KEY,
   name        TEXT NOT NULL,
-  cnpj        TEXT,                                    -- opcional
+  document_number TEXT NOT NULL,                       -- CNPJ obrigatório no cadastro
   status      TEXT NOT NULL DEFAULT 'active',          -- active | inactive
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -182,7 +182,7 @@ CREATE TABLE companies (
 -- company_apps
 CREATE TABLE company_apps (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id    UUID NOT NULL REFERENCES companies(id),
+  company_id    UUID NOT NULL REFERENCES company(id),
   name          TEXT NOT NULL,
   app_id        TEXT NOT NULL UNIQUE,   -- parte pública da API key (exibida no dashboard)
   api_key_hash  TEXT NOT NULL,          -- SHA-256 de "<app_id>.<secret>" — secret nunca persiste
@@ -195,7 +195,7 @@ CREATE TABLE company_apps (
 -- Ciclo de vida: pending_user → processing → approved | rejected | expired
 CREATE TABLE proof_requests (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id          UUID NOT NULL REFERENCES companies(id),   -- para isolamento por company
+  company_id          UUID NOT NULL REFERENCES company(id),      -- para isolamento por company
   app_id              UUID NOT NULL REFERENCES company_apps(id),
   proof_type          TEXT NOT NULL,   -- personhood | age_over_18
   external_reference  TEXT,            -- nullable: referência da empresa parceira
@@ -223,7 +223,7 @@ CREATE TABLE proof_sessions (
 
 ### Invariantes do Schema
 
-- `companies.id === auth.users.id` — toda sessão autenticada tem company; estado "usuário sem company" não existe.
+- `company.id === auth.users.id` — toda sessão autenticada tem company; estado "usuário sem company" não existe.
 - `api_key_hash` nunca contém o secret — apenas `SHA-256("<app_id>.<secret>")`.
 - `session_token_hash` — o token bruto é devolvido uma única vez na resposta de criação da proof_request e nunca mais armazenado.
 - `challenge_nonce_hash` e `challenge_created_at` — `NULL` enquanto status = `waiting_user`; preenchidos quando o holder abre a sessão.
@@ -357,7 +357,7 @@ Manter sempre distintos — nunca passar um onde o outro é esperado:
 ### Padrões de Nomenclatura
 
 **Banco de Dados (PostgreSQL/Supabase):**
-- Tabelas: `snake_case` plural — `companies`, `company_apps`, `proof_requests`, `proof_sessions`
+- Tabelas: `snake_case`; tabela de empresa é `company` (singular, conforme schema deployado), demais tabelas usam nomes existentes como `company_apps`, `proof_requests`, `proof_sessions`
 - Colunas: `snake_case` — `company_id`, `created_at`, `proof_type`
 - Chaves estrangeiras: `{entidade}_id` — `company_id`, `app_id`
 
@@ -421,7 +421,7 @@ yaid_dashboard/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
-├── middleware.ts                          # auth global por prefixo de rota
+├── proxy.ts                               # entrypoint Next.js 16 para auth global por prefixo
 ├── next.config.ts
 ├── package.json
 ├── tsconfig.json
@@ -608,7 +608,7 @@ Os três módulos existentes (`company`, `company-app`, `proof-request`) saem de
 
 ### Validação de Coerência ✅
 
-**Compatibilidade de Decisões:** Todas as escolhas tecnológicas são compatíveis entre si. SHA-256 é consistente com a interface `ApiKeyHasher`. `middleware.ts` global cobre os 4 mecanismos de auth sem sobreposição. React Hook Form + Zod são compatíveis. GitHub Actions + Amplify é uma combinação suportada.
+**Compatibilidade de Decisões:** Todas as escolhas tecnológicas são compatíveis entre si. SHA-256 é consistente com a interface `ApiKeyHasher`. `proxy.ts` global delega para `src/shared/middleware.ts` e cobre os 4 mecanismos de auth sem sobreposição. React Hook Form + Zod são compatíveis. GitHub Actions + Amplify é uma combinação suportada.
 
 **Consistência de Padrões:** Nomenclatura `{action}_{feature}_*.ts` uniforme em todos os módulos. Transformação snake_case → camelCase delegada ao ViewModel. Shape de erro `{ error: string }` uniforme em toda a API.
 

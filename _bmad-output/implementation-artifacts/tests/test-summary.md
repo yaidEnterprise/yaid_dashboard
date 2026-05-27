@@ -5,12 +5,12 @@
 ### Unit Tests
 
 - [x] tests/unit/story-1-1/restructure.test.mjs - Story 1.1 contratos estruturais: aliases, layout src/, env centralizado, pastas obsoletas, entrypoints preservados, TypeScript clean
-- [x] tests/unit/story-1-2/middleware.test.mjs - Story 1.2 contratos de middleware: arquivo, helpers, routing por método/path, remoção de requireAuthenticatedUser, injeção de x-company-id
+- [x] tests/unit/story-1-2/middleware.test.mjs - Story 1.2 contratos de proxy/middleware: `proxy.ts` entrypoint Next.js 16, helpers, routing por método/path, remoção de requireAuthenticatedUser, injeção de x-company-id
 - [x] tests/unit/story-1-3/proof-session-schema.test.mjs - Story 1.3 contratos de schema: entidade, mapper, use cases, repository, regressão da tela coringa
 - [x] tests/unit/story-1-3/dependencies.test.mjs - Story 1.3 dependências de formulário: react-hook-form, @hookform/resolvers, compilação TypeScript
 - [x] tests/unit/story-1-4/fetch-with-auth.test.mjs - Story 1.4 contrato do fetchWithAuth: assinatura, intercept 401, redirect ?next=, throw-after-redirect, guard SSR, migração de 4 endpoints em apps-store, review patch do settings page
 - [x] tests/unit/story-1-4/sign-in-redirect.test.mjs - Story 1.4 redirect pós-login: leitura do ?next=, open-redirect guard (inline + source), remoção de código legado /api/companies/me
-- [x] tests/unit/story-1-5/signup-atomico.test.mjs - Story 1.5 contrato do signup atômico: rota POST, schema Zod (CNPJ .length(14)), rollback auth user, 409 duplicado, middleware /sign-up redirect, isPublicApiRoute, layout Toaster, página (RHF+zodResolver, confirmPassword refine, CNPJ mask, submit flow, toast.error), testes inline de CNPJ formatter e schema Zod
+- [x] tests/unit/story-1-5/signup-atomico.test.mjs - Story 1.5 contrato do signup atômico: rota POST, schema Zod (CNPJ obrigatório .length(14)), rollback auth user, 409 duplicado, middleware /sign-up redirect, isPublicApiRoute, layout Toaster, página (RHF+zodResolver, confirmPassword refine, CNPJ mask, submit flow, toast.error), testes inline de CNPJ formatter e schema Zod
 - [x] tests/unit/story-1-6/login-e-protecao-de-rotas.test.mjs - Story 1.6 contratos de login: migração RHF+Zod, toast.error para erros de auth, onValidationError para validação silenciosa (review patch), sem mensagens field-specific no schema (review patch), redirect ?next= com open-redirect guard, proteção de rotas via middleware (4 paths), withSessionAuth injeção de ?next=, testes inline de schema Zod e safe-redirect logic
 - [x] tests/unit/story-5-2/blockchain-client.test.mjs - Story 5.2 contratos do wrapper BlockchainClient: existência de arquivos, interface (4 métodos), ABI (4 assinaturas com bytes32), EthersBlockchainClient (JsonRpcProvider, Wallet, address validation, receipt null/status=0 check, sem process.env, ethers.id()), environments.ts (schema, TEST_ENV, getters, getBlockchainClient factory, throws em TEST), compilação TypeScript
 
@@ -22,7 +22,7 @@
 
 ### Story 1.2
 - Acceptance criteria: 3/3 cobertos
-- Caminhos críticos: criação do middleware, remoção de requireAuthenticatedUser, injeção de x-company-id, routing por método (GET/POST/DID)
+- Caminhos críticos: criação do `proxy.ts` + middleware compartilhado, remoção de requireAuthenticatedUser, injeção de x-company-id, routing por método (GET/POST/DID)
 
 ### Story 1.4
 - Acceptance criteria: 3/3 cobertos
@@ -69,8 +69,8 @@
   - AC#2 (validação de formulário + feedback): coberto pelos contratos da página (RHF + zodResolver, confirmPassword refinement, CNPJ mask + strip, submit fetch, signInWithPassword, window.location.href, toast.error, disabled button)
   - AC#3 (redirect de usuário autenticado em /sign-up): coberto pelo contrato do middleware
 - Caminhos críticos: 36/36 testes passando
-  - Review patches: CNPJ `.length(14)` (rejeita 11–13 dígitos), null guard em `authData.user`, `console.error` no rollback, `POST /api/auth/sign-up` como rota pública no middleware
-  - Testes inline comportamentais: CNPJ formatter (formatação completa, truncamento a 14 dígitos, strip de caracteres), schema Zod (senhas iguais/diferentes, CNPJ 14 dígitos vs curto vs null)
+  - Review patches: CNPJ obrigatório `.length(14)` (rejeita ausente/null e 11–13 dígitos), null guard em `authData.user`, `console.error` no rollback, `POST /api/auth/sign-up` como rota pública no middleware
+  - Testes inline comportamentais: CNPJ formatter (formatação completa, truncamento a 14 dígitos, strip de caracteres), schema Zod (senhas iguais/diferentes, CNPJ 14 dígitos vs curto vs null rejeitado)
   - TypeScript clean: `npx tsc --noEmit` sem erros
 
 ## Validation
@@ -79,7 +79,7 @@
 - Os testes para Story 1.3 são de contrato de código-fonte (source inspection), adequados para uma story de refatoração de schema sem lógica de negócio nova
 - A migration SQL (`supabase/migrations/20260513_update_proof_sessions.sql`) foi aplicada manualmente via Supabase Dashboard e deletada; o contrato TypeScript (testes de schema) serve como evidência de que o TypeScript está alinhado com o schema aplicado
 - Deferred do code review (Story 5.3, 4.1): não há testes para setChallenge() nem para lógica de expiração na entidade — esses são escopo das stories correspondentes
-- Os testes da story 1.2 foram atualizados para referenciar `src/shared/middleware.ts` (novo caminho após mudança staged que moveu o middleware de `src/middleware.ts`)
+- Os testes da story 1.2 foram atualizados para exigir `proxy.ts` como entrypoint Next.js 16 e referenciar `src/shared/middleware.ts` como lógica compartilhada
 
 ### Story 1.6
 - Acceptance criteria: 4/4 cobertos

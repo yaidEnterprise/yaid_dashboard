@@ -44,7 +44,7 @@
 
 - **Open redirect teórico via `/\evil.com`** — Guard `startsWith('/') && !startsWith('//')` está alinhado com a spec. Em browsers antigos `/\` pode ser tratado como `//`. Considerar usar `new URL(next, window.location.origin).origin === window.location.origin` como validação mais robusta em futura melhoria [app/sign-in/page.tsx].
 
-- **`setSigningOut(false)` nunca chamado quando `fetchWithAuth` lança no sign-out** — Se a navegação for bloqueada por um `beforeunload` handler, o botão fica preso em "Saindo...". Resolver adicionando `.catch(() => setSigningOut(false))` se necessário [app/(dashboard)/settings/page.tsx:13].
+- **Sign-out usa `fetch` direto por design** — `app/(dashboard)/settings/page.tsx` não deve usar `fetchWithAuth` em `/api/auth/sign-out`, para evitar redirect de sessão expirada para `/sign-in?next=/settings`. Se a API falhar, o handler já chama `setSigningOut(false)`.
 
 - **Inconsistência de encoding no `?next=` entre middleware e `fetchWithAuth`** — Middleware usa `url.searchParams.set("next", pathname)` (raw), `fetchWithAuth` usa `encodeURIComponent(pathname)` (encoded). Round-trip correto via `URLSearchParams.get()`. Normalizar quando refatorar o middleware.
 
@@ -62,8 +62,8 @@
 
 ## Deferred from: code review de 1-2-middleware-de-autenticacao (2026-05-13)
 
-- **`isSessionAuthApiRoute` não cobre métodos futuros** — Se DELETE/PATCH for adicionado a `/api/proof-requests/[requestId]`, esses métodos cairão no fallthrough sem auth. Ao adicionar novos handlers para essa rota, verificar se o método precisa de session auth e atualizar `isSessionAuthApiRoute` em `src/middleware.ts`.
+- **`isSessionAuthApiRoute` não cobre métodos futuros** — Se DELETE/PATCH for adicionado a `/api/proof-requests/[requestId]`, esses métodos cairão no fallthrough sem auth. Ao adicionar novos handlers para essa rota, verificar se o método precisa de session auth e atualizar `isSessionAuthApiRoute` em `src/shared/middleware.ts`.
 
-- **`isDashboardPage` usa lista hardcoded** — Novas páginas adicionadas ao grupo `/(dashboard)` do Next.js não serão automaticamente protegidas. Ao criar novas rotas de dashboard, lembrar de adicionar o path a `isDashboardPage` em `src/middleware.ts`, ou migrar para detecção via route group.
+- **`isDashboardPage` usa lista hardcoded** — Novas páginas adicionadas ao grupo `/(dashboard)` do Next.js não serão automaticamente protegidas. Ao criar novas rotas de dashboard, lembrar de adicionar o path a `isDashboardPage` em `src/shared/middleware.ts`, ou migrar para detecção via route group.
 
 - **`POST /api/proof-requests` usa match exato (`===`)** — Diferente de outras rotas que usam `startsWith()`. Se rotas aninhadas como `/api/proof-requests/bulk` forem criadas com método POST, elas cairão no fallthrough sem cobertura de auth. Revisar ao criar endpoints aninhados.

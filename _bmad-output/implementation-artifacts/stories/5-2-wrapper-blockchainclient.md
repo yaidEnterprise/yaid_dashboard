@@ -40,7 +40,7 @@ Para que os módulos de emissão, verificação e revogação possam registrar e
   - [x] Definir interface com os 4 métodos: `registerDID(did: string): Promise<void>`, `revokeVC(vcId: string): Promise<void>`, `isDIDRegistered(did: string): Promise<boolean>`, `isVCRevoked(vcId: string): Promise<boolean>`
 
 - [x] Task 3: Adicionar `BLOCKCHAIN_CONTRACT_ADDRESS` ao `environments.ts` (AC: #2)
-  - [x] Adicionar `BLOCKCHAIN_CONTRACT_ADDRESS: z.string().min(1)` ao schema Zod em `environments.ts`
+  - [x] Adicionar `BLOCKCHAIN_CONTRACT_ADDRESS` ao schema Zod em `environments.ts`; obrigatório no boot apenas em `PROD`/`HOMOLOG`
   - [x] Adicionar `BLOCKCHAIN_CONTRACT_ADDRESS: process.env.BLOCKCHAIN_CONTRACT_ADDRESS` em `readProcessEnv()`
   - [x] Adicionar `BLOCKCHAIN_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000001"` em `TEST_ENV`
   - [x] Adicionar getter `get BLOCKCHAIN_CONTRACT_ADDRESS()` na classe `Environments`
@@ -199,9 +199,11 @@ export class EthersBlockchainClient implements BlockchainClient {
 
 Acrescentar ao schema Zod:
 ```typescript
-BLOCKCHAIN_CONTRACT_ADDRESS: z.string().min(1),
+BLOCKCHAIN_CONTRACT_ADDRESS: z.string().min(1).optional(),
 BLOCKCHAIN_RPC_URL: z.string().url().default("http://127.0.0.1:8545"),
 ```
+
+Em `PROD`/`HOMOLOG`, `superRefine` exige `BLOCKCHAIN_CONTRACT_ADDRESS` e `BLOCKCHAIN_WALLET_PRIVATE_KEY` no boot. Em `DOTENV`/`DEV`, fluxos que não usam blockchain podem rodar sem essas envs; os getters específicos lançam erro quando usados sem configuração.
 
 Acrescentar em `readProcessEnv()`:
 ```typescript
@@ -218,7 +220,10 @@ BLOCKCHAIN_RPC_URL: "http://127.0.0.1:8545",
 Acrescentar getters na classe `Environments`:
 ```typescript
 get BLOCKCHAIN_CONTRACT_ADDRESS() {
-  return this.values.BLOCKCHAIN_CONTRACT_ADDRESS;
+  return requireConfiguredValue(
+    this.values.BLOCKCHAIN_CONTRACT_ADDRESS,
+    "BLOCKCHAIN_CONTRACT_ADDRESS"
+  );
 }
 
 get BLOCKCHAIN_RPC_URL() {
@@ -287,7 +292,7 @@ O teste de validação desta story é: `npm run build` sem erros de tipo + `npm 
 - Implementação completa da infraestrutura de integração blockchain para o MVP.
 - Escolha de **ethers.js v6** justificada: API madura, suporte nativo a `JsonRpcProvider`, `Wallet` e `keccak256` via `ethers.id()`.
 - `EthersBlockchainClient` separa contratos de leitura (provider) e escrita (wallet) para evitar gas desnecessário em queries.
-- `environments.ts` atualizado com `BLOCKCHAIN_CONTRACT_ADDRESS` (obrigatório) e `BLOCKCHAIN_RPC_URL` (default: `http://127.0.0.1:8545`), mantendo padrão de leitura centralizada de `process.env`.
+- `environments.ts` atualizado com `BLOCKCHAIN_CONTRACT_ADDRESS` (obrigatório em `PROD`/`HOMOLOG` e no uso do getter) e `BLOCKCHAIN_RPC_URL` (default: `http://127.0.0.1:8545`), mantendo padrão de leitura centralizada de `process.env`.
 - `TEST_ENV` atualizado com valores fixos para não quebrar testes que instanciam `Environments`.
 - Build: ✅ sem erros TypeScript. Testes: ✅ 102/102 passando, zero regressão.
 - A nota ⚠️ na ABI (sobre `bytes32 vcHash` vs `string vcId`) foi preservada como alerta para as stories 5.4–5.6 que consumirão o client.

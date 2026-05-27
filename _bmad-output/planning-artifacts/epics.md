@@ -17,7 +17,7 @@ Este documento fornece o detalhamento completo de épicos e stories para o yaid_
 
 ### Functional Requirements
 
-FR1: O sistema deve permitir cadastro de nova empresa com email, senha e nome da empresa (CNPJ opcional) em um único formulário atômico — criando `auth.users` e `public.companies` na mesma operação; falha em qualquer passo desfaz ambos. Não existe estado "usuário sem company".
+FR1: O sistema deve permitir cadastro de nova empresa com email, senha, nome da empresa e CNPJ obrigatório em um único formulário atômico — criando `auth.users` e `public.company` na mesma operação; falha em qualquer passo desfaz ambos. Não existe estado "usuário sem company".
 
 FR2: O sistema deve autenticar empresas via Supabase Auth; pós-login redireciona para "/" (ou `?next=<path>` se preenchido); tela `/sign-up` redireciona direto para "/" após cadastro bem-sucedido.
 
@@ -73,7 +73,7 @@ NFR1: Nenhum dado pessoal do holder pode ser armazenado em tabela relacional —
 
 NFR2: API key nunca em texto puro — apenas `SHA-256("<app_id>.<secret>")` armazenado. Consequência direta: webhook signing é assimétrico (Ed25519), não HMAC.
 
-NFR3: Três chaves privadas distintas em env vars sem reuso entre papéis: `ISSUER_PRIVATE_KEY` (Ed25519), `WEBHOOK_SIGNING_PRIVATE_KEY` (Ed25519), `BLOCKCHAIN_WALLET_PRIVATE_KEY` (secp256k1). Todas validadas no boot do servidor.
+NFR3: Três chaves privadas distintas em env vars sem reuso entre papéis: `ISSUER_PRIVATE_KEY` (Ed25519), `WEBHOOK_SIGNING_PRIVATE_KEY` (Ed25519), `BLOCKCHAIN_WALLET_PRIVATE_KEY` (secp256k1). Em `PROD`/`HOMOLOG`, elas e `BLOCKCHAIN_CONTRACT_ADDRESS` são validadas no boot. Em `DOTENV`/`DEV`, fluxos que não usam issuer/blockchain podem rodar sem essas envs; getters específicos falham quando a funcionalidade dependente for usada.
 
 NFR4: Replay protection em autenticação mobile: requisições com timestamp fora da janela de ±5min são rejeitadas; DID malformado é rejeitado; signature mismatch é rejeitado.
 
@@ -105,7 +105,7 @@ NFR14: Toda listagem cobre 3 estados: loading, erro, vazio (CTA), populado.
 - Remover pasta duplicada `app/(dashboard)/apps/novo/` e pasta `app/onboarding/` da codebase.
 - Migration de schema: remover colunas `verification_page_url` e `deep_link_url` da tabela `proof_sessions`; adicionar `challenge_nonce_hash` e `challenge_created_at`.
 - Adicionar dependência `react-hook-form` + integração via `zodResolver` em todos os formulários.
-- Implementar `middleware.ts` global com roteamento por prefixo de rota para 4 mecanismos de auth distintos (sessão Supabase, API key bearer, DID signature, session token).
+- Implementar `proxy.ts` global (Next.js 16) com roteamento por prefixo de rota para 4 mecanismos de auth distintos (sessão Supabase, API key bearer, DID signature, session token), delegando a lógica para `src/shared/middleware.ts`.
 - `process.env` somente em `src/shared/environments.ts` — lido e validado no boot; nenhuma outra camada lê env vars diretamente.
 - Integração com blockchain (Hardhat local no dev, Sepolia no MVP) — biblioteca client **TBD**: agente implementador deve questionar qual library usar, estratégia de retry e tratamento de latência on-chain antes de implementar.
 - Integração com OCR em memória — provider **TBD** (Google Vision, AWS Textract, IDWall etc.): agente implementador deve questionar antes de implementar.
@@ -121,7 +121,7 @@ Nenhum documento UX Design encontrado — sem requisitos UX adicionais a extrair
 
 ### FR Coverage Map
 
-FR1: Epic 1 — Signup atômico (auth.users + public.companies em transação única)
+FR1: Epic 1 — Signup atômico (auth.users + public.company em transação única)
 FR2: Epic 1 — Login Supabase com redirect pós-auth
 FR10: Epic 1 — Settings da company (migrar de mocks para API real)
 FR22: Epic 1 — fetchWithAuth global com redirect 401
@@ -203,7 +203,7 @@ Para que todo desenvolvimento subsequente siga o padrão arquitetural estabeleci
 **When** a reestruturação é aplicada
 **Then** o `tsconfig.json` contém path aliases `@/modules/*` → `src/modules/*` e `@/shared/*` → `src/shared/*`
 **And** os módulos `company`, `company-app` e `proof-request` estão em `src/modules/` seguindo a convenção `{action}_{feature}_{usecase|controller|presenter|viewmodel}.ts`
-**And** `src/shared/environments.ts` é o único arquivo que lê `process.env`, exporta config tipada e lança erro no boot se `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY` ou `BLOCKCHAIN_WALLET_PRIVATE_KEY` estiverem ausentes
+**And** `src/shared/environments.ts` é o único arquivo que lê `process.env`, exporta config tipada e lança erro no boot em `PROD`/`HOMOLOG` se `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY`, `BLOCKCHAIN_WALLET_PRIVATE_KEY` ou `BLOCKCHAIN_CONTRACT_ADDRESS` estiverem ausentes; em `DOTENV`/`DEV`, getters dependentes falham apenas quando usados
 **And** as pastas `app/(dashboard)/apps/novo/` e `app/onboarding/` são removidas da codebase
 **And** todos os fluxos existentes (login, listagem de apps, listagem de proof_requests, tela coringa básica) continuam funcionando sem regressão após a migração
 
@@ -212,12 +212,12 @@ Para que todo desenvolvimento subsequente siga o padrão arquitetural estabeleci
 ### Story 1.2: Middleware de Autenticação
 
 Como desenvolvedor,
-Quero um `middleware.ts` centralizado que roteie cada prefixo de rota para o mecanismo de autenticação correto,
+Quero um `proxy.ts` centralizado que roteie cada prefixo de rota para o mecanismo de autenticação correto,
 Para que cada camada da API seja protegida de forma consistente sem lógica duplicada nos route handlers.
 
 **Acceptance Criteria:**
 
-**Given** o arquivo `middleware.ts` na raiz do projeto (`src/middleware.ts`)
+**Given** o arquivo `proxy.ts` na raiz do projeto, delegando para `src/shared/middleware.ts`
 **When** uma requisição entra no servidor
 **Then** o middleware roteia por prefixo de rota:
   - `/api/company-apps`, `/api/companies`, `/api/proof-requests` (GET), `/api/auth/sign-out` → `withSessionAuth` (cookie Supabase)
@@ -297,11 +297,11 @@ Para que minha conta e company sejam criadas atomicamente — sem estados interm
 
 **Acceptance Criteria:**
 
-**Given** a página `/sign-up` com os campos: email, senha, confirmação de senha, nome da empresa (obrigatório) e CNPJ (opcional, com máscara)
+**Given** a página `/sign-up` com os campos: email, senha, confirmação de senha, nome da empresa (obrigatório) e CNPJ obrigatório com máscara
 **When** o formulário é submetido com dados válidos
-**Then** o endpoint `POST /api/auth/sign-up` cria `auth.users` e `public.companies` na mesma operação atômica
+**Then** o endpoint `POST /api/auth/sign-up` cria `auth.users` e `public.company` na mesma operação atômica
 **And** se a criação de `auth.users` falhar, nenhuma `company` é criada
-**And** se a criação de `public.companies` falhar, o `auth.users` recém-criado é desfeito
+**And** se a criação de `public.company` falhar, o `auth.users` recém-criado é desfeito
 **And** após sucesso, o usuário é redirecionado para `/` já autenticado
 **And** a sessão recém-criada sempre tem uma `company` associada — estado "usuário sem company" não existe
 
@@ -1004,6 +1004,7 @@ Para que meu sistema possa verificar a autenticidade das notificações de webho
 **Then** `verify(signature, rawBody, publicKey)` retorna `true` para webhooks legítimos
 **And** retorna `false` para qualquer payload adulterado ou assinatura forjada
 
-**Given** `WEBHOOK_SIGNING_PRIVATE_KEY` ausente no boot
-**When** `environments.ts` valida as env vars
+**Given** `WEBHOOK_SIGNING_PRIVATE_KEY` ausente
+**When** `STAGE` é `PROD` ou `HOMOLOG`
 **Then** o servidor falha ao iniciar com erro explícito — nunca sobe com chave ausente
+**And** em `DOTENV`/`DEV`, o getter de webhook falha explicitamente quando o endpoint dependente for usado sem a env configurada

@@ -9,7 +9,7 @@ const SignUpSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(1).max(50),
-  cnpj: z.string().length(14).regex(/^\d+$/).optional().nullable(),
+  cnpj: z.string().length(14).regex(/^\d+$/),
 });
 
 export async function POST(req: NextRequest) {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         authUserId: userId,
         email: parsed.email,
         name: parsed.name,
-        documentNumber: parsed.cnpj ?? null,
+        documentNumber: parsed.cnpj,
       });
     } catch (companyError) {
       await admin.auth.admin.deleteUser(userId).catch((e) => {

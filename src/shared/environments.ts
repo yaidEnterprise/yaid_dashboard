@@ -14,24 +14,47 @@ export enum Stage {
   TEST = "TEST",
 }
 
-const envSchema = z.object({
-  STAGE: z.enum(Stage).default(Stage.DOTENV),
+const productionRequiredEnvNames = [
+  "ISSUER_PRIVATE_KEY",
+  "WEBHOOK_SIGNING_PRIVATE_KEY",
+  "BLOCKCHAIN_WALLET_PRIVATE_KEY",
+  "BLOCKCHAIN_CONTRACT_ADDRESS",
+] as const;
 
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
-  SUPABASE_SECRET_KEY: z.string().min(1),
-  YAID_VERIFICATION_BASE_URL: z
-    .string()
-    .url()
-    .default("http://localhost:3000/v"),
+const envSchema = z
+  .object({
+    STAGE: z.enum(Stage).default(Stage.DOTENV),
 
-  ISSUER_PRIVATE_KEY: z.string().min(1),
-  WEBHOOK_SIGNING_PRIVATE_KEY: z.string().min(1),
-  BLOCKCHAIN_WALLET_PRIVATE_KEY: z.string().min(1),
-  BLOCKCHAIN_CONTRACT_ADDRESS: z.string().min(1),
-  BLOCKCHAIN_RPC_URL: z.string().url().default("http://127.0.0.1:8545"),
-});
+    NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+    SUPABASE_SECRET_KEY: z.string().min(1),
+    YAID_VERIFICATION_BASE_URL: z
+      .string()
+      .url()
+      .default("http://localhost:3000/v"),
+
+    ISSUER_PRIVATE_KEY: z.string().min(1).optional(),
+    WEBHOOK_SIGNING_PRIVATE_KEY: z.string().min(1).optional(),
+    BLOCKCHAIN_WALLET_PRIVATE_KEY: z.string().min(1).optional(),
+    BLOCKCHAIN_CONTRACT_ADDRESS: z.string().min(1).optional(),
+    BLOCKCHAIN_RPC_URL: z.string().url().default("http://127.0.0.1:8545"),
+  })
+  .superRefine((values, ctx) => {
+    if (values.STAGE !== Stage.PROD && values.STAGE !== Stage.HOMOLOG) {
+      return;
+    }
+
+    for (const envName of productionRequiredEnvNames) {
+      if (!values[envName]) {
+        ctx.addIssue({
+          code: "custom",
+          path: [envName],
+          message: `${envName} is required for ${values.STAGE}`,
+        });
+      }
+    }
+  });
 
 export type EnvValues = z.infer<typeof envSchema>;
 
@@ -72,6 +95,14 @@ function readProcessEnv() {
     BLOCKCHAIN_CONTRACT_ADDRESS: process.env.BLOCKCHAIN_CONTRACT_ADDRESS,
     BLOCKCHAIN_RPC_URL: process.env.BLOCKCHAIN_RPC_URL,
   };
+}
+
+function requireConfiguredValue(value: string | undefined, name: string) {
+  if (!value) {
+    throw new Error(`${name} is not configured for this environment`);
+  }
+
+  return value;
 }
 
 export class Environments {
@@ -124,19 +155,31 @@ export class Environments {
   }
 
   get ISSUER_PRIVATE_KEY() {
-    return this.values.ISSUER_PRIVATE_KEY;
+    return requireConfiguredValue(
+      this.values.ISSUER_PRIVATE_KEY,
+      "ISSUER_PRIVATE_KEY"
+    );
   }
 
   get WEBHOOK_SIGNING_PRIVATE_KEY() {
-    return this.values.WEBHOOK_SIGNING_PRIVATE_KEY;
+    return requireConfiguredValue(
+      this.values.WEBHOOK_SIGNING_PRIVATE_KEY,
+      "WEBHOOK_SIGNING_PRIVATE_KEY"
+    );
   }
 
   get BLOCKCHAIN_WALLET_PRIVATE_KEY() {
-    return this.values.BLOCKCHAIN_WALLET_PRIVATE_KEY;
+    return requireConfiguredValue(
+      this.values.BLOCKCHAIN_WALLET_PRIVATE_KEY,
+      "BLOCKCHAIN_WALLET_PRIVATE_KEY"
+    );
   }
 
   get BLOCKCHAIN_CONTRACT_ADDRESS() {
-    return this.values.BLOCKCHAIN_CONTRACT_ADDRESS;
+    return requireConfiguredValue(
+      this.values.BLOCKCHAIN_CONTRACT_ADDRESS,
+      "BLOCKCHAIN_CONTRACT_ADDRESS"
+    );
   }
 
   get BLOCKCHAIN_RPC_URL() {
