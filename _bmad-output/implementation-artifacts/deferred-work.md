@@ -1,3 +1,15 @@
+## Deferred from: code review de 5-1-middleware-de-auth-por-did-withdidauth (2026-05-27)
+
+- **`@noble/ed25519` v3 requer `crypto.subtle`** — Disponível no Edge runtime do Next.js (onde o middleware roda). Se a função for movida para runtime Node.js, o catch trata a falha como "Invalid signature" 401, mascarando o erro real. Adicionar polyfill ou configuração explícita de `ed.etc.sha512Async` ao migrar. [`src/shared/middlewares/withDIDAuth.ts`]
+
+- **Cookies de sessão Supabase não propagados no return path de DID auth** — `withDIDAuth` retorna `NextResponse.next()` diretamente, sem propagar `sessionResponse`. Aceitável no MVP (rotas DID são chamadas por app mobile sem sessão Supabase). Se uma rota DID precisar acessar dados via Supabase server-side, o cookie de sessão não estará atualizado. [`src/shared/middleware.ts`]
+
+- **Header `x-holder-did` sem consumer downstream** — Middleware injeta o DID autenticado mas nenhum route handler lê `x-holder-did` ainda. Histórias 5.3–5.6 devem ler este header para identificar o holder e aplicar autorização de nível de negócio. [`src/shared/middlewares/withDIDAuth.ts`]
+
+- **Method case no payload canônico não documentado** — `request.method` é sempre uppercase no Next.js (GET, POST, etc.). O app mobile deve assinar o payload com método uppercase. Se assinar com lowercase, a verificação falha silenciosamente com 401 "Invalid signature". Documentar o contrato de assinatura com o time mobile antes das histórias 5.3–5.6.
+
+- **Sem testes unitários dedicados para `withDIDAuth`** — A story excluiu testes explicitamente; critério foi build + suite existente. Considerar adicionar testes de contrato para os 5 casos de erro (missing headers, expired, invalid DID, invalid sig, valid) em sprints futuros para guardar regressões no middleware.
+
 ## Deferred from: code review de 1-6-login-e-protecao-de-rotas (2026-05-27)
 
 - **Open redirect via slashes codificados (`/%2F`)** — Guard `startsWith("/") && !startsWith("//")` é padrão pré-existente na codebase (fetchWithAuth, sign-up). Para segurança maior, considerar `new URL(next, origin).origin === origin`. Impacto baixo no contexto B2B do MVP [app/sign-in/page.tsx].

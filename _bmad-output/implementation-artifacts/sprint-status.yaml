@@ -79,7 +79,7 @@ development_status:
 
   # Epic 5: Emissão, Verificação e Gestão de Credenciais
   epic-5: in-progress
-  5-1-middleware-de-auth-por-did-withdidauth: backlog
+  5-1-middleware-de-auth-por-did-withdidauth: done
   5-2-wrapper-blockchainclient: done
   5-3-challenge-e-abertura-de-sessao: backlog
   5-4-emissao-de-verifiable-credential: backlog
