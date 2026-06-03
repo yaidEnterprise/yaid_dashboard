@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const CreateProofRequestSchema = z.object({
-  proofType: z.literal("personhood").default("personhood"),
-  externalRef: z.string().max(255).optional().nullable(),
+  proofType: z.enum(["personhood", "age_over_18"]),
+  externalReference: z.string().max(255).optional().nullable(),
 });
 
 export type CreateProofRequestDTO = z.infer<typeof CreateProofRequestSchema>;
@@ -15,7 +15,7 @@ export type ProofRequestOutputDTO = {
   proofType: string;
   status: "pending_user" | "processing" | "approved" | "rejected" | "expired";
   result: boolean | null;
-  externalRef: string | null;
+  externalReference: string | null;
   createdAt: string;
   validatedAt: string | null;
 };
@@ -23,7 +23,7 @@ export type ProofRequestOutputDTO = {
 export type CreatedProofRequestOutputDTO = ProofRequestOutputDTO & {
   session: {
     id: string;
-    verificationPageUrl: string;
+    verificationUrl: string;
     deepLinkUrl: string;
     expiresAt: string;
   };

@@ -95,9 +95,9 @@ test("Story 1.3 create_proof_request_usecase does not pass URL fields to ProofSe
   assert.equal(constructorBody.includes("deepLinkUrl"), false, "ProofSession constructor must not receive deepLinkUrl");
 });
 
-test("Story 1.3 create_proof_request_usecase still computes verificationPageUrl and deepLinkUrl for B2B response", () => {
+test("Story 1.3 create_proof_request_usecase still computes verificationUrl and deepLinkUrl for B2B response", () => {
   const src = readText("src/modules/proof-request/app/create_proof_request_usecase.ts");
-  assert.match(src, /verificationPageUrl/, "verificationPageUrl local variable must still exist for B2B response");
+  assert.match(src, /verificationUrl/, "verificationUrl local variable must still exist for B2B response");
   assert.match(src, /deepLinkUrl/, "deepLinkUrl local variable must still exist for B2B response");
 });
 

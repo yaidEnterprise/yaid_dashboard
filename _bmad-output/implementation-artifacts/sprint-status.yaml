@@ -63,8 +63,8 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Proof Requests e Dashboard de Validações
-  epic-3: backlog
-  3-1-endpoint-b2b-criacao-de-proof-request: backlog
+  epic-3: in-progress
+  3-1-endpoint-b2b-criacao-de-proof-request: done
   3-2-listagem-de-proof-requests-no-dashboard: backlog
   3-3-detalhe-de-proof-request: backlog
   3-4-helper-de-criacao-de-proof-request-dashboard: backlog

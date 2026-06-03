@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { env } from "@/shared/environments";
-import { UnauthorizedError } from "@/shared/errors/AppError";
+import { UnauthorizedError, UnprocessableEntityError } from "@/shared/errors/AppError";
 import { CompanyAppRepository } from "@/shared/domain/interfaces/repositories/CompanyAppRepository";
 import { ApiKeyHasher } from "@/shared/domain/interfaces/ApiKeyHasher";
 import { CompanyAppStatus } from "@/shared/domain/enums/CompanyAppStatus";
@@ -9,7 +9,6 @@ import { ProofSession } from "@/shared/domain/entities/ProofSession";
 import { ProofRequestStatus } from "@/shared/domain/enums/ProofRequestStatus";
 import { ProofSessionStatus } from "@/shared/domain/enums/ProofSessionStatus";
 import { ProofRequestRepository } from "@/shared/domain/interfaces/repositories/ProofRequestRepository";
-import { ProofSessionRepository } from "@/shared/domain/interfaces/repositories/ProofSessionRepository";
 import { CreatedProofRequestOutputDTO, CreateProofRequestDTO } from "./create_proof_request_viewmodel";
 
 function generateSessionToken() {
@@ -26,7 +25,6 @@ export class CreateProofRequestUseCase {
   constructor(
     private readonly appRepo: CompanyAppRepository,
     private readonly requestRepo: ProofRequestRepository,
-    private readonly sessionRepo: ProofSessionRepository,
     private readonly hasher: ApiKeyHasher
   ) {}
 
@@ -35,14 +33,19 @@ export class CreateProofRequestUseCase {
     body: CreateProofRequestDTO;
   }): Promise<CreatedProofRequestOutputDTO> {
     const { appId, secret } = parseApiKey(input.apiKey);
-    const app = await this.appRepo.findById(appId);
 
-    if (!app || app.status !== CompanyAppStatus.ENABLED) {
-      throw new UnauthorizedError("Invalid API key");
-    }
+    // Look up by app_id (TEXT column), not by UUID id
+    const app = await this.appRepo.findByAppId(appId);
+    if (!app) throw new UnauthorizedError("Invalid API key");
 
+    // Verify secret BEFORE checking status to prevent app enumeration
     const validSecret = await this.hasher.verify(secret, app.apiKeyHash);
     if (!validSecret) throw new UnauthorizedError("Invalid API key");
+
+    // Check status only after successful authentication
+    if (app.status !== CompanyAppStatus.ENABLED) {
+      throw new UnprocessableEntityError("App is disabled");
+    }
 
     const request = new ProofRequest({
       id: randomUUID(),
@@ -50,7 +53,7 @@ export class CreateProofRequestUseCase {
       proofType: input.body.proofType,
       status: ProofRequestStatus.PENDING_USER,
       result: null,
-      externalRef: input.body.externalRef?.trim() || null,
+      externalRef: input.body.externalReference?.trim() || null,
       createdAt: new Date(),
       validatedAt: null,
     });
@@ -58,7 +61,7 @@ export class CreateProofRequestUseCase {
     const token = generateSessionToken();
     const tokenHash = await this.hasher.hash(token);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
-    const verificationPageUrl = `${env.YAID_VERIFICATION_BASE_URL}/${token}`;
+    const verificationUrl = `${env.YAID_VERIFICATION_BASE_URL}/${token}`;
     const deepLinkUrl = `yaid://verify?session=${token}`;
 
     const session = new ProofSession({
@@ -74,8 +77,8 @@ export class CreateProofRequestUseCase {
       approvedAt: null,
     });
 
-    await this.requestRepo.create(request);
-    await this.sessionRepo.create(session);
+    // Atomic creation: proof_request + proof_session together
+    await this.requestRepo.createAtomic(request, session);
 
     return {
       id: request.id,
@@ -85,12 +88,12 @@ export class CreateProofRequestUseCase {
       proofType: request.proofType,
       status: request.status,
       result: request.result,
-      externalRef: request.externalRef,
+      externalReference: request.externalRef,
       createdAt: request.createdAt.toISOString(),
       validatedAt: null,
       session: {
         id: session.id,
-        verificationPageUrl,
+        verificationUrl,
         deepLinkUrl,
         expiresAt: expiresAt.toISOString(),
       },
