@@ -8,7 +8,6 @@ export async function makeCreateProofRequestController() {
     new CreateProofRequestUseCase(
       await envs.getCompanyAppRepository(),
       await envs.getProofRequestRepository(),
-      await envs.getProofSessionRepository(),
       await envs.getApiKeyHasher()
     )
   );

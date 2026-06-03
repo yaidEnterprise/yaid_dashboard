@@ -31,6 +31,17 @@ export class SupabaseCompanyAppRepository implements CompanyAppRepository {
     return CompanyAppMapper.toDomain(data);
   }
 
+  async findByAppId(appId: string): Promise<CompanyApp | null> {
+    const { data, error } = await this.client
+      .from(TABLE)
+      .select("*")
+      .eq("app_id", appId)
+      .maybeSingle<CompanyAppPersistence>();
+    if (error) throw error;
+    if (!data) return null;
+    return CompanyAppMapper.toDomain(data);
+  }
+
   async listByCompanyId(companyId: string): Promise<CompanyApp[]> {
     const { data, error } = await this.client
       .from(TABLE)

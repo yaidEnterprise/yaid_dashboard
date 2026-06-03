@@ -31,3 +31,9 @@ export class ConflictError extends AppError {
     super(message, 409, code);
   }
 }
+
+export class UnprocessableEntityError extends AppError {
+  constructor(message: string, code = "UNPROCESSABLE_ENTITY") {
+    super(message, 422, code);
+  }
+}

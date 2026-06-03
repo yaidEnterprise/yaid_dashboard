@@ -5,12 +5,12 @@ Status: done
 ## Story
 
 Como nova empresa parceira,
-Quero me cadastrar com um único formulário contendo email, senha e nome da empresa,
+Quero me cadastrar com um único formulário contendo email, senha, nome da empresa e CNPJ,
 Para que minha conta e company sejam criadas atomicamente — sem estados intermediários nem telas de onboarding adicionais.
 
 ## Acceptance Criteria
 
-1. **Given** a página `/sign-up` com os campos: email, senha, confirmação de senha, nome da empresa (obrigatório) e CNPJ (opcional, com máscara)
+1. **Given** a página `/sign-up` com os campos: email, senha, confirmação de senha, nome da empresa (obrigatório) e CNPJ obrigatório com máscara
    **When** o formulário é submetido com dados válidos
    **Then** `POST /api/auth/sign-up` cria `auth.users` e `public.company` na mesma operação atômica
    **And** se a criação de `auth.users` falhar, nenhuma company é criada
@@ -31,9 +31,9 @@ Para que minha conta e company sejam criadas atomicamente — sem estados interm
 ## Tasks / Subtasks
 
 - [x] Task 1: Criar `app/api/auth/sign-up/route.ts` — endpoint de signup atômico (AC: #1, #2)
-  - [x] Definir schema Zod `SignUpSchema` com: `email` (email), `password` (string min 8), `name` (string min 1 max 50), `cnpj` (string de 11–14 dígitos numéricos, opcional/nullable)
+  - [x] Definir schema Zod `SignUpSchema` com: `email` (email), `password` (string min 8), `name` (string min 1 max 50), `cnpj` (string de 14 dígitos numéricos, obrigatório)
   - [x] Criar auth user via `getSupabaseAdminClient().auth.admin.createUser({ email, password, email_confirm: true })`
-  - [x] Criar company via `new CreateCompanyUseCase(repo).execute({ authUserId: userId, email, name, documentNumber: cnpj ?? null })`
+  - [x] Criar company via `new CreateCompanyUseCase(repo).execute({ authUserId: userId, email, name, documentNumber: cnpj })`
   - [x] Se criação da company falhar: chamar `admin.auth.admin.deleteUser(userId)` como rollback e relançar o erro
   - [x] Retornar `{ ok: true }` com status 201 em caso de sucesso
   - [x] Mapear erro de email duplicado do Supabase (`AuthApiError` com mensagem contendo "already registered") → `{ error: "E-mail já cadastrado." }` status 409
@@ -46,7 +46,7 @@ Para que minha conta e company sejam criadas atomicamente — sem estados interm
   - [x] Marcar como `"use client"`
   - [x] Definir schema Zod com refinamento de `confirmPassword === password`
   - [x] Configurar `useForm` com `zodResolver(schema)` e `mode: 'onBlur'`
-  - [x] Renderizar campos: email, senha, confirmação de senha, nome da empresa, CNPJ (opcional, com máscara)
+  - [x] Renderizar campos: email, senha, confirmação de senha, nome da empresa, CNPJ obrigatório com máscara
   - [x] Implementar máscara de CNPJ via `onChange` formatador (ver dev notes)
   - [x] No `handleSubmit`: (1) `POST /api/auth/sign-up` com dados brutos (CNPJ sem máscara); (2) se sucesso, chamar `supabase.auth.signInWithPassword({ email, password })`; (3) `window.location.href = '/'`
   - [x] Exibir erros de API via `toast.error()` (Sonner)
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
         authUserId: userId,
         email: parsed.email,
         name: parsed.name,
-        documentNumber: parsed.cnpj ?? null,
+        documentNumber: parsed.cnpj,
       });
     } catch (companyError) {
       await admin.auth.admin.deleteUser(userId).catch(() => {});  // best-effort rollback
@@ -203,7 +203,7 @@ const {
 
 #### CNPJ com máscara
 
-O CNPJ é opcional. Usar `useState` para o valor formatado — React Hook Form registra o campo mas o valor enviado à API deve ser apenas dígitos:
+O CNPJ é obrigatório porque a base deployada exige `company.document_number NOT NULL`. Usar `useState` para o valor formatado; o valor enviado à API deve ser apenas dígitos:
 
 ```typescript
 const [cnpjDisplay, setCnpjDisplay] = useState("");
@@ -229,10 +229,14 @@ function formatCNPJ(value: string): string {
 No `handleSubmit`, extrair os dígitos brutos antes de enviar à API:
 ```typescript
 const rawCnpj = cnpjDisplay.replace(/\D/g, "") || undefined;
-// enviar rawCnpj (undefined se vazio) no body da requisição
+if (!rawCnpj || rawCnpj.length !== 14) {
+  toast.error("Informe um CNPJ com 14 dígitos.");
+  return;
+}
+// enviar rawCnpj no body da requisição
 ```
 
-**Nota:** Como o CNPJ usa estado próprio (não `register`), não há `errors.cnpj` via RHF — validação do CNPJ ocorre no servidor (formato inválido gera toast de erro genérico). Isso mantém a implementação simples.
+**Nota:** Como o CNPJ usa estado próprio (não `register`), não há `errors.cnpj` via RHF. A página bloqueia CNPJ vazio/parcial antes do POST, e o servidor valida novamente com `.length(14)`.
 
 #### Fluxo pós-submit
 
@@ -357,7 +361,7 @@ export default function SignUpLayout({ children }: { children: React.ReactNode }
 ### References
 
 - [Epics: Story 1.5 AC](_bmad-output/planning-artifacts/epics.md#story-15-signup-atômico-de-empresa)
-- [Architecture: Signup atômico — auth.users + companies](_bmad-output/planning-artifacts/architecture.md#schema-do-banco-de-dados)
+- [Architecture: Signup atômico — auth.users + company](_bmad-output/planning-artifacts/architecture.md#schema-do-banco-de-dados)
 - [Architecture: Estrutura de Diretórios — app/sign-up/](_bmad-output/planning-artifacts/architecture.md#árvore-completa-de-diretórios)
 - [Architecture: Responsabilidades por Camada](_bmad-output/planning-artifacts/architecture.md#responsabilidades-por-camada)
 - [UX: Signup Atômico sem Onboarding](_bmad-output/planning-artifacts/ux-design-specification.md#signup-atômico-sem-onboarding)
@@ -376,6 +380,7 @@ export default function SignUpLayout({ children }: { children: React.ReactNode }
 
 - [x] [Review][Patch] Rollback silencia falha de deleção — `console.error` adicionado antes de swallow [app/api/auth/sign-up/route.ts:53]
 - [x] [Review][Patch] CNPJ schema aceita 11–13 dígitos; corrigido para `.length(14)` [app/api/auth/sign-up/route.ts:12]
+- [x] [Review][Patch] Banco deployado exige `company.document_number NOT NULL`; CNPJ deixou de ser opcional no formulário e no schema da API [app/sign-up/page.tsx, app/api/auth/sign-up/route.ts]
 - [x] [Review][Patch] `authData.user` acessado sem guard de nulidade — guard `if (!authData.user)` adicionado [app/api/auth/sign-up/route.ts:38]
 - [x] [Review][Patch] `POST /api/auth/sign-up` não classificado no middleware — adicionado a `isPublicApiRoute` [src/shared/middleware.ts]
 - [x] [Review][Defer] Sem rate limiting no endpoint de signup — pré-existente, escopo MVP [app/api/auth/sign-up/route.ts] — deferred, pre-existing
@@ -396,9 +401,9 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-- `app/api/auth/sign-up/route.ts` criado: schema Zod valida email/password/name/cnpj; cria auth.users via admin client com `email_confirm: true`; cria company via `CreateCompanyUseCase`; rollback best-effort com `admin.auth.admin.deleteUser(userId)` se criação da company falhar; mapeia "already registered" do Supabase para 409 com mensagem em PT-BR
+- `app/api/auth/sign-up/route.ts` criado: schema Zod valida email/password/name/cnpj obrigatório; cria auth.users via admin client com `email_confirm: true`; cria company via `CreateCompanyUseCase`; rollback best-effort com `admin.auth.admin.deleteUser(userId)` se criação da company falhar; mapeia "already registered" do Supabase para 409 com mensagem em PT-BR
 - `app/sign-up/layout.tsx` criado: mesmo padrão de `sign-in/layout.tsx` — apenas `<Toaster richColors position="bottom-right" />`
-- `app/sign-up/page.tsx` criado: formulário com React Hook Form (`mode: 'onBlur'`) + zodResolver; campos email, senha, confirmPassword, companyName, CNPJ (máscara via `useState` + `formatCNPJ()`); fluxo pós-submit: POST API → signInWithPassword → redirect `/`; erros inline via `errors.*`; erros de API via `toast.error()`; botão disabled durante `isSubmitting`
+- `app/sign-up/page.tsx` criado: formulário com React Hook Form (`mode: 'onBlur'`) + zodResolver; campos email, senha, confirmPassword, companyName, CNPJ obrigatório (máscara via `useState` + `formatCNPJ()`); fluxo pós-submit: POST API → signInWithPassword → redirect `/`; erros inline via `errors.*`; erros de API via `toast.error()`; botão disabled durante `isSubmitting`
 - `src/shared/middleware.ts` atualizado: redirect de usuário autenticado agora cobre `/sign-in` e `/sign-up`
 - `app/sign-in/page.tsx` atualizado: link "Cadastre sua empresa" corrigido de `/onboarding/company` para `/sign-up`
 - 66/66 testes passando — zero regressões

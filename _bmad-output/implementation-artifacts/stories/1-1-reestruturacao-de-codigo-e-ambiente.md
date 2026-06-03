@@ -16,7 +16,7 @@ Para que todo desenvolvimento subsequente siga o padrão arquitetural estabeleci
 
 2. **And** os módulos `company`, `company-app` e `proof-request` estão em `src/modules/` seguindo a convenção `{action}_{feature}_{usecase|controller|presenter|viewmodel}.ts`
 
-3. **And** `src/shared/environments.ts` é o único arquivo que lê `process.env`, exporta config tipada e lança erro no boot se `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY` ou `BLOCKCHAIN_WALLET_PRIVATE_KEY` estiverem ausentes
+3. **And** `src/shared/environments.ts` é o único arquivo que lê `process.env`, exporta config tipada e lança erro no boot em `PROD`/`HOMOLOG` se `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY`, `BLOCKCHAIN_WALLET_PRIVATE_KEY` ou `BLOCKCHAIN_CONTRACT_ADDRESS` estiverem ausentes; em `DOTENV`/`DEV`, getters dependentes falham apenas quando usados
 
 4. **And** as pastas `app/(dashboard)/apps/novo/` e `app/onboarding/` são removidas da codebase
 
@@ -119,7 +119,7 @@ Para que todo desenvolvimento subsequente siga o padrão arquitetural estabeleci
 
 O arquivo atual `shared/config/env.ts` usa a classe `Environments` com método `getEnvs()` estático. Manter esse padrão ao migrar para `src/shared/environments.ts`. As mudanças são:
 
-1. **Remover as três envs com TBD**: `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY`, `BLOCKCHAIN_WALLET_PRIVATE_KEY` devem ser adicionadas ao schema Zod como `z.string().min(1)` — lançam erro no boot se ausentes.
+1. **Remover as três envs com TBD**: `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY`, `BLOCKCHAIN_WALLET_PRIVATE_KEY` devem existir em `Environments`. Em `PROD`/`HOMOLOG`, elas são obrigatórias no boot; em `DOTENV`/`DEV`, fluxos que não usam issuer/blockchain podem rodar sem elas, e o getter específico lança erro quando usado.
 
 2. **Atualizar importações internas**: O arquivo atual importa repositórios de `@/modules/...` — após migração deve importar de `@/modules/...` (mesmos paths, mas agora resolvendo para `src/modules/`).
 
@@ -311,7 +311,7 @@ grep -r "process\.env" --include="*.ts" --include="*.tsx" . \
 
 - Path alias `@/modules/*` e `@/shared/*` **devem vir antes** de `@/*` no `tsconfig.json` para ter precedência correta no TypeScript resolver
 - A pasta `shared/` na raiz e a pasta `modules/` na raiz podem coexistir temporariamente com `src/shared/` e `src/modules/` durante a migração, mas DEVEM ser deletadas ao final desta story
-- O arquivo `proxy.ts` na raiz do projeto: verificar se é o mesmo que `lib/supabase/proxy.ts`. Se for, mover para `src/shared/clients/supabase/proxy.ts`
+- O arquivo `proxy.ts` na raiz do projeto é o entrypoint de auth do Next.js 16. Não mover para `src/shared/clients/supabase/proxy.ts`; esse segundo arquivo é apenas o client/helper Supabase usado pela lógica compartilhada.
 - A codebase atual não tem `src/` — este diretório deve ser criado do zero
 - `utils/utils.ts` destino: o `utils/` na raiz provavelmente não existe ainda — criar o diretório antes de mover `lib/utils.ts`
 
@@ -340,7 +340,7 @@ claude-sonnet-4-6
 ### Completion Notes List
 
 - Todas as 9 tarefas concluídas com `npx tsc --noEmit` passando sem erros.
-- `src/shared/environments.ts` é agora o único ponto de leitura de `process.env` (exceção: `src/shared/clients/supabase/client.ts` e `proxy.ts` para `NEXT_PUBLIC_*` vars de browser/edge, como aceito pela arquitetura).
+- `src/shared/environments.ts` é agora o único ponto de leitura de `process.env`; `publicEnv` expõe `NEXT_PUBLIC_*` para browser/edge.
 - Módulo `GetProofSessionByTokenUseCase` migrado para `src/modules/proof-session/app/` como `GetProofSessionUseCase` (novo módulo separado conforme arquitetura).
 - `CompanyAppEnvironment` mantido pois AC #5 exige que todos os fluxos existentes continuem funcionando.
 

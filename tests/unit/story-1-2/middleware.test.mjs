@@ -25,8 +25,15 @@ test("Story 1.2 creates middleware helper files", () => {
   assertFileExists("src/shared/middlewares/withDIDAuth.ts");
 });
 
-test("Story 1.2 deletes the dead proxy.ts from the project root", () => {
-  assertFileMissing("proxy.ts");
+test("Story 1.2 creates the Next.js proxy entrypoint at the project root", () => {
+  assertFileExists("proxy.ts");
+  assertFileMissing("middleware.ts");
+
+  const src = readText("proxy.ts");
+  assert.match(src, /export function proxy/, "proxy function must be exported");
+  assert.match(src, /export const config\s*=/, "config matcher must be exported directly");
+  assert.match(src, /_next\/static/, "matcher must exclude _next/static");
+  assert.match(src, /sharedMiddleware/, "proxy entrypoint must delegate to shared middleware");
 });
 
 test("Story 1.2 middleware exports the middleware function and config matcher", () => {
