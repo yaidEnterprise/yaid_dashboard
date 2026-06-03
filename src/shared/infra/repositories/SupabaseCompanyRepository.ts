@@ -45,4 +45,17 @@ export class SupabaseCompanyRepository implements CompanyRepository {
 
     return CompanyMapper.toDomain(data);
   }
+
+  async update(company: Company): Promise<void> {
+    const { error } = await this.client
+      .from(TABLE)
+      .update({
+        name: company.name,
+        document_number: company.documentNumber,
+      })
+      .eq("id", company.id);
+
+    if (error) throw error;
+  }
 }
+

@@ -14,10 +14,10 @@ export class GetMyCompanyUseCase {
     return {
       id: company.id,
       name: company.name,
-      documentNumber: company.documentNumber,
-      email: company.email,
+      cnpj: company.documentNumber,
       status: company.status,
       createdAt: company.createdAt.toISOString(),
     };
   }
 }
+

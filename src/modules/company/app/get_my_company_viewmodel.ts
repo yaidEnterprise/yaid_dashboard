@@ -1,8 +1,8 @@
 export type CompanyOutputDTO = {
   id: string;
   name: string;
-  documentNumber: string | null;
-  email: string;
+  cnpj: string | null;
   status: "active" | "inactive";
   createdAt: string;
 };
+

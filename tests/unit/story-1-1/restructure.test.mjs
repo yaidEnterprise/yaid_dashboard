@@ -132,9 +132,9 @@ test("Story 1.1 centralizes process.env access in src/shared/environments.ts", (
     ...walkFiles("utils"),
   ].filter((file) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(file));
 
-  const processEnvReaders = scannedFiles.filter((file) =>
-    readText(file).includes("process.env"),
-  );
+  const processEnvReaders = scannedFiles
+    .filter((file) => readText(file).includes("process.env"))
+    .map((file) => file.replace(/\\/g, "/"));
 
   assert.deepEqual(processEnvReaders, ["src/shared/environments.ts"]);
 });
@@ -185,12 +185,14 @@ test("Story 1.1 preserves user and API flow entrypoints", () => {
 });
 
 test("Story 1.1 migrated imports compile without TypeScript errors", { timeout: 120_000 }, () => {
-  execFileSync("npx", ["tsc", "--noEmit"], {
+  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+  execFileSync(npx, ["tsc", "--noEmit"], {
     cwd: projectRoot,
     env: {
       ...process.env,
       STAGE: "TEST",
     },
     stdio: "pipe",
+    shell: process.platform === "win32",
   });
 });
