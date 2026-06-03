@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-05-20
+# last_updated: 2026-05-27
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-05-20
+last_updated: 2026-05-27
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -51,7 +51,7 @@ development_status:
   1-3-migration-sql-e-dependencias-de-formulario: done
   1-4-fetchwithauth-e-infraestrutura-de-auth-client: done
   1-5-signup-atomico-de-empresa: done
-  1-6-login-e-protecao-de-rotas: backlog
+  1-6-login-e-protecao-de-rotas: done
   1-7-configuracoes-da-empresa: backlog
   epic-1-retrospective: optional
 
@@ -78,9 +78,9 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Emissão, Verificação e Gestão de Credenciais
-  epic-5: backlog
-  5-1-middleware-de-auth-por-did-withdidauth: backlog
-  5-2-wrapper-blockchainclient: backlog
+  epic-5: in-progress
+  5-1-middleware-de-auth-por-did-withdidauth: done
+  5-2-wrapper-blockchainclient: done
   5-3-challenge-e-abertura-de-sessao: backlog
   5-4-emissao-de-verifiable-credential: backlog
   5-5-verificacao-de-verifiable-presentation: backlog

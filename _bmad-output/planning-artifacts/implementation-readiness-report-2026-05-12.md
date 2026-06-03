@@ -62,7 +62,7 @@ Os épicos definem 25 FRs consolidados (FR1–FR25) mapeados ao escopo MVP. A ta
 
 | FR (Épicos) | Descrição Resumida | Epic | Story(ies) | Status |
 |-------------|-------------------|------|------------|--------|
-| FR1 | Signup atômico auth.users + companies | Epic 1 | 1.5 | ✅ Coberto |
+| FR1 | Signup atômico auth.users + company | Epic 1 | 1.5 | ✅ Coberto |
 | FR2 | Login Supabase + redirect pós-auth | Epic 1 | 1.6 | ✅ Coberto |
 | FR3 | Overview — aviso de privacidade + card adaptativo | Epic 3 | 3.1 | ✅ Coberto |
 | FR4 | Listagem de company_apps (sem paginação) | Epic 2 | 2.1 | ✅ Coberto |
@@ -238,7 +238,7 @@ A seção "UX Design Requirements" do `epics.md` ainda contém o texto: *"Nenhum
 - ✅ Webhook assíncrono (não bloqueia resposta) — documentado
 - ✅ Falha de webhook logada sem reabertura de status — correto
 - ✅ Story 6.2 é independente e claramente scoped
-- ✅ `WEBHOOK_SIGNING_PRIVATE_KEY` ausente → falha no boot — documentado na Story 6.2
+- ✅ `WEBHOOK_SIGNING_PRIVATE_KEY` ausente → falha no boot em `PROD`/`HOMOLOG` e falha no getter quando usado em `DOTENV`/`DEV` — documentado na Story 6.2
 
 **Resultado: APROVADO**
 

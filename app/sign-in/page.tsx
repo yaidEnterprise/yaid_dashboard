@@ -1,36 +1,43 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { ShieldHalf, Loader2, AlertCircle, Code2, Lock, Zap, FlaskConical } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+import { ShieldHalf, Loader2, Code2, Lock, Zap, FlaskConical } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/shared/clients/supabase/client";
 
+const signInSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+type SignInFormData = z.infer<typeof signInSchema>;
+
 export default function SignInPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<SignInFormData>({
+    resolver: zodResolver(signInSchema),
+    mode: "onSubmit",
+  });
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
+  function onValidationError() {
+    toast.error("Preencha e-mail e senha para continuar.");
+  }
 
-    if (!email.trim() || !password.trim()) {
-      setError("Informe e-mail e senha para continuar.");
-      return;
-    }
-
-    setLoading(true);
-
+  async function onSubmit(data: SignInFormData) {
     const supabase = getSupabaseBrowserClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
+      email: data.email.trim(),
+      password: data.password,
     });
 
     if (signInError) {
-      setError("E-mail ou senha inválidos.");
-      setLoading(false);
+      toast.error("E-mail ou senha inválidos.");
       return;
     }
 
@@ -84,7 +91,7 @@ export default function SignInPage() {
             Gerencie suas integrações de validação de identidade com a YaID.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit, onValidationError)} className="space-y-5">
             <div>
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-text-primary">
                 E-mail
@@ -92,8 +99,7 @@ export default function SignInPage() {
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email")}
                 placeholder="seu@email.com"
                 className="h-11 w-full rounded-lg border border-border bg-surface px-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
                 autoComplete="email"
@@ -112,27 +118,19 @@ export default function SignInPage() {
               <input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register("password")}
                 placeholder="••••••••"
                 className="h-11 w-full rounded-lg border border-border bg-surface px-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
                 autoComplete="current-password"
               />
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-error-border bg-error-bg px-4 py-3">
-                <AlertCircle className="h-4 w-4 shrink-0 text-error-text" />
-                <span className="text-sm text-error-text">{error}</span>
-              </div>
-            )}
-
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Entrando…

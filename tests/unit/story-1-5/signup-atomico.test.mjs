@@ -251,6 +251,20 @@ test("Story 1.5 sign-up page strips CNPJ mask before sending to API", () => {
   );
 });
 
+test("Story 1.5 sign-up page requires full CNPJ before API submit", () => {
+  const src = readText("app/sign-up/page.tsx");
+  assert.match(
+    src,
+    /!rawCnpj \|\| rawCnpj\.length !== 14/,
+    "missing or partial CNPJ must be rejected client-side before POST /api/auth/sign-up"
+  );
+  assert.match(
+    src,
+    /CNPJ com 14 dígitos/,
+    "partial CNPJ validation must explain that CNPJ needs 14 digits"
+  );
+});
+
 test("Story 1.5 sign-up page submits to POST /api/auth/sign-up", () => {
   const src = readText("app/sign-up/page.tsx");
   assert.match(
@@ -406,7 +420,7 @@ test("Story 1.5 API SignUpSchema rejects CNPJ shorter than 14 digits (review pat
     email: z.string().email(),
     password: z.string().min(8),
     name: z.string().min(1).max(50),
-    cnpj: z.string().length(14).regex(/^\d+$/).optional().nullable(),
+    cnpj: z.string().length(14).regex(/^\d+$/),
   });
 
   const withValid = SignUpSchema.safeParse({
@@ -431,7 +445,7 @@ test("Story 1.5 API SignUpSchema rejects CNPJ shorter than 14 digits (review pat
     name: "Acme",
     cnpj: null,
   });
-  assert.equal(withoutCnpj.success, true, "null CNPJ must be accepted (optional)");
+  assert.equal(withoutCnpj.success, false, "null CNPJ must be rejected because company.document_number is required");
 
   const withMasked = SignUpSchema.safeParse({
     email: "a@b.com",
