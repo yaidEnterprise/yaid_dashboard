@@ -17,6 +17,7 @@
 - [x] tests/unit/story-1-6/login-e-protecao-de-rotas.test.mjs - Story 1.6 contratos de login: migração RHF+Zod, toast.error para erros de auth, onValidationError para validação silenciosa (review patch), sem mensagens field-specific no schema (review patch), redirect ?next= com open-redirect guard, proteção de rotas via middleware (4 paths), withSessionAuth injeção de ?next=, testes inline de schema Zod e safe-redirect logic
 - [x] tests/unit/story-5-1/with-did-auth.test.mjs - Story 5.1 contratos do middleware withDIDAuth: existência do arquivo, export async, import @noble/ed25519, verifyAsync (não sync), 5 caminhos de erro (missing headers/expired/invalid DID/invalid sig/valid), review patches (Number() + 300_000 ms + signatureBytes.length === 64), canonical payload, x-holder-did, dependência package.json, middleware.ts await + routing, compilação TypeScript
 - [x] tests/unit/story-5-2/blockchain-client.test.mjs - Story 5.2 contratos do wrapper BlockchainClient: existência de arquivos, interface (4 métodos), ABI (4 assinaturas com bytes32), EthersBlockchainClient (JsonRpcProvider, Wallet, address validation, receipt null/status=0 check, sem process.env, ethers.id()), environments.ts (schema, TEST_ENV, getters, getBlockchainClient factory, throws em TEST), compilação TypeScript
+- [x] tests/unit/story-2-1/listagem-de-aplicacoes.test.mjs - Story 2.1 contratos de listagem: GET /api/company-apps (handler, x-company-id, usecase filtra por companyId, viewmodel camelCase), apps-store (fetchWithAuth, /api/company-apps, json.items), page (listApps, skeleton/animate-pulse, EmptyState+CTA /apps/new, ErrorState+retry, router.push, nome+app_id, StatusBadge, formatDate), arquivos existentes (backend+frontend)
 
 ## Coverage
 
@@ -154,3 +155,21 @@
   - EthersBlockchainClient: implementa interface, usa ethers v6, separa read/write contracts, valida address, checa receipt
   - environments.ts: 2 novas vars no schema, TEST_ENV, getters, factory method com lazy import e throw para TEST stage
   - TypeScript: `npx tsc --noEmit` sem erros
+
+### Story 2.1
+- Acceptance criteria: 5/5 cobertos
+  - AC#1 (GET /api/company-apps, colunas: nome+app_id, status, criado em; isolamento company_id): coberto pelos contratos do route handler (GET export, x-company-id), usecase (listByCompanyId), viewmodel (camelCase), apps-store (fetchWithAuth, json.items), e page (listApps, app.name, app.id, StatusBadge, formatDate)
+  - AC#2 (estado de loading — skeleton): coberto pela presença de `animate-pulse` no source da page
+  - AC#3 (estado vazio com CTA /apps/new "Criar primeiro app"): coberto pelo guard `apps.length === 0` e link `/apps/new`
+  - AC#4 (estado de erro com retry): coberto pela presença de "Tentar novamente", `reload`/`setFetchKey` e estado de erro
+  - AC#5 (clique navega para /apps/[appId]): coberto por `router.push(`/apps/${app.id}`)` + patch de teclado (`tabIndex={0}`, `onKeyDown`)
+- Review patch coberto: `tabIndex={0}` + `onKeyDown` Enter/Space adicionados após code review (acessibilidade de teclado)
+- Caminhos críticos: 15/15 testes passando
+  - Backend: route handler GET, leitura de x-company-id, usecase filtra por companyId, viewmodel em camelCase
+  - Frontend: import de listApps de apps-store, skeleton com animate-pulse, EmptyState com CTA, ErrorState com retry, rows com router.push, nome + app_id, StatusBadge, formatDate
+  - Arquivos: todos os arquivos backend e frontend existem
+
+## Validation
+
+- `node --test tests/unit/story-2-1/listagem-de-aplicacoes.test.mjs`: **passed** — 15/15
+- `npm test` (suite completa): **226 pass, 12 fail** — falhas pré-existentes em story-5-2 (npx ENOENT no ambiente Windows sem npm global); zero regressões introduzidas pela story 2.1
