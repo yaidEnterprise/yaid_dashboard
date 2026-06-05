@@ -56,9 +56,9 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Gestão de Aplicações e API Keys
-  epic-2: backlog
+  epic-2: in-progress
   2-1-listagem-de-aplicacoes: backlog
-  2-2-criacao-de-app-com-api-key-one-shot: backlog
+  2-2-criacao-de-app-com-api-key-one-shot: done
   2-3-detalhe-e-edicao-de-app: backlog
   epic-2-retrospective: optional
 
