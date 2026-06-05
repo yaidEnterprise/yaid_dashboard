@@ -39,7 +39,7 @@ export class CreateProofRequestUseCase {
     if (!app) throw new UnauthorizedError("Invalid API key");
 
     // Verify secret BEFORE checking status to prevent app enumeration
-    const validSecret = await this.hasher.verify(secret, app.apiKeyHash);
+    const validSecret = await this.hasher.verify(`${appId}.${secret}`, app.apiKeyHash);
     if (!validSecret) throw new UnauthorizedError("Invalid API key");
 
     // Check status only after successful authentication

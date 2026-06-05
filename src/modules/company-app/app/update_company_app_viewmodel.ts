@@ -18,6 +18,7 @@ export type UpdateCompanyAppDTO = z.infer<typeof UpdateCompanyAppSchema>;
 
 export type CompanyAppOutputDTO = {
   id: string;
+  appId: string;
   companyId: string;
   name: string;
   webhookUrl: string;
