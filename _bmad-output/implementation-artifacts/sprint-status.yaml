@@ -81,7 +81,7 @@ development_status:
   epic-5: in-progress
   5-1-middleware-de-auth-por-did-withdidauth: done
   5-2-wrapper-blockchainclient: done
-  5-3-challenge-e-abertura-de-sessao: backlog
+  5-3-challenge-e-abertura-de-sessao: done
   5-4-emissao-de-verifiable-credential: backlog
   5-5-verificacao-de-verifiable-presentation: backlog
   5-6-cancel-de-sessao-e-revogacao-de-credencial: backlog

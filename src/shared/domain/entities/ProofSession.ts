@@ -52,4 +52,12 @@ export class ProofSession {
     this.props.status = ProofSessionStatus.OPENED;
     this.props.openedAt = new Date();
   }
+
+  openWithChallenge(nonceHash: string, now: Date) {
+    if (this.props.status !== ProofSessionStatus.WAITING_USER) return;
+    this.props.status = ProofSessionStatus.OPENED;
+    this.props.openedAt = now;
+    this.props.challengeNonceHash = nonceHash;
+    this.props.challengeCreatedAt = now;
+  }
 }
