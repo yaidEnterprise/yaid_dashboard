@@ -6,7 +6,7 @@ export type CompanyAppPersistence = {
   id: string;
   company_id: string;
   name: string;
-  app_id: string;
+  app_id?: string;
   api_key_hash: string;
   webhook_url: string;
   environment: string;
