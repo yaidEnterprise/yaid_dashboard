@@ -1,9 +1,7 @@
 export type ProofSessionOutputDTO = {
-  id: string;
-  proofRequestId: string;
   status: "waiting_user" | "opened" | "approved_by_user" | "expired" | "cancelled";
-  createdAt: string;
+  proofType: string;
+  companyName: string;
   expiresAt: string;
-  openedAt: string | null;
-  approvedAt: string | null;
+  returnUrl: string | null;
 };
