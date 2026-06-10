@@ -13,6 +13,12 @@ type ProofSessionProps = {
   approvedAt: Date | null;
 };
 
+const TERMINAL_STATUSES = new Set<ProofSessionStatus>([
+  ProofSessionStatus.APPROVED_BY_USER,
+  ProofSessionStatus.EXPIRED,
+  ProofSessionStatus.CANCELLED,
+]);
+
 export class ProofSession {
   constructor(private props: ProofSessionProps) {}
 
@@ -51,5 +57,10 @@ export class ProofSession {
     if (this.props.status !== ProofSessionStatus.WAITING_USER) return;
     this.props.status = ProofSessionStatus.OPENED;
     this.props.openedAt = new Date();
+  }
+
+  markExpired(): void {
+    if (TERMINAL_STATUSES.has(this.props.status)) return;
+    this.props.status = ProofSessionStatus.EXPIRED;
   }
 }
