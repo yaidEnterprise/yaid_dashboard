@@ -154,3 +154,22 @@
   - EthersBlockchainClient: implementa interface, usa ethers v6, separa read/write contracts, valida address, checa receipt
   - environments.ts: 2 novas vars no schema, TEST_ENV, getters, factory method com lazy import e throw para TEST stage
   - TypeScript: `npx tsc --noEmit` sem erros
+
+### Story 3.3 — Detalhe de Proof Request
+- [x] tests/unit/story-3-3/proof-request-detail.test.mjs - Story 3.3 contratos do detalhe de proof request: use case 404 anti-enumeration (NotFoundError, sem ForbiddenError, guard unificado not-found/company-mismatch), DTO com externalReference/updatedAt (aditivo), store client (fetchWithAuth, /api/proof-requests/{id}, no-store, asJson error.message, confirmedClaims personhood/ageOver18, labels PT-BR), página (getProofRequest sem mocks, sem timeline FR8, loading/not-found states, mapeamento pending_user→pending, claims só quando approved + guard result!==false, CodeBlock JSON, privacy card), Task 6 (CompanyApp.appId first-class + mapper bidirecional + create appId:id)
+
+#### Coverage
+- Acceptance criteria: 5/5 cobertos
+  - AC#1 (fetch real + resumo/atributos/JSON/privacy, sem timeline): coberto pelos contratos da página e do store
+  - AC#2 (claims quando approved): coberto por `confirmedClaims` + gate `status === "approved"`
+  - AC#3 (mensagem por status não-aprovado): coberto por `NON_APPROVED_MESSAGES`
+  - AC#4 (404 nunca 403): coberto pelo contrato do use case (NotFoundError, sem ForbiddenError)
+  - AC#5 (loading/erro): coberto pelos contratos de spinner + not-found state
+- Caminhos críticos: 20/20 testes passando
+  - Task 6 (blocker do build): CompanyApp.appId promovido a campo de primeira classe, mapeado nos dois sentidos, build 100% verde
+  - Review patch: claims guardados por `result !== false`
+
+#### Validation
+- `npm run test:story:3.3`: **passed** — 20/20
+- `npm test` após story 3.3: **269/272** passando (as 3 falhas restantes são `spawnSync npx ENOENT` de ambiente — pré-existentes, não relacionadas a código)
+- `npm run build`: **passed** — Next.js "Compiled successfully" + "Finished TypeScript" (build 100% verde após correção do blocker `CompanyAppMapper`)
