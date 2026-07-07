@@ -12,6 +12,7 @@
     "test:story:1.4": "node --test \"tests/unit/story-1-4/*.test.mjs\"",
     "test:story:1.5": "node --test \"tests/unit/story-1-5/*.test.mjs\"",
     "test:story:3.1": "node --test \"tests/unit/story-3-1/*.test.mjs\"",
+    "test:story:3.3": "node --test \"tests/unit/story-3-3/*.test.mjs\"",
     "test:story:1.6": "node --test \"tests/unit/story-1-6/*.test.mjs\"",
     "test:story:5.1": "node --test \"tests/unit/story-5-1/*.test.mjs\"",
     "test:story:5.2": "node --test \"tests/unit/story-5-2/*.test.mjs\"",
