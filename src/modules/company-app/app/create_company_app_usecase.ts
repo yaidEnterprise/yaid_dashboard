@@ -27,6 +27,8 @@ export class CreateCompanyAppUseCase {
 
     const app = new CompanyApp({
       id,
+      // Public app_id currently mirrors the UUID: the API key is `${id}.${secret}`.
+      appId: id,
       companyId: input.companyId,
       name: input.name.trim(),
       apiKeyHash,

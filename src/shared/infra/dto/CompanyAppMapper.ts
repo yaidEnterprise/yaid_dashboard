@@ -18,6 +18,7 @@ export class CompanyAppMapper {
   static toDomain(raw: CompanyAppPersistence): CompanyApp {
     return new CompanyApp({
       id: raw.id,
+      appId: raw.app_id,
       companyId: raw.company_id,
       name: raw.name,
       apiKeyHash: raw.api_key_hash,
@@ -31,6 +32,7 @@ export class CompanyAppMapper {
   static toPersistence(app: CompanyApp): CompanyAppPersistence {
     return {
       id: app.id,
+      app_id: app.appId,
       company_id: app.companyId,
       name: app.name,
       api_key_hash: app.apiKeyHash,
