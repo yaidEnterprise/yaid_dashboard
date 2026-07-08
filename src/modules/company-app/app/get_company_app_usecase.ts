@@ -19,7 +19,7 @@ export class GetCompanyAppUseCase {
 
     return {
       id: app.id,
-      appId: app.appId,
+      appId: app.id,
       companyId: app.companyId,
       name: app.name,
       webhookUrl: app.webhookUrl,

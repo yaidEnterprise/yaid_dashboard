@@ -3,7 +3,6 @@ import { CompanyAppStatus } from "@/shared/domain/enums/CompanyAppStatus";
 
 type CompanyAppProps = {
   id: string;
-  appId: string;
   companyId: string;
   name: string;
   apiKeyHash: string;
@@ -22,9 +21,6 @@ export class CompanyApp {
 
   get id() {
     return this.props.id;
-  }
-  get appId() {
-    return this.props.appId;
   }
   get companyId() {
     return this.props.companyId;

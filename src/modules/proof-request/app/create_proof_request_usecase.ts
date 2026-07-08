@@ -11,13 +11,18 @@ import { ProofSessionStatus } from "@/shared/domain/enums/ProofSessionStatus";
 import { ProofRequestRepository } from "@/shared/domain/interfaces/repositories/ProofRequestRepository";
 import { CreatedProofRequestOutputDTO, CreateProofRequestDTO } from "./create_proof_request_viewmodel";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function generateSessionToken() {
   return randomBytes(32).toString("base64url");
 }
 
 function parseApiKey(apiKey: string) {
   const [appId, secret] = apiKey.split(".");
-  if (!appId || !secret) throw new UnauthorizedError("Invalid API key");
+  if (!appId || !secret || !UUID_REGEX.test(appId)) {
+    throw new UnauthorizedError("Invalid API key");
+  }
   return { appId, secret };
 }
 
@@ -34,8 +39,7 @@ export class CreateProofRequestUseCase {
   }): Promise<CreatedProofRequestOutputDTO> {
     const { appId, secret } = parseApiKey(input.apiKey);
 
-    // Look up by app_id (TEXT column), not by UUID id
-    const app = await this.appRepo.findByAppId(appId);
+    const app = await this.appRepo.findById(appId);
     if (!app) throw new UnauthorizedError("Invalid API key");
 
     // Verify secret BEFORE checking status to prevent app enumeration

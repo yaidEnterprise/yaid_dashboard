@@ -10,10 +10,6 @@ type CreateCompanyAppInput = CreateCompanyAppDTO & {
   companyId: string;
 };
 
-function generateAppId() {
-  return randomBytes(12).toString("base64url");
-}
-
 function generateSecret() {
   return randomBytes(32).toString("base64url");
 }
@@ -26,14 +22,12 @@ export class CreateCompanyAppUseCase {
 
   async execute(input: CreateCompanyAppInput): Promise<CompanyAppWithApiKeyDTO> {
     const id = randomUUID();
-    const appId = generateAppId();
     const secret = generateSecret();
-    const apiKey = `${appId}.${secret}`;
+    const apiKey = `${id}.${secret}`;
     const apiKeyHash = await this.hasher.hash(apiKey);
 
     const app = new CompanyApp({
       id,
-      appId,
       companyId: input.companyId,
       name: input.name.trim(),
       apiKeyHash,
@@ -47,7 +41,7 @@ export class CreateCompanyAppUseCase {
 
     return {
       id: app.id,
-      appId: app.appId,
+      appId: app.id,
       companyId: app.companyId,
       name: app.name,
       webhookUrl: app.webhookUrl,
