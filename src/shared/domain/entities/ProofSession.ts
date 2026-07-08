@@ -63,6 +63,8 @@ export class ProofSession {
     if (TERMINAL_STATUSES.has(this.props.status)) return;
     this.props.status = ProofSessionStatus.EXPIRED;
     
+  }
+  
   openWithChallenge(nonceHash: string, now: Date) {
     if (this.props.status !== ProofSessionStatus.WAITING_USER) return;
     this.props.status = ProofSessionStatus.OPENED;

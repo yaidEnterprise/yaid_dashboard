@@ -19,12 +19,12 @@ import assert from "node:assert/strict";
 
 /**
  * Minimal fake for CompanyAppRepository.
- * findByAppId returns the configured app or null.
+ * findById returns the configured app or null (company_apps.id is the only
+ * identifier — there is no separate app_id column).
  */
 function makeAppRepo({ app = null } = {}) {
   return {
-    findByAppId: async (appId) => (app && app.appId === appId ? app : null),
-    findById: async () => null,
+    findById: async (id) => (app && app.id === id ? app : null),
     create: async () => {},
     listByCompanyId: async () => [],
     update: async () => {},
@@ -65,14 +65,13 @@ function makeHasher({ validSecret = "secret123" } = {}) {
  */
 function makeApp({
   id = "uuid-app-1",
-  appId = "app123",
   apiKeyHash = "hash:secret123",
   status = "enabled",
   name = "Test App",
   environment = "dev",
   companyId = "uuid-company-1",
 } = {}) {
-  return { id, appId, apiKeyHash, status, name, environment, companyId };
+  return { id, apiKeyHash, status, name, environment, companyId };
 }
 
 // ── Import the modules under test ─────────────────────────────────────────────
@@ -152,13 +151,15 @@ describe("Story 3.1 — CreatedProofRequestOutputDTO", () => {
 });
 
 describe("Story 3.1 — CreateProofRequestUseCase", () => {
-  test("use case uses findByAppId (not findById) to look up app", () => {
+  // company_apps.id is the only identifier (no app_id column) — the API key's
+  // first segment is the UUID id itself.
+  test("use case uses findById (not findByAppId) to look up app", () => {
     const src = readText("src/modules/proof-request/app/create_proof_request_usecase.ts");
-    assert.match(src, /findByAppId/, "use case must call findByAppId");
+    assert.match(src, /appRepo\.findById/, "use case must call findById");
     assert.equal(
-      src.includes("appRepo.findById"),
+      src.includes("findByAppId"),
       false,
-      "use case must not call findById for app lookup"
+      "use case must not call the removed findByAppId method"
     );
   });
 
@@ -241,24 +242,25 @@ describe("Story 3.1 — AppError: UnprocessableEntityError", () => {
 });
 
 describe("Story 3.1 — CompanyAppRepository interface", () => {
-  test("interface declares findByAppId method", () => {
+  test("interface does not declare findByAppId (no app_id column exists)", () => {
     const src = readText("src/shared/domain/interfaces/repositories/CompanyAppRepository.ts");
-    assert.match(src, /findByAppId/, "CompanyAppRepository must declare findByAppId");
+    assert.equal(src.includes("findByAppId"), false, "CompanyAppRepository must not declare findByAppId");
+    assert.match(src, /findById/, "CompanyAppRepository must declare findById");
   });
 });
 
 describe("Story 3.1 — SupabaseCompanyAppRepository", () => {
-  test("implements findByAppId searching by app_id column", () => {
+  test("does not implement findByAppId / query by app_id column", () => {
     const src = readText("src/shared/infra/repositories/SupabaseCompanyAppRepository.ts");
-    assert.match(src, /findByAppId/, "SupabaseCompanyAppRepository must implement findByAppId");
-    assert.match(src, /\.eq\("app_id"/, "findByAppId must query by app_id column");
+    assert.equal(src.includes("findByAppId"), false, "SupabaseCompanyAppRepository must not implement findByAppId");
+    assert.equal(src.includes('"app_id"'), false, "must not query the non-existent app_id column");
   });
 });
 
 describe("Story 3.1 — CompanyAppPersistence type", () => {
-  test("CompanyAppPersistence includes app_id field for type-safety", () => {
+  test("CompanyAppPersistence has no app_id field (column does not exist)", () => {
     const src = readText("src/shared/infra/dto/CompanyAppMapper.ts");
-    assert.match(src, /app_id: string/, "CompanyAppPersistence must include app_id field");
+    assert.equal(src.includes("app_id"), false, "CompanyAppPersistence must not include app_id field");
   });
 });
 

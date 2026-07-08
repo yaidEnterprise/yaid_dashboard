@@ -20,7 +20,7 @@ export class GetProofSessionUseCase {
     const context = await this.sessionRepo.findByTokenHashWithContext(tokenHash);
     if (!context) throw new NotFoundError("Session not found", "PROOF_SESSION_NOT_FOUND");
 
-    const { session, proofType, companyName, returnUrl } = context;
+    const { session, proofType, companyName } = context;
 
     // If session has expired in clock time but status hasn't been updated yet, sync it
     const isClockExpired = session.expiresAt.getTime() <= Date.now();
@@ -34,7 +34,6 @@ export class GetProofSessionUseCase {
       proofType,
       companyName,
       expiresAt: session.expiresAt.toISOString(),
-      returnUrl,
     };
   }
 }
