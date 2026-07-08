@@ -11,7 +11,7 @@
  */
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -218,9 +218,11 @@ test("Story 5.1 middleware.ts routes DID auth paths: challenge, cancel, presenta
 // ─── Compilação TypeScript ────────────────────────────────────────────────────
 
 test("Story 5.1 all new files compile without TypeScript errors", { timeout: 120_000 }, () => {
-  execFileSync("npx", ["tsc", "--noEmit"], {
+  const tscBin = path.join(projectRoot, "node_modules", ".bin", "tsc");
+  execSync(`"${tscBin}" --noEmit`, {
     cwd: projectRoot,
     env: { ...process.env, STAGE: "TEST" },
     stdio: "pipe",
+    shell: true,
   });
 });
