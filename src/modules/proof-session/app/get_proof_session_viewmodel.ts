@@ -3,5 +3,4 @@ export type ProofSessionOutputDTO = {
   proofType: string;
   companyName: string;
   expiresAt: string;
-  returnUrl: string | null;
 };

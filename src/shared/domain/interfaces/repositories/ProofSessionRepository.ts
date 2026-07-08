@@ -4,7 +4,6 @@ export type ProofSessionWithContext = {
   session: ProofSession;
   proofType: string;
   companyName: string;
-  returnUrl: string | null;
 };
 
 export interface ProofSessionRepository {

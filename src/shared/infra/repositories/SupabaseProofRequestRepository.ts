@@ -15,10 +15,10 @@ import {
 } from "@/shared/infra/dto/ProofSessionMapper";
 
 const TABLE = "proof_request";
-const SESSION_TABLE = "proof_session";
+const SESSION_TABLE = "proof_sessions";
 
 type ProofRequestWithAppPersistence = ProofRequestPersistence & {
-  company_app: {
+  company_apps: {
     id: string;
     company_id: string;
     name: string;
@@ -30,10 +30,10 @@ function mapWithApp(raw: ProofRequestWithAppPersistence): ProofRequestWithApp {
   return {
     request: ProofRequestMapper.toDomain(raw),
     app: {
-      id: raw.company_app.id,
-      name: raw.company_app.name,
-      environment: raw.company_app.environment,
-      companyId: raw.company_app.company_id,
+      id: raw.company_apps.id,
+      name: raw.company_apps.name,
+      environment: raw.company_apps.environment,
+      companyId: raw.company_apps.company_id,
     },
   };
 }
@@ -80,7 +80,7 @@ export class SupabaseProofRequestRepository implements ProofRequestRepository {
   async findById(id: string): Promise<ProofRequestWithApp | null> {
     const { data, error } = await this.client
       .from(TABLE)
-      .select("*, company_app!inner(id, company_id, name, environment)")
+      .select("*, company_apps!inner(id, company_id, name, environment)")
       .eq("id", id)
       .maybeSingle<ProofRequestWithAppPersistence>();
 
@@ -94,7 +94,7 @@ export class SupabaseProofRequestRepository implements ProofRequestRepository {
 
     const { data, error } = await this.client
       .from(TABLE)
-      .select("*, company_app!inner(id, company_id, name, environment)")
+      .select("*, company_apps!inner(id, company_id, name, environment)")
       .in("app_id", appIds)
       .order("created_at", { ascending: false })
       .returns<ProofRequestWithAppPersistence[]>();

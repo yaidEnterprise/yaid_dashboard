@@ -9,7 +9,7 @@ import {
   ProofSessionPersistence,
 } from "@/shared/infra/dto/ProofSessionMapper";
 
-const TABLE = "proof_session";
+const TABLE = "proof_sessions";
 
 export class SupabaseProofSessionRepository implements ProofSessionRepository {
   private get client() {
@@ -27,7 +27,7 @@ export class SupabaseProofSessionRepository implements ProofSessionRepository {
     const { data, error } = await this.client
       .from(TABLE)
       .select("*")
-      .eq("hash_session_token", hashSessionToken)
+      .eq("session_token_hash", hashSessionToken)
       .maybeSingle<ProofSessionPersistence>();
 
     if (error) throw error;
@@ -38,9 +38,9 @@ export class SupabaseProofSessionRepository implements ProofSessionRepository {
   /**
    * Finds a proof_session by token hash and enriches it with context from
    * related tables needed by the public status endpoint:
-   *   proof_session → proof_request → company_app → company
+   *   proof_sessions → proof_request → company_apps → company
    *
-   * Returns proofType, companyName and returnUrl alongside the session.
+   * Returns proofType and companyName alongside the session.
    * Sensitive fields (externalReference, challengeNonceHash, etc.) are
    * not included — filtering is done in the ViewModel layer.
    */
@@ -51,13 +51,12 @@ export class SupabaseProofSessionRepository implements ProofSessionRepository {
         *,
         proof_request!inner(
           proof_type,
-          return_url,
-          company_app!inner(
+          company_apps!inner(
             company!inner(name)
           )
         )
       `)
-      .eq("hash_session_token", hash)
+      .eq("session_token_hash", hash)
       .maybeSingle();
 
     if (error) throw error;
@@ -67,8 +66,7 @@ export class SupabaseProofSessionRepository implements ProofSessionRepository {
     type JoinedRow = ProofSessionPersistence & {
       proof_request: {
         proof_type: string;
-        return_url: string | null;
-        company_app: {
+        company_apps: {
           company: { name: string };
         };
       };
@@ -79,8 +77,7 @@ export class SupabaseProofSessionRepository implements ProofSessionRepository {
     return {
       session: ProofSessionMapper.toDomain(row),
       proofType: row.proof_request.proof_type,
-      companyName: row.proof_request.company_app.company.name,
-      returnUrl: row.proof_request.return_url ?? null,
+      companyName: row.proof_request.company_apps.company.name,
     };
   }
 
