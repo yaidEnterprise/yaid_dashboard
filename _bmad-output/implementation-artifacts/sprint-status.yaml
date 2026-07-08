@@ -66,7 +66,7 @@ development_status:
   # Epic 3: Proof Requests e Dashboard de Validações
   epic-3: in-progress
   3-1-endpoint-b2b-criacao-de-proof-request: done
-  3-2-listagem-de-proof-requests-no-dashboard: backlog
+  3-2-listagem-de-proof-requests-no-dashboard: done
   3-3-detalhe-de-proof-request: done
   3-4-helper-de-criacao-de-proof-request-dashboard: backlog
   3-5-overview-do-dashboard: backlog
