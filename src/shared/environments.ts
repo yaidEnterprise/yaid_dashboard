@@ -5,6 +5,7 @@ import type { ProofRequestRepository } from "@/shared/domain/interfaces/reposito
 import type { ProofSessionRepository } from "@/shared/domain/interfaces/repositories/ProofSessionRepository";
 import type { ApiKeyHasher } from "@/shared/domain/interfaces/ApiKeyHasher";
 import type { BlockchainClient } from "@/shared/domain/interfaces/BlockchainClient";
+import type { OcrProvider } from "@/shared/domain/interfaces/OcrProvider";
 
 export enum Stage {
   DOTENV = "DOTENV",
@@ -257,6 +258,13 @@ export class Environments {
       this.BLOCKCHAIN_WALLET_PRIVATE_KEY,
       this.BLOCKCHAIN_RPC_URL
     );
+  }
+
+  async getOcrProvider(): Promise<OcrProvider> {
+    const { MockOcrProvider } = await import(
+      "@/shared/clients/ocr/MockOcrProvider"
+    );
+    return new MockOcrProvider();
   }
 
   static getEnvs() {

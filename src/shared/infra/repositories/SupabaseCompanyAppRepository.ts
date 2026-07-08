@@ -6,7 +6,7 @@ import {
   CompanyAppPersistence,
 } from "@/shared/infra/dto/CompanyAppMapper";
 
-const TABLE = "company_app";
+const TABLE = "company_apps";
 
 export class SupabaseCompanyAppRepository implements CompanyAppRepository {
   private get client() {

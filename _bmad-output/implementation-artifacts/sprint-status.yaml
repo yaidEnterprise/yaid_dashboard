@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-05-27
+# last_updated: 2026-07-08
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-05-27
+last_updated: 2026-07-08
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -56,8 +56,8 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Gestão de Aplicações e API Keys
-  epic-2: backlog
-  2-1-listagem-de-aplicacoes: backlog
+  epic-2: in-progress
+  2-1-listagem-de-aplicacoes: done
   2-2-criacao-de-app-com-api-key-one-shot: backlog
   2-3-detalhe-e-edicao-de-app: backlog
   epic-2-retrospective: optional
@@ -82,7 +82,7 @@ development_status:
   5-1-middleware-de-auth-por-did-withdidauth: done
   5-2-wrapper-blockchainclient: done
   5-3-challenge-e-abertura-de-sessao: backlog
-  5-4-emissao-de-verifiable-credential: backlog
+  5-4-emissao-de-verifiable-credential: done
   5-5-verificacao-de-verifiable-presentation: backlog
   5-6-cancel-de-sessao-e-revogacao-de-credencial: backlog
   epic-5-retrospective: optional
