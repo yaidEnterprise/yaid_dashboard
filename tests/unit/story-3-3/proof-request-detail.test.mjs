@@ -9,7 +9,9 @@
  * - AC #4: backend returns 404 (NotFoundError) — never 403 (ForbiddenError) — on company mismatch.
  * - AC #5: loading + not-found/error states.
  * - Task 2: GET DTO exposes externalReference + updatedAt (additive).
- * - Task 6: CompanyApp gains a first-class appId, mapped both ways (build unblock).
+ * - Task 6: CompanyApp has no separate app_id column — company_apps.id is the
+ *   only identifier (confirmed against the live schema; superseded the earlier
+ *   first-class-appId design).
  * - Review patch: claims guarded by result !== false.
  */
 
@@ -157,22 +159,20 @@ describe("Story 3.3 — detail page", () => {
   });
 });
 
-// ── Task 6: CompanyApp appId (build unblock) ────────────────────────────────────
+// ── Task 6: CompanyApp has no separate app_id column ────────────────────────────
 
-describe("Story 3.3 — Task 6: CompanyApp.appId first-class field", () => {
-  test("entity declares appId prop and getter", () => {
+describe("Story 3.3 — Task 6: company_apps.id is the only identifier", () => {
+  test("entity does not declare a separate appId prop/getter", () => {
     const src = readText(ENTITY);
-    assert.match(src, /appId:\s*string/, "props must declare appId");
-    assert.match(src, /get appId\(\)/, "entity must expose an appId getter");
+    assert.equal(src.includes("appId"), false, "entity must not have a redundant appId field");
   });
 
-  test("mapper maps app_id both directions", () => {
+  test("mapper has no app_id mapping (column does not exist)", () => {
     const src = readText(MAPPER);
-    assert.match(src, /appId:\s*raw\.app_id/, "toDomain must map raw.app_id → appId");
-    assert.match(src, /app_id:\s*app\.appId/, "toPersistence must map app.appId → app_id");
+    assert.equal(src.includes("app_id"), false, "mapper must not reference app_id");
   });
 
-  test("create use case sets appId (mirrors UUID id per current API-key design)", () => {
-    assert.match(readText(CREATE_APP), /appId:\s*id/, "create must set appId: id");
+  test("create use case exposes appId in the response DTO mirroring app.id", () => {
+    assert.match(readText(CREATE_APP), /appId:\s*app\.id/, "response DTO must set appId: app.id");
   });
 });

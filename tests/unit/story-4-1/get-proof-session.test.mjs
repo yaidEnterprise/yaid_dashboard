@@ -2,7 +2,8 @@
  * Story 4.1: Endpoint Público de Status da Sessão
  *
  * Tests cover:
- * - AC #1: response shape { status, proofType, companyName, expiresAt, returnUrl }
+ * - AC #1: response shape { status, proofType, companyName, expiresAt }
+ *   (no returnUrl — proof_request has no return_url column in the live schema)
  * - AC #1: forbidden fields not in response (proofRequestId, sessionToken, challengeNonceHash)
  * - AC #2: 404 for unknown/malformed token
  * - AC #3: terminal statuses returned as-is
@@ -46,9 +47,9 @@ describe("Story 4.1 — ProofSessionOutputDTO (viewmodel)", () => {
     assert.match(src, /expiresAt/, "DTO must have expiresAt field");
   });
 
-  test("DTO has returnUrl field", () => {
+  test("DTO does NOT have returnUrl field (no return_url column exists)", () => {
     const src = readText("src/modules/proof-session/app/get_proof_session_viewmodel.ts");
-    assert.match(src, /returnUrl/, "DTO must have returnUrl field");
+    assert.equal(src.includes("returnUrl"), false, "DTO must not have returnUrl field");
   });
 
   test("DTO does NOT expose proofRequestId (internal field)", () => {
@@ -89,12 +90,12 @@ describe("Story 4.1 — ProofSessionRepository interface", () => {
     assert.match(src, /ProofSessionWithContext/, "ProofSessionWithContext type must be exported");
   });
 
-  test("ProofSessionWithContext has session, proofType, companyName, returnUrl", () => {
+  test("ProofSessionWithContext has session, proofType, companyName (no returnUrl)", () => {
     const src = readText("src/shared/domain/interfaces/repositories/ProofSessionRepository.ts");
     assert.match(src, /session/, "must have session field");
     assert.match(src, /proofType/, "must have proofType field");
     assert.match(src, /companyName/, "must have companyName field");
-    assert.match(src, /returnUrl/, "must have returnUrl field");
+    assert.equal(src.includes("returnUrl"), false, "must not have returnUrl field");
   });
 });
 
@@ -158,9 +159,9 @@ describe("Story 4.1 — GetProofSessionUseCase", () => {
     assert.match(src, /companyName/, "must return companyName");
   });
 
-  test("use case returns returnUrl from context", () => {
+  test("use case does not return returnUrl (no return_url column exists)", () => {
     const src = readText("src/modules/proof-session/app/get_proof_session_usecase.ts");
-    assert.match(src, /returnUrl/, "must return returnUrl");
+    assert.equal(src.includes("returnUrl"), false, "must not return returnUrl");
   });
 
   test("use case does NOT expose proofRequestId in return", () => {

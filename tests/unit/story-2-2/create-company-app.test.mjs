@@ -33,42 +33,45 @@ describe("Story 2.2 — CreateCompanyAppSchema", () => {
 });
 
 describe("Story 2.2 — CreateCompanyAppUseCase", () => {
-  test("generates appId and secret separately", () => {
+  // company_apps has no app_id column (confirmed against the live schema) — the
+  // UUID `id` doubles as the public identifier used in the API key.
+  test("generates UUID id and secret separately", () => {
     const src = readText("src/modules/company-app/app/create_company_app_usecase.ts");
-    assert.match(src, /generateAppId/, "must generate public appId");
+    assert.match(src, /randomUUID/, "must generate id via randomUUID");
     assert.match(src, /generateSecret/, "must generate secret");
   });
 
-  test("hashes full api key string appId.secret", () => {
+  test("hashes full api key string id.secret", () => {
     const src = readText("src/modules/company-app/app/create_company_app_usecase.ts");
-    assert.match(src, /const apiKey = `\$\{appId\}\.\$\{secret\}`/, "apiKey must be appId.secret format");
+    assert.match(src, /const apiKey = `\$\{id\}\.\$\{secret\}`/, "apiKey must be id.secret format");
     assert.match(src, /hasher\.hash\(apiKey\)/, "must hash full apiKey string");
   });
 
   test("returns apiKey one-shot in response", () => {
     const src = readText("src/modules/company-app/app/create_company_app_usecase.ts");
     assert.match(src, /apiKey,/, "response must include apiKey");
-    assert.match(src, /appId: app\.appId/, "response must include public appId");
+    assert.match(src, /appId: app\.id/, "response must expose appId mirroring app.id");
   });
 
-  test("persists app_id via CompanyApp entity", () => {
+  test("does not persist a separate appId — CompanyApp constructor only receives id", () => {
     const src = readText("src/modules/company-app/app/create_company_app_usecase.ts");
-    assert.match(src, /appId,/, "CompanyApp constructor must receive appId");
+    assert.equal(src.includes("generateAppId"), false, "must not generate a short app id anymore");
   });
 });
 
 describe("Story 2.2 — CompanyAppMapper", () => {
-  test("maps app_id in toDomain and toPersistence", () => {
+  // company_apps columns: id, company_id, name, api_key_hash, webhook_url,
+  // environment, status, created_at — no app_id.
+  test("CompanyAppPersistence has no app_id field", () => {
     const src = readText("src/shared/infra/dto/CompanyAppMapper.ts");
-    assert.match(src, /appId: raw\.app_id/, "toDomain must map app_id");
-    assert.match(src, /app_id: app\.appId/, "toPersistence must map app_id");
+    assert.equal(src.includes("app_id"), false, "company_apps has no app_id column");
   });
 });
 
 describe("Story 2.2 — CompanyApp entity", () => {
-  test("entity exposes appId getter", () => {
+  test("entity does not expose a separate appId getter", () => {
     const src = readText("src/shared/domain/entities/CompanyApp.ts");
-    assert.match(src, /get appId\(\)/, "entity must expose appId getter");
+    assert.equal(src.includes("appId"), false, "entity must not have a redundant appId field");
   });
 });
 
