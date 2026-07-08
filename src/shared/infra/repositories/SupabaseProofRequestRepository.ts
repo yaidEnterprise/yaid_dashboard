@@ -4,6 +4,7 @@ import {
   ProofRequestRepository,
   ProofRequestWithApp,
 } from "@/shared/domain/interfaces/repositories/ProofRequestRepository";
+import { ProofRequestStatus } from "@/shared/domain/enums/ProofRequestStatus";
 import { getSupabaseAdminClient } from "@/shared/clients/supabase/admin";
 import {
   ProofRequestMapper,
@@ -101,4 +102,13 @@ export class SupabaseProofRequestRepository implements ProofRequestRepository {
     if (error) throw error;
     return (data ?? []).map(mapWithApp);
   }
+
+  async updateStatus(id: string, status: ProofRequestStatus): Promise<void> {
+    const { error } = await this.client
+      .from(TABLE)
+      .update({ status })
+      .eq("id", id);
+    if (error) throw error;
+  }
 }
+

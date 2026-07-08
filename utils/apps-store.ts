@@ -7,6 +7,7 @@ export type AppStatus = "enabled" | "disabled";
 
 export interface YaidApp {
   id: string;
+  appId: string;
   companyId: string;
   name: string;
   environment: AppEnv;
@@ -21,8 +22,7 @@ export interface YaidAppWithKey extends YaidApp {
 
 export type CreateAppInput = {
   name: string;
-  environment: AppEnv;
-  webhookUrl: string;
+  webhookUrl?: string;
 };
 
 export type UpdateAppInput = {

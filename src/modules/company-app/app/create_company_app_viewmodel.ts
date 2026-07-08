@@ -5,16 +5,21 @@ const STATUS_VALUES = ["enabled", "disabled"] as const;
 
 export const CreateCompanyAppSchema = z.object({
   name: z.string().min(1).max(50),
-  environment: z.enum(ENV_VALUES),
-  webhookUrl: z.string().url().startsWith("https://", {
-    message: "webhookUrl must use HTTPS",
-  }),
+  webhookUrl: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() ?? "")
+    .refine((v) => v === "" || /^https:\/\//i.test(v), {
+      message: "webhookUrl must use HTTPS",
+    }),
+  environment: z.enum(ENV_VALUES).optional().default("dev"),
 });
 
 export type CreateCompanyAppDTO = z.infer<typeof CreateCompanyAppSchema>;
 
 export type CompanyAppOutputDTO = {
   id: string;
+  appId: string;
   companyId: string;
   name: string;
   webhookUrl: string;

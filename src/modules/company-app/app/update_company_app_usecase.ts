@@ -26,6 +26,7 @@ export class UpdateCompanyAppUseCase {
 
     return {
       id: app.id,
+      appId: app.appId,
       companyId: app.companyId,
       name: app.name,
       webhookUrl: app.webhookUrl,

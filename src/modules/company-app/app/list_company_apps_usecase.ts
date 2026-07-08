@@ -8,6 +8,7 @@ export class ListCompanyAppsUseCase {
     const apps = await this.repo.listByCompanyId(input.companyId);
     return apps.map((app) => ({
       id: app.id,
+      appId: app.appId,
       companyId: app.companyId,
       name: app.name,
       webhookUrl: app.webhookUrl,
