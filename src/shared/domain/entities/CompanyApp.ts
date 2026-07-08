@@ -55,9 +55,7 @@ export class CompanyApp {
   }
 
   updateWebhook(url: string) {
-    const trimmed = url.trim();
-    if (!trimmed) throw new Error("webhookUrl cannot be empty");
-    this.props.webhookUrl = trimmed;
+    this.props.webhookUrl = url.trim();
   }
 
   setStatus(status: CompanyAppStatus) {
