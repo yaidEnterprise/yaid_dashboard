@@ -1,3 +1,9 @@
+## Deferred from: code review de 5-4-emissao-de-verifiable-credential (2026-07-08)
+
+- **Mock OCR Provider em produção** — O OCR de documento e extração de idade/personhood para emissão de credenciais está mockado usando `MockOcrProvider`. Antes de ir para produção, a factory em `Environments` deve ser estendida para instanciar e retornar um provider OCR de produção real (como Google Cloud Vision API ou AWS Textract) com base nas variáveis de ambiente do estágio. [`src/shared/clients/ocr/MockOcrProvider.ts`, `src/shared/environments.ts`]
+
+- **Fallback de chave privada de teste em ambiente de produção** — Na classe `IssueCredentialUseCase`, se o `issuerPrivateKey` for igual ao valor de teste `"test-issuer-private-key"`, há um fallback silencioso para uma chave padrão predefinida. No estágio de produção, se essa chave de teste for configurada incorretamente, o sistema usará a chave mockada silenciosamente em vez de falhar. Recomendado lançar um erro explícito se a chave de teste for fornecida em ambientes produtivos (Stage.PROD ou Stage.HOMOLOG). [`src/modules/credential/app/issue_credential_usecase.ts`]
+
 ## Deferred from: code review de 5-1-middleware-de-auth-por-did-withdidauth (2026-05-27)
 
 - **`@noble/ed25519` v3 requer `crypto.subtle`** — Disponível no Edge runtime do Next.js (onde o middleware roda). Se a função for movida para runtime Node.js, o catch trata a falha como "Invalid signature" 401, mascarando o erro real. Adicionar polyfill ou configuração explícita de `ed.etc.sha512Async` ao migrar. [`src/shared/middlewares/withDIDAuth.ts`]
