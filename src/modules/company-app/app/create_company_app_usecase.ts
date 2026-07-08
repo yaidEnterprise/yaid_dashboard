@@ -22,11 +22,13 @@ export class CreateCompanyAppUseCase {
 
   async execute(input: CreateCompanyAppInput): Promise<CompanyAppWithApiKeyDTO> {
     const id = randomUUID();
+    const appId = randomBytes(12).toString("base64url");
     const secret = generateSecret();
     const apiKeyHash = await this.hasher.hash(secret);
 
     const app = new CompanyApp({
       id,
+      appId,
       companyId: input.companyId,
       name: input.name.trim(),
       apiKeyHash,
@@ -46,7 +48,7 @@ export class CreateCompanyAppUseCase {
       environment: app.environment,
       status: app.status,
       createdAt: app.createdAt.toISOString(),
-      apiKey: `${app.id}.${secret}`,
+      apiKey: `${app.appId}.${secret}`,
     };
   }
 }
