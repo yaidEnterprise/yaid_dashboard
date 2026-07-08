@@ -20,7 +20,7 @@ import {
   countByStatus,
   formatProofType,
   listProofRequests,
-  type ProofRequest,
+  type ProofRequestDetail,
   type ProofRequestStatus,
 } from "@/utils/proof-requests-store";
 
@@ -45,7 +45,7 @@ function toBadgeStatus(status: ProofRequestStatus): StatusKind {
 
 export default function ProofRequestsPage() {
   const router = useRouter();
-  const [items, setItems] = useState<ProofRequest[]>([]);
+  const [items, setItems] = useState<ProofRequestDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

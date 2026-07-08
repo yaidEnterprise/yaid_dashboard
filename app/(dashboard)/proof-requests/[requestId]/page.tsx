@@ -9,7 +9,7 @@ import { EnvBadge } from "@/components/feedback/environment-badge";
 import { CodeBlock, InlineCode } from "@/components/api/code-block";
 import {
   getProofRequest,
-  proofTypeLabel,
+  formatProofType,
   confirmedClaims,
   PROOF_REQUEST_STATUS_LABELS,
   NON_APPROVED_MESSAGES,
@@ -109,7 +109,7 @@ export default function ProofRequestDetailPage() {
 
   const summary: { k: string; v: string; code?: boolean }[] = [
     { k: "App", v: data.appName },
-    { k: "Tipo", v: proofTypeLabel(data.proofType) },
+    { k: "Tipo", v: formatProofType(data.proofType) },
     ...(data.externalReference
       ? [{ k: "Referência externa", v: data.externalReference, code: true }]
       : []),

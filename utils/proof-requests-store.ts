@@ -35,10 +35,10 @@ async function asJson(res: Response) {
   return json;
 }
 
-export async function listProofRequests(): Promise<ProofRequest[]> {
+export async function listProofRequests(): Promise<ProofRequestDetail[]> {
   const res = await fetchWithAuth("/api/proof-requests", { cache: "no-store" });
   const json = await asJson(res);
-  return (json.items ?? []) as ProofRequest[];
+  return (json.items ?? []) as ProofRequestDetail[];
 }
 
 export const PROOF_TYPE_LABELS: Record<string, string> = {
@@ -55,7 +55,7 @@ export function truncateId(id: string, visible = 8): string {
   return `${id.slice(0, visible)}…`;
 }
 
-export function countByStatus(items: ProofRequest[]) {
+export function countByStatus(items: ProofRequestDetail[]) {
   return {
     total: items.length,
     approved: items.filter((r) => r.status === "approved").length,
@@ -84,16 +84,6 @@ export const PROOF_REQUEST_STATUS_LABELS: Record<ProofRequestStatus, string> = {
   rejected: "Rejeitada",
   expired: "Expirada",
 };
-
-/** Human-readable proof type labels (PT-BR). */
-export const PROOF_TYPE_LABELS: Record<string, string> = {
-  personhood: "Prova de humanidade",
-  age_over_18: "Maior de 18 anos",
-};
-
-export function proofTypeLabel(proofType: string): string {
-  return PROOF_TYPE_LABELS[proofType] ?? proofType;
-}
 
 export type ConfirmedClaim = { key: string; label: string; value: true };
 
