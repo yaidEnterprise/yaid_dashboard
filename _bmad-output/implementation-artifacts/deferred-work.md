@@ -1,3 +1,9 @@
+## Deferred from: code review de 5-4-emissao-de-verifiable-credential (2026-07-08)
+
+- **Mock OCR Provider em produção** — O OCR de documento e extração de idade/personhood para emissão de credenciais está mockado usando `MockOcrProvider`. Antes de ir para produção, a factory em `Environments` deve ser estendida para instanciar e retornar um provider OCR de produção real (como Google Cloud Vision API ou AWS Textract) com base nas variáveis de ambiente do estágio. [`src/shared/clients/ocr/MockOcrProvider.ts`, `src/shared/environments.ts`]
+
+- **Fallback de chave privada de teste em ambiente de produção** — Na classe `IssueCredentialUseCase`, se o `issuerPrivateKey` for igual ao valor de teste `"test-issuer-private-key"`, há um fallback silencioso para uma chave padrão predefinida. No estágio de produção, se essa chave de teste for configurada incorretamente, o sistema usará a chave mockada silenciosamente em vez de falhar. Recomendado lançar um erro explícito se a chave de teste for fornecida em ambientes produtivos (Stage.PROD ou Stage.HOMOLOG). [`src/modules/credential/app/issue_credential_usecase.ts`]
+
 ## Deferred from: code review de 5-1-middleware-de-auth-por-did-withdidauth (2026-05-27)
 
 - **`@noble/ed25519` v3 requer `crypto.subtle`** — Disponível no Edge runtime do Next.js (onde o middleware roda). Se a função for movida para runtime Node.js, o catch trata a falha como "Invalid signature" 401, mascarando o erro real. Adicionar polyfill ou configuração explícita de `ed.etc.sha512Async` ao migrar. [`src/shared/middlewares/withDIDAuth.ts`]
@@ -78,4 +84,19 @@
 
 - **`isDashboardPage` usa lista hardcoded** — Novas páginas adicionadas ao grupo `/(dashboard)` do Next.js não serão automaticamente protegidas. Ao criar novas rotas de dashboard, lembrar de adicionar o path a `isDashboardPage` em `src/shared/middleware.ts`, ou migrar para detecção via route group.
 
+- **`isSessionAuthApiRoute` não cobre métodos futuros** — Se DELETE/PATCH for adicionado a `/api/proof-requests/[requestId]`, esses métodos cairão no fallthrough sem auth. Ao adicionar novos handlers para essa rota, verificar se o método precisa de session auth e atualizar `isSessionAuthApiRoute` em `src/shared/middleware.ts`.
+
+- **`isDashboardPage` usa lista hardcoded** — Novas páginas adicionadas ao grupo `/(dashboard)` do Next.js não serão automaticamente protegidas. Ao criar novas rotas de dashboard, lembrar de adicionar o path a `isDashboardPage` em `src/shared/middleware.ts`, ou migrar para detecção via route group.
+
 - **`POST /api/proof-requests` usa match exato (`===`)** — Diferente de outras rotas que usam `startsWith()`. Se rotas aninhadas como `/api/proof-requests/bulk` forem criadas com método POST, elas cairão no fallthrough sem cobertura de auth. Revisar ao criar endpoints aninhados.
+
+## Deferred from: code review of story-3.3 (2026-05-28)
+
+- Spinner de loading da página de detalhe de proof request (`app/(dashboard)/proof-requests/[requestId]/page.tsx`) sem `aria-label`/`role`. Consistente com o padrão atual (`apps/[appId]/page.tsx`) — tratar como melhoria de acessibilidade transversal a todas as telas de loading do dashboard.
+## Deferred from: code review de 2-1-listagem-de-aplicacoes (2026-06-03)
+
+- **Race condition latente no `reload()`** — `setApps([])` + `setLoading(true)` + `setFetchKey()` são batched pelo React, sem flash real; padrão pre-existente no projeto. Se em algum modo concurrency futuro causar flash de EmptyState, refatorar `reload` para usar `useReducer`. [`app/(dashboard)/apps/page.tsx`]
+
+- **Propagação de click em filhos futuros do `<tr>`** — Sem `e.stopPropagation()` em filhos interativos, qualquer botão adicionado à row no futuro propagará click para o `router.push`. Adicionar `e.stopPropagation()` nos botões ao implementar Story 2.3 (detalhe/edição). [`app/(dashboard)/apps/page.tsx`]
+
+- **`colSpan={3}` hardcoded em EmptyState/ErrorState** — Tech debt MVP: adicionar coluna no futuro exige atualizar manualmente os três estados. Extrair colSpan para constante `COL_COUNT = 3` ou usar `colspan="100%"` via CSS. [`app/(dashboard)/apps/page.tsx`]

@@ -1,4 +1,4 @@
-import { ForbiddenError, NotFoundError } from "@/shared/errors/AppError";
+import { NotFoundError } from "@/shared/errors/AppError";
 import { ProofRequestRepository } from "@/shared/domain/interfaces/repositories/ProofRequestRepository";
 import { ProofRequestOutputDTO } from "./get_proof_request_viewmodel";
 
@@ -10,8 +10,11 @@ export class GetProofRequestUseCase {
     companyId: string;
   }): Promise<ProofRequestOutputDTO> {
     const row = await this.requestRepo.findById(input.requestId);
-    if (!row) throw new NotFoundError("Proof request not found", "PROOF_REQUEST_NOT_FOUND");
-    if (row.app.companyId !== input.companyId) throw new ForbiddenError();
+    // Both "not found" and "belongs to another company" must return 404 —
+    // never 403 — to avoid enumeration of valid request IDs (NFR6).
+    if (!row || row.app.companyId !== input.companyId) {
+      throw new NotFoundError("Proof request not found", "PROOF_REQUEST_NOT_FOUND");
+    }
 
     return {
       id: row.request.id,
@@ -22,8 +25,10 @@ export class GetProofRequestUseCase {
       status: row.request.status,
       result: row.request.result,
       externalRef: row.request.externalRef,
+      externalReference: row.request.externalRef,
       createdAt: row.request.createdAt.toISOString(),
       validatedAt: row.request.validatedAt?.toISOString() ?? null,
+      updatedAt: row.request.validatedAt?.toISOString() ?? null,
     };
   }
 }

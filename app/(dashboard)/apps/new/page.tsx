@@ -1,71 +1,65 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ChevronLeft, Info, ShieldCheck, KeyRound, Copy, Check, AlertTriangle } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ChevronRight, ChevronLeft, Info, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { EnvBadge } from "@/components/feedback/environment-badge";
-import { createApp, type AppEnv, type YaidAppWithKey } from "@/utils/apps-store";
+import { ApiKeyModal } from "@/components/apps/api-key-modal";
+import { createApp, type YaidAppWithKey } from "@/utils/apps-store";
+
+const createAppSchema = z.object({
+  name: z.string().min(1, "Informe o nome do app").max(50, "Máximo de 50 caracteres"),
+  webhookUrl: z
+    .string()
+    .optional()
+    .refine((v) => !v || v.trim() === "" || /^https:\/\//i.test(v.trim()), {
+      message: "O webhook deve começar com https://",
+    }),
+});
+
+type CreateAppFormValues = z.infer<typeof createAppSchema>;
 
 export default function CreateAppPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [environment, setEnvironment] = useState<AppEnv>("dev");
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
   const [createdApp, setCreatedApp] = useState<YaidAppWithKey | null>(null);
-  const [confirmedSaved, setConfirmedSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Informe o nome do app");
-      return;
-    }
-    if (!/^https:\/\//i.test(webhookUrl.trim())) {
-      toast.error("O webhook deve começar com https://");
-      return;
-    }
-    setSubmitting(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateAppFormValues>({
+    resolver: zodResolver(createAppSchema),
+    defaultValues: { name: "", webhookUrl: "" },
+  });
+
+  const onSubmit = async (values: CreateAppFormValues) => {
     try {
+      const webhookUrl = values.webhookUrl?.trim() ?? "";
       const app = await createApp({
-        name: name.trim(),
-        environment,
-        webhookUrl: webhookUrl.trim(),
+        name: values.name.trim(),
+        ...(webhookUrl ? { webhookUrl } : {}),
       });
       setCreatedApp(app);
     } catch (e) {
       toast.error((e as Error).message || "Falha ao criar o app");
-    } finally {
-      setSubmitting(false);
     }
   };
 
-  const handleCopyKey = async () => {
-    if (!createdApp) return;
-    try {
-      await navigator.clipboard.writeText(createdApp.apiKey);
-      setCopied(true);
-      toast.success("Chave copiada");
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast.error("Não foi possível copiar");
-    }
-  };
-
-  const handleFinish = () => {
-    if (!confirmedSaved) return;
+  const handleComplete = () => {
+    toast.success("App criado com sucesso");
     router.push("/apps");
   };
 
   return (
     <>
       <nav className="flex items-center gap-1.5 text-sm text-text-secondary">
-        <Link href="/apps" className="hover:text-text-primary">Apps</Link>
+        <Link href="/apps" className="hover:text-text-primary">
+          Apps
+        </Link>
         <ChevronRight className="h-3.5 w-3.5 text-text-tertiary" />
         <span className="text-text-primary">Novo app</span>
       </nav>
@@ -78,17 +72,16 @@ export default function CreateAppPage() {
           >
             <ChevronLeft className="h-3.5 w-3.5" /> Voltar para a lista
           </Link>
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
-            Criar novo app
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">Criar novo app</h1>
           <p className="max-w-2xl text-sm text-text-secondary">
-            Configure um novo ponto de integração com a YaID. Após criar o app, você receberá uma chave secreta que deve ser armazenada com segurança.
+            Configure um novo ponto de integração com a YaID. Após criar o app, você receberá uma
+            API key que deve ser armazenada com segurança.
           </p>
         </div>
       </div>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <form onSubmit={handleSubmit} className="space-y-6 lg:col-span-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 lg:col-span-2">
           <div className="rounded-lg border border-border bg-surface shadow-card">
             <div className="border-b border-border px-6 py-4">
               <h2 className="text-base font-semibold text-text-primary">Identificação</h2>
@@ -96,16 +89,22 @@ export default function CreateAppPage() {
             </div>
             <div className="space-y-5 px-6 py-5">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-secondary">Nome do app</label>
+                <label htmlFor="name" className="text-xs font-medium text-text-secondary">
+                  Nome do app
+                </label>
                 <input
+                  id="name"
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
                   maxLength={50}
                   placeholder="Ex.: Onboarding Produção"
-                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
+                  className={`h-10 w-full rounded-md border bg-surface px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-trust/20 ${
+                    errors.name ? "border-red-500 focus:border-red-500" : "border-border focus:border-trust"
+                  }`}
+                  {...register("name")}
                 />
+                {errors.name && (
+                  <p className="text-sm text-red-600">{errors.name.message}</p>
+                )}
                 <p className="text-[11px] text-text-tertiary">Visível apenas para sua equipe.</p>
               </div>
             </div>
@@ -113,54 +112,30 @@ export default function CreateAppPage() {
 
           <div className="rounded-lg border border-border bg-surface shadow-card">
             <div className="border-b border-border px-6 py-4">
-              <h2 className="text-base font-semibold text-text-primary">Ambiente</h2>
-              <p className="text-xs text-text-secondary">Selecione onde este app vai operar.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-3">
-              {[
-                { env: "dev" as const, title: "Dev", desc: "Para desenvolvimento local. Sem custo." },
-                { env: "homol" as const, title: "Homologação", desc: "Para QA e testes integrados antes da produção." },
-                { env: "prod" as const, title: "Produção", desc: "Validações reais com usuários finais." },
-              ].map((opt) => (
-                <label
-                  key={opt.env}
-                  className="flex cursor-pointer flex-col gap-2 rounded-md border border-border bg-surface p-4 transition-colors hover:border-border-strong has-[:checked]:border-trust has-[:checked]:bg-trust/5"
-                >
-                  <div className="flex items-center justify-between">
-                    <EnvBadge env={opt.env} />
-                    <input
-                      type="radio"
-                      name="env"
-                      checked={environment === opt.env}
-                      onChange={() => setEnvironment(opt.env)}
-                      className="h-4 w-4 accent-trust"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">{opt.title}</p>
-                    <p className="mt-0.5 text-xs text-text-secondary">{opt.desc}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-surface shadow-card">
-            <div className="border-b border-border px-6 py-4">
               <h2 className="text-base font-semibold text-text-primary">Webhook</h2>
-              <p className="text-xs text-text-secondary">URL HTTPS que receberá os eventos das solicitações.</p>
+              <p className="text-xs text-text-secondary">
+                URL HTTPS que receberá os eventos das solicitações (opcional).
+              </p>
             </div>
             <div className="space-y-5 px-6 py-5">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-secondary">URL do webhook</label>
+                <label htmlFor="webhookUrl" className="text-xs font-medium text-text-secondary">
+                  URL do webhook
+                </label>
                 <input
+                  id="webhookUrl"
                   type="url"
-                  value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
-                  required
                   placeholder="https://api.suaempresa.com/yaid/hooks"
-                  className="h-10 w-full rounded-md border border-border bg-surface px-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
+                  className={`h-10 w-full rounded-md border bg-surface px-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-trust/20 ${
+                    errors.webhookUrl
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-border focus:border-trust"
+                  }`}
+                  {...register("webhookUrl")}
                 />
+                {errors.webhookUrl && (
+                  <p className="text-sm text-red-600">{errors.webhookUrl.message}</p>
+                )}
               </div>
             </div>
           </div>
@@ -174,10 +149,10 @@ export default function CreateAppPage() {
             </Link>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={isSubmitting}
               className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
-              {submitting ? "Criando..." : "Criar app"}
+              {isSubmitting ? "Criando..." : "Criar app"}
             </button>
           </div>
         </form>
@@ -186,12 +161,13 @@ export default function CreateAppPage() {
           <div className="rounded-lg border border-trust/30 bg-trust/5 p-5">
             <div className="flex items-center gap-2 text-trust">
               <Info className="h-4 w-4" />
-              <p className="text-[11px] font-semibold uppercase tracking-wider">Antes de criar</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider">Sobre API keys</p>
             </div>
             <ul className="mt-3 space-y-2 text-xs leading-relaxed text-text-secondary">
-              <li>• A URL do webhook precisa ser HTTPS.</li>
-              <li>• A chave secreta será exibida uma única vez após a criação.</li>
-              <li>• Você poderá pausar o app a qualquer momento.</li>
+              <li>• A API key é exibida uma única vez após a criação do app.</li>
+              <li>• Formato: <code className="font-mono">app_id.secret</code> — guarde em um gerenciador de segredos.</li>
+              <li>• Use o header <code className="font-mono">x-api-key</code> nas chamadas B2B.</li>
+              <li>• Se perder a chave, será preciso criar um novo app.</li>
             </ul>
           </div>
 
@@ -201,91 +177,20 @@ export default function CreateAppPage() {
               <p className="text-[11px] font-semibold uppercase tracking-wider">Privacidade</p>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-text-secondary">
-              A YaID nunca compartilha documentos brutos. Cada app recebe apenas os atributos confirmados pelo usuário.
+              A YaID nunca compartilha documentos brutos. Cada app recebe apenas os atributos
+              confirmados pelo usuário.
             </p>
           </div>
         </aside>
       </section>
 
-      {createdApp && typeof document !== "undefined" && createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="api-key-title"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") e.preventDefault();
-          }}
-        >
-          <div className="w-full max-w-lg overflow-hidden rounded-lg border border-border bg-surface shadow-2xl">
-            <div className="flex items-start gap-3 border-b border-border px-6 py-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-trust/10 text-trust">
-                <KeyRound className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <h2 id="api-key-title" className="text-base font-semibold text-text-primary">
-                  Sua chave secreta
-                </h2>
-                <p className="mt-0.5 text-xs text-text-secondary">
-                  App <span className="font-medium text-text-primary">{createdApp.name}</span> criado com sucesso.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4 px-6 py-5">
-              <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3 text-warning-text">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div className="text-xs leading-relaxed">
-                  <p className="font-semibold">Esta é a única vez que você verá esta chave.</p>
-                  <p className="mt-0.5">
-                    Copie e armazene em local seguro (gerenciador de segredos). Se perder, será preciso recriar o app.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-secondary">API key (formato: app_id.secret)</label>
-                <div className="flex items-stretch gap-2">
-                  <code className="flex-1 select-all overflow-x-auto rounded-md border border-border bg-surface-muted px-3 py-2.5 font-mono text-xs text-text-primary">
-                    {createdApp.apiKey}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={handleCopyKey}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
-                  >
-                    {copied ? <Check className="h-3.5 w-3.5 text-success-text" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copied ? "Copiado" : "Copiar"}
-                  </button>
-                </div>
-              </div>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-surface-muted/50 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={confirmedSaved}
-                  onChange={(e) => setConfirmedSaved(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-trust"
-                />
-                <span className="text-xs leading-relaxed text-text-primary">
-                  Eu copiei a chave e armazenei em um local seguro. Entendo que ela não será exibida novamente.
-                </span>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-border bg-surface-muted/30 px-6 py-4">
-              <button
-                type="button"
-                onClick={handleFinish}
-                disabled={!confirmedSaved}
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Concluir e ir para Apps
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {createdApp && (
+        <ApiKeyModal
+          open
+          appName={createdApp.name}
+          apiKey={createdApp.apiKey}
+          onComplete={handleComplete}
+        />
       )}
     </>
   );

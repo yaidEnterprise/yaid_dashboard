@@ -4,6 +4,11 @@ import { ProofSessionRepository } from "@/shared/domain/interfaces/repositories/
 import { ProofSessionStatus } from "@/shared/domain/enums/ProofSessionStatus";
 import { ProofSessionOutputDTO } from "./get_proof_session_viewmodel";
 
+const ACTIVE_STATUSES = new Set<ProofSessionStatus>([
+  ProofSessionStatus.WAITING_USER,
+  ProofSessionStatus.OPENED,
+]);
+
 export class GetProofSessionUseCase {
   constructor(
     private readonly sessionRepo: ProofSessionRepository,
@@ -12,25 +17,24 @@ export class GetProofSessionUseCase {
 
   async execute(input: { sessionToken: string }): Promise<ProofSessionOutputDTO> {
     const tokenHash = await this.hasher.hash(input.sessionToken);
-    const session = await this.sessionRepo.findByTokenHash(tokenHash);
-    if (!session) throw new NotFoundError("Session not found", "PROOF_SESSION_NOT_FOUND");
+    const context = await this.sessionRepo.findByTokenHashWithContext(tokenHash);
+    if (!context) throw new NotFoundError("Session not found", "PROOF_SESSION_NOT_FOUND");
 
-    if (
-      session.status === ProofSessionStatus.WAITING_USER &&
-      session.expiresAt.getTime() > Date.now()
-    ) {
-      session.markOpened();
+    const { session, proofType, companyName, returnUrl } = context;
+
+    // If session has expired in clock time but status hasn't been updated yet, sync it
+    const isClockExpired = session.expiresAt.getTime() <= Date.now();
+    if (isClockExpired && ACTIVE_STATUSES.has(session.status)) {
+      session.markExpired();
       await this.sessionRepo.update(session);
     }
 
     return {
-      id: session.id,
-      proofRequestId: session.proofRequestId,
-      status: session.expiresAt.getTime() <= Date.now() ? ProofSessionStatus.EXPIRED : session.status,
-      createdAt: session.createdAt.toISOString(),
+      status: session.status,
+      proofType,
+      companyName,
       expiresAt: session.expiresAt.toISOString(),
-      openedAt: session.openedAt?.toISOString() ?? null,
-      approvedAt: session.approvedAt?.toISOString() ?? null,
+      returnUrl,
     };
   }
 }

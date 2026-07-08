@@ -3,6 +3,7 @@ import { CompanyAppStatus } from "@/shared/domain/enums/CompanyAppStatus";
 
 type CompanyAppProps = {
   id: string;
+  appId: string;
   companyId: string;
   name: string;
   apiKeyHash: string;
@@ -21,6 +22,9 @@ export class CompanyApp {
 
   get id() {
     return this.props.id;
+  }
+  get appId() {
+    return this.props.appId;
   }
   get companyId() {
     return this.props.companyId;
@@ -51,9 +55,7 @@ export class CompanyApp {
   }
 
   updateWebhook(url: string) {
-    const trimmed = url.trim();
-    if (!trimmed) throw new Error("webhookUrl cannot be empty");
-    this.props.webhookUrl = trimmed;
+    this.props.webhookUrl = url.trim();
   }
 
   setStatus(status: CompanyAppStatus) {
