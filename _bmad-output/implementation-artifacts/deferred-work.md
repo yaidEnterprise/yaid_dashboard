@@ -90,6 +90,9 @@
 
 - **`POST /api/proof-requests` usa match exato (`===`)** — Diferente de outras rotas que usam `startsWith()`. Se rotas aninhadas como `/api/proof-requests/bulk` forem criadas com método POST, elas cairão no fallthrough sem cobertura de auth. Revisar ao criar endpoints aninhados.
 
+## Deferred from: code review of story-3.3 (2026-05-28)
+
+- Spinner de loading da página de detalhe de proof request (`app/(dashboard)/proof-requests/[requestId]/page.tsx`) sem `aria-label`/`role`. Consistente com o padrão atual (`apps/[appId]/page.tsx`) — tratar como melhoria de acessibilidade transversal a todas as telas de loading do dashboard.
 ## Deferred from: code review de 2-1-listagem-de-aplicacoes (2026-06-03)
 
 - **Race condition latente no `reload()`** — `setApps([])` + `setLoading(true)` + `setFetchKey()` são batched pelo React, sem flash real; padrão pre-existente no projeto. Se em algum modo concurrency futuro causar flash de EmptyState, refatorar `reload` para usar `useReducer`. [`app/(dashboard)/apps/page.tsx`]

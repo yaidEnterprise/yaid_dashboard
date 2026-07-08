@@ -67,14 +67,14 @@ development_status:
   epic-3: in-progress
   3-1-endpoint-b2b-criacao-de-proof-request: done
   3-2-listagem-de-proof-requests-no-dashboard: backlog
-  3-3-detalhe-de-proof-request: backlog
+  3-3-detalhe-de-proof-request: done
   3-4-helper-de-criacao-de-proof-request-dashboard: backlog
   3-5-overview-do-dashboard: backlog
   epic-3-retrospective: optional
 
   # Epic 4: Tela Coringa e Sessão de Verificação
-  epic-4: backlog
-  4-1-endpoint-publico-de-status-da-sessao: backlog
+  epic-4: in-progress
+  4-1-endpoint-publico-de-status-da-sessao: done
   4-2-tela-coringa-com-polling-e-6-estados-visuais: backlog
   epic-4-retrospective: optional
 
