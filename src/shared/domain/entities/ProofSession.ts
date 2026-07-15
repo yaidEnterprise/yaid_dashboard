@@ -72,4 +72,10 @@ export class ProofSession {
     this.props.challengeNonceHash = nonceHash;
     this.props.challengeCreatedAt = now;
   }
+
+  approveByUser(now: Date) {
+    if (this.props.status !== ProofSessionStatus.OPENED) return;
+    this.props.status = ProofSessionStatus.APPROVED_BY_USER;
+    this.props.approvedAt = now;
+  }
 }
