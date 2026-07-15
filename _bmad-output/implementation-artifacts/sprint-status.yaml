@@ -68,7 +68,7 @@ development_status:
   3-1-endpoint-b2b-criacao-de-proof-request: done
   3-2-listagem-de-proof-requests-no-dashboard: done
   3-3-detalhe-de-proof-request: done
-  3-4-helper-de-criacao-de-proof-request-dashboard: backlog
+  3-4-helper-de-criacao-de-proof-request-dashboard: review
   3-5-overview-do-dashboard: backlog
   epic-3-retrospective: optional
 

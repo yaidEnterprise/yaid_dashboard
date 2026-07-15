@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const CreateProofRequestSchema = z.object({
+  appId: z.string().uuid().optional().nullable(),
   proofType: z.enum(["personhood", "age_over_18"]),
   externalReference: z.string().max(255).optional().nullable(),
 });
