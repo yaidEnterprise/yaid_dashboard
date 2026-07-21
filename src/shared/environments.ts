@@ -40,6 +40,8 @@ const envSchema = z
     BLOCKCHAIN_WALLET_PRIVATE_KEY: z.string().min(1).optional(),
     BLOCKCHAIN_CONTRACT_ADDRESS: z.string().min(1).optional(),
     BLOCKCHAIN_RPC_URL: z.string().url().default("http://127.0.0.1:8545"),
+    OCR_API_URL: z.string().url().optional(),
+    OCR_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((values, ctx) => {
     if (values.STAGE !== Stage.PROD && values.STAGE !== Stage.HOMOLOG) {
@@ -95,6 +97,8 @@ function readProcessEnv() {
     BLOCKCHAIN_WALLET_PRIVATE_KEY: process.env.BLOCKCHAIN_WALLET_PRIVATE_KEY,
     BLOCKCHAIN_CONTRACT_ADDRESS: process.env.BLOCKCHAIN_CONTRACT_ADDRESS,
     BLOCKCHAIN_RPC_URL: process.env.BLOCKCHAIN_RPC_URL,
+    OCR_API_URL: process.env.OCR_API_URL,
+    OCR_API_KEY: process.env.OCR_API_KEY,
   };
 }
 
@@ -187,6 +191,14 @@ export class Environments {
     return this.values.BLOCKCHAIN_RPC_URL;
   }
 
+  get OCR_API_URL() {
+    return this.values.OCR_API_URL;
+  }
+
+  get OCR_API_KEY() {
+    return this.values.OCR_API_KEY;
+  }
+
   toJSON() {
     return { ...this.values };
   }
@@ -261,6 +273,16 @@ export class Environments {
   }
 
   async getOcrProvider(): Promise<OcrProvider> {
+    const url = this.values.OCR_API_URL;
+    const key = this.values.OCR_API_KEY;
+
+    if (url && key) {
+      const { ApiOcrProvider } = await import(
+        "@/shared/clients/ocr/ApiOcrProvider"
+      );
+      return new ApiOcrProvider(url, key);
+    }
+
     const { MockOcrProvider } = await import(
       "@/shared/clients/ocr/MockOcrProvider"
     );
