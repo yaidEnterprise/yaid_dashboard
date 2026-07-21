@@ -34,19 +34,34 @@ export class CreateProofRequestUseCase {
   ) {}
 
   async execute(input: {
-    apiKey: string;
+    apiKey?: string;
+    companyId?: string;
     body: CreateProofRequestDTO;
   }): Promise<CreatedProofRequestOutputDTO> {
-    const { appId, secret } = parseApiKey(input.apiKey);
+    let appId = input.body.appId?.trim() ?? null;
+    let app = null;
 
-    const app = await this.appRepo.findById(appId);
-    if (!app) throw new UnauthorizedError("Invalid API key");
+    if (input.apiKey) {
+      const { appId: apiAppId, secret } = parseApiKey(input.apiKey);
+      app = await this.appRepo.findById(apiAppId);
+      if (!app) throw new UnauthorizedError("Invalid API key");
 
-    // Verify secret BEFORE checking status to prevent app enumeration
-    const validSecret = await this.hasher.verify(`${appId}.${secret}`, app.apiKeyHash);
-    if (!validSecret) throw new UnauthorizedError("Invalid API key");
+      const validSecret = await this.hasher.verify(`${apiAppId}.${secret}`, app.apiKeyHash);
+      if (!validSecret) throw new UnauthorizedError("Invalid API key");
+      appId = app.id;
+    } else {
+      if (!input.companyId) throw new UnauthorizedError("Company context is required");
+      if (!appId) throw new UnauthorizedError("App is required");
 
-    // Check status only after successful authentication
+      app = await this.appRepo.findById(appId);
+      if (!app) throw new UnauthorizedError("App not found");
+      if (app.companyId !== input.companyId) {
+        throw new UnauthorizedError("App not found");
+      }
+    }
+
+    if (!app) throw new UnauthorizedError("App not found");
+
     if (app.status !== CompanyAppStatus.ENABLED) {
       throw new UnprocessableEntityError("App is disabled");
     }
@@ -81,7 +96,6 @@ export class CreateProofRequestUseCase {
       approvedAt: null,
     });
 
-    // Atomic creation: proof_request + proof_session together
     await this.requestRepo.createAtomic(request, session);
 
     return {

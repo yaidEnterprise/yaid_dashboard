@@ -62,7 +62,11 @@ export class ProofSession {
   markExpired(): void {
     if (TERMINAL_STATUSES.has(this.props.status)) return;
     this.props.status = ProofSessionStatus.EXPIRED;
-    
+  }
+
+  cancel(): void {
+    if (TERMINAL_STATUSES.has(this.props.status)) return;
+    this.props.status = ProofSessionStatus.CANCELLED;
   }
   
   openWithChallenge(nonceHash: string, now: Date) {

@@ -6,9 +6,14 @@ export class CreateProofRequestController {
 
   async handle(input: {
     body: unknown;
-    apiKey: string;
+    apiKey?: string;
+    companyId?: string;
   }): Promise<CreatedProofRequestOutputDTO> {
     const body = CreateProofRequestSchema.parse(input.body);
-    return this.useCase.execute({ apiKey: input.apiKey, body });
+    return this.useCase.execute({
+      apiKey: input.apiKey,
+      companyId: input.companyId,
+      body,
+    });
   }
 }
