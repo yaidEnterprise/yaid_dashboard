@@ -19,6 +19,7 @@
 - [x] tests/unit/story-5-2/blockchain-client.test.mjs - Story 5.2 contratos do wrapper BlockchainClient: existência de arquivos, interface (4 métodos), ABI (4 assinaturas com bytes32), EthersBlockchainClient (JsonRpcProvider, Wallet, address validation, receipt null/status=0 check, sem process.env, ethers.id()), environments.ts (schema, TEST_ENV, getters, getBlockchainClient factory, throws em TEST), compilação TypeScript
 - [x] tests/unit/story-5-4/credential-issuance.test.mjs - Story 5.4 emissão de Verifiable Credential: OCR em memória (sem persistência de PII/OCR), assinatura Ed25519 do VC usando ed.signAsync com chave privada do emissor, registro on-chain do DID do holder, validação da assinatura do request usando verifyAsync com a public key do DID do holder, e compilação TS limpa.
 - [x] tests/unit/story-2-1/listagem-de-aplicacoes.test.mjs - Story 2.1 contratos de listagem: GET /api/company-apps (handler, x-company-id, usecase filtra por companyId, viewmodel camelCase), apps-store (fetchWithAuth, /api/company-apps, json.items), page (listApps, skeleton/animate-pulse, EmptyState+CTA /apps/new, ErrorState+retry, router.push, nome+app_id, StatusBadge, formatDate), arquivos existentes (backend+frontend)
+- [x] tests/unit/story-4-2/verification-screen.test.mjs - Story 4.2 contratos da tela coringa: hook de polling público (sem fetchWithAuth, intervalo 5-10s, para em status terminal, cleanup de timers, 404→invalid, guarda NaN em getSecondsRemaining, timeout via AbortController), VerificationLayout (sem chrome de dashboard, tokens semânticos), DeepLinkButton (URI-encoded, touch target 48px), VerificationStateCard (6+1 estados incluindo fallback e network, aria-live restrito ao texto de estado, StatusBadge por estado, sem campos sensíveis), page.tsx (DTO real pós-4.1, sem QR code, expired forçado pelo contador local, "opened" 100% guiado pelo servidor — sem clickedOpen)
 
 ## Coverage
 
@@ -206,3 +207,28 @@
 - `node --test tests/unit/story-2-1/listagem-de-aplicacoes.test.mjs`: **passed** — 15/15
 - `node --test tests/unit/story-5-4/credential-issuance.test.mjs`: **passed** — 21/21
 - `npm test` (suite completa): **passed** — 259/259 (todas as stories passando, incluindo regressões)
+
+### Story 4.2 — Tela Coringa com Polling e 6 Estados Visuais
+- Acceptance criteria: 7/7 cobertos
+  - AC#1 (waiting_user: layout independente, nome da company + proofType traduzido, deep link, contador, polling 5-10s): coberto pelos contratos do hook (intervalo, fetch público) e do card `waiting_user` (StatusBadge, DeepLinkButton, countdown fora da região aria-live)
+  - AC#2 (opened: spinner, deep link oculto, polling continua): coberto por "opened state does not render the deep link button" e pelo patch que remove `clickedOpen` — o estado só é exibido quando `session.status === "opened"` confirmado pelo servidor
+  - AC#3 (approved_by_user: sucesso + botão condicional a returnUrl, polling para): coberto por `TERMINAL_STATUSES` e pela renderização condicional `returnUrl ? (...)`
+  - AC#4 (cancelled: mensagem genérica distinta, polling para): coberto pela comparação de blocos cancelled vs expired (cópias diferentes)
+  - AC#5 (expired: mensagem clara + contador força expired no client, polling para): coberto por `secondsRemaining <= 0` em `page.tsx` e pelo guard contra `NaN` em `getSecondsRemaining`
+  - AC#6 (token inválido/inexistente: mensagem genérica sem enumeration): coberto por "invalid state message does not distinguish reason" e pela distinção `network` vs `invalid` (patch de review)
+  - AC#7 (nenhum dado sensível exposto): coberto por "never renders sensitive fields"
+- Caminhos críticos: 34/34 testes passando
+  - Hook `useProofSessionPolling`: fetch público sem `fetchWithAuth`, intervalo dentro de 5-10s, parada em status terminal, cleanup de timers no unmount, 404 tratado como `invalid`, guarda `Number.isNaN` para `expiresAt` malformado, `AbortController` com timeout de 10s
+  - `VerificationLayout`: sem sidebar/topbar, tokens semânticos (não os literais `gray-50`/`blue-600` da spec de UX)
+  - `DeepLinkButton`: `encodeURIComponent(sessionToken)`, touch target `min-h-[48px]`
+  - `VerificationStateCard`: 6 estados nomeados + estado `network` + fallback para status desconhecido; `StatusBadge` aplicado a todos os estados incluindo `waiting_user`/`opened` (patch de review, conforme tabela dos Dev Notes); `aria-live="polite"` restrito ao título/descrição, excluindo o contador que muda a cada segundo (patch de review de acessibilidade)
+  - `page.tsx`: DTO alinhado com a Story 4.1 (sem campos obsoletos pré-4.1), sem placeholder de QR code, `displayStatus` derivado exclusivamente de `session.status` (patch de review — remove o anti-padrão `clickedOpen` que os próprios Dev Notes da story pediram para evitar), distinção entre erro de rede e link inválido na primeira carga (patch de review)
+  - TypeScript: `npx tsc --noEmit` sem erros; `npx eslint` sem erros/warnings
+
+#### Validation
+- `npm run test:story:4.2`: **passed** — 34/34
+- `npm test` (suite completa): **passed** — 406/406
+
+#### Notes
+- Os testes desta story seguem a convenção estrutural já estabelecida no projeto (`readFileSync` + regex/string matching sobre `node:test`), pois não há `jsdom`/`@testing-library` instalado — decisão de escopo pré-existente, não introduzida por esta story
+- 3 itens foram deferidos do code review para `deferred-work.md`: (1) sem backoff/limite em falhas de fetch repetidas — parcialmente mitigado pela distinção de erro de rede, (2) throttling de timers em aba em segundo plano não tratado, (3) ausência de testes comportamentais (jsdom/simulação de timers) — mesma limitação estrutural mencionada acima, registrada explicitamente como dívida técnica

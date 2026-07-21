@@ -1,3 +1,11 @@
+## Deferred from: code review of story-4-2-tela-coringa-com-polling-e-6-estados-visuais (2026-07-15)
+
+- **Sem backoff/limite em falhas de fetch repetidas** — `useProofSessionPolling` retenta a cada 7s indefinidamente mesmo com falhas consecutivas, sem backoff exponencial ou limite de tentativas. Parcialmente mitigado pelo patch que distingue erro de rede na UI (usuário passa a ver o erro em vez de tela travada). Implementar backoff/cap fica para hardening futuro fora do escopo do MVP. [`app/v/[sessionToken]/use-proof-session-polling.ts`]
+
+- **Throttling de timers em aba em segundo plano não tratado** — O `setInterval` de 1s do contador regressivo é pausado/throttled por browsers quando a aba fica em background (especialmente mobile), podendo causar "salto" perceptível no contador ao voltar o foco. Comportamento padrão de qualquer polling por timer em browser; não é governado pelos ACs da Story 4.2. Resolver com `visibilitychange` + resync se virar reclamação real de usuário. [`app/v/[sessionToken]/use-proof-session-polling.ts`]
+
+- **Testes da tela coringa são apenas inspeção estrutural de string** — `tests/unit/story-4-2/verification-screen.test.mjs` verifica padrões no código-fonte via regex/string matching, sem jsdom, sem simulação de timers e sem mock de fetch — não captura bugs comportamentais reais (estado preso, corrida de timers, etc.). Este é o padrão de teste já estabelecido em todas as stories anteriores do projeto (não há `jsdom`/`@testing-library` nas devDependencies). Considerar introduzir testes comportamentais com jsdom quando a stack de testes for expandida. [`tests/unit/story-4-2/verification-screen.test.mjs`]
+
 ## Deferred from: code review de 5-4-emissao-de-verifiable-credential (2026-07-08)
 
 - **Mock OCR Provider em produção** — O OCR de documento e extração de idade/personhood para emissão de credenciais está mockado usando `MockOcrProvider`. Antes de ir para produção, a factory em `Environments` deve ser estendida para instanciar e retornar um provider OCR de produção real (como Google Cloud Vision API ou AWS Textract) com base nas variáveis de ambiente do estágio. [`src/shared/clients/ocr/MockOcrProvider.ts`, `src/shared/environments.ts`]

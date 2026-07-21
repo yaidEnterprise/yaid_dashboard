@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-07-08
+# last_updated: 2026-07-15
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-07-08
+last_updated: 2026-07-15
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -75,7 +75,7 @@ development_status:
   # Epic 4: Tela Coringa e Sessão de Verificação
   epic-4: in-progress
   4-1-endpoint-publico-de-status-da-sessao: done
-  4-2-tela-coringa-com-polling-e-6-estados-visuais: backlog
+  4-2-tela-coringa-com-polling-e-6-estados-visuais: done
   epic-4-retrospective: optional
 
   # Epic 5: Emissão, Verificação e Gestão de Credenciais

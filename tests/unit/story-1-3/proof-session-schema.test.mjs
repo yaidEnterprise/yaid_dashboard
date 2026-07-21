@@ -140,9 +140,12 @@ test("Story 1.3 SupabaseProofSessionRepository.update persists challenge_created
 // ── tela coringa regression fix (review patch) ────────────────────────────────
 
 test("Story 1.3 tela coringa builds deep link from sessionToken param, not session.deepLinkUrl", () => {
-  const src = readText("app/v/[sessionToken]/page.tsx");
-  assert.equal(src.includes("session.deepLinkUrl"), false, "page must not read session.deepLinkUrl (field removed from DTO)");
-  assert.match(src, /yaid:\/\/verify\?session=/, "page must build deep link URI from sessionToken URL param");
+  const pageSrc = readText("app/v/[sessionToken]/page.tsx");
+  assert.equal(pageSrc.includes("session.deepLinkUrl"), false, "page must not read session.deepLinkUrl (field removed from DTO)");
+  // Story 4.2 extracted the deep link button into components/verification/deep-link-button.tsx
+  const deepLinkButtonSrc = readText("components/verification/deep-link-button.tsx");
+  assert.equal(deepLinkButtonSrc.includes("session.deepLinkUrl"), false, "deep link button must not read session.deepLinkUrl (field removed from DTO)");
+  assert.match(deepLinkButtonSrc, /yaid:\/\/verify\?session=/, "deep link button must build deep link URI from sessionToken param");
 });
 
 test("Story 1.3 tela coringa local ProofSession type does not include URL fields", () => {
