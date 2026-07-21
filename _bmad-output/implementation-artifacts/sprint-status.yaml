@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-07-13
+# last_updated: 2026-07-15
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-07-13
+last_updated: 2026-07-15
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -68,14 +68,14 @@ development_status:
   3-1-endpoint-b2b-criacao-de-proof-request: done
   3-2-listagem-de-proof-requests-no-dashboard: done
   3-3-detalhe-de-proof-request: done
-  3-4-helper-de-criacao-de-proof-request-dashboard: backlog
+  3-4-helper-de-criacao-de-proof-request-dashboard: done
   3-5-overview-do-dashboard: done
   epic-3-retrospective: optional
 
   # Epic 4: Tela Coringa e Sessão de Verificação
   epic-4: in-progress
   4-1-endpoint-publico-de-status-da-sessao: done
-  4-2-tela-coringa-com-polling-e-6-estados-visuais: backlog
+  4-2-tela-coringa-com-polling-e-6-estados-visuais: done
   epic-4-retrospective: optional
 
   # Epic 5: Emissão, Verificação e Gestão de Credenciais
@@ -85,7 +85,7 @@ development_status:
   5-3-challenge-e-abertura-de-sessao: done
   5-4-emissao-de-verifiable-credential: done
   5-5-verificacao-de-verifiable-presentation: backlog
-  5-6-cancel-de-sessao-e-revogacao-de-credencial: backlog
+  5-6-cancel-de-sessao-e-revogacao-de-credencial: review
   epic-5-retrospective: optional
 
   # Epic 6: Webhooks e Conclusão do Fluxo B2B

@@ -67,9 +67,19 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // 3. POST /api/proof-requests — API key auth
+  // 3. POST /api/proof-requests — API key or session auth
   if (pathname === "/api/proof-requests" && method === "POST") {
-    return withApiKeyAuth(request);
+    const hasApiKeyHeader =
+      Boolean(request.headers.get("x-api-key")) ||
+      request.headers.get("authorization")?.toLowerCase().startsWith("bearer ") === true;
+
+    if (hasApiKeyHeader) {
+      return withApiKeyAuth(request);
+    }
+
+    return withSessionAuth(request, sessionResponse, user, {
+      redirectOnFail: null,
+    });
   }
 
   // 4. DID auth routes — DID signature validation (Epic 5)
