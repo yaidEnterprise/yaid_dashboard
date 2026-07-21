@@ -5,6 +5,7 @@ import { ProofSessionStatus } from "@/shared/domain/enums/ProofSessionStatus";
 import { ProofRequestStatus } from "@/shared/domain/enums/ProofRequestStatus";
 import { ApiKeyHasher } from "@/shared/domain/interfaces/ApiKeyHasher";
 import { CancelProofSessionResponseDTO } from "./cancel_proof_session_viewmodel";
+import type { DeliverWebhookUseCase } from "@/modules/webhook/app/deliver_webhook_usecase";
 
 const TERMINAL_STATUSES = new Set<ProofSessionStatus>([
   ProofSessionStatus.APPROVED_BY_USER,
@@ -16,7 +17,8 @@ export class CancelProofSessionUseCase {
   constructor(
     private readonly sessionRepo: ProofSessionRepository,
     private readonly requestRepo: ProofRequestRepository,
-    private readonly hasher: ApiKeyHasher
+    private readonly hasher: ApiKeyHasher,
+    private readonly deliverWebhook?: DeliverWebhookUseCase
   ) {}
 
   async execute(input: { sessionToken: string }): Promise<CancelProofSessionResponseDTO> {
@@ -38,6 +40,20 @@ export class CancelProofSessionUseCase {
     session.cancel();
     await this.sessionRepo.update(session);
     await this.requestRepo.updateStatus(session.proofRequestId, ProofRequestStatus.REJECTED);
+
+    // Fire-and-forget webhook delivery
+    if (this.deliverWebhook) {
+      this.deliverWebhook
+        .execute({
+          proofRequestId: session.proofRequestId,
+          status: ProofRequestStatus.REJECTED,
+          proofType: "verification",
+          updatedAt: new Date().toISOString(),
+        })
+        .catch((err) =>
+          console.error(`[webhook] fire-and-forget error: ${err}`)
+        );
+    }
 
     return { cancelled: true };
   }
