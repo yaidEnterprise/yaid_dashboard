@@ -20,6 +20,7 @@
 - [x] tests/unit/story-5-4/credential-issuance.test.mjs - Story 5.4 emissão de Verifiable Credential: OCR em memória (sem persistência de PII/OCR), assinatura Ed25519 do VC usando ed.signAsync com chave privada do emissor, registro on-chain do DID do holder, validação da assinatura do request usando verifyAsync com a public key do DID do holder, e compilação TS limpa.
 - [x] tests/unit/story-2-1/listagem-de-aplicacoes.test.mjs - Story 2.1 contratos de listagem: GET /api/company-apps (handler, x-company-id, usecase filtra por companyId, viewmodel camelCase), apps-store (fetchWithAuth, /api/company-apps, json.items), page (listApps, skeleton/animate-pulse, EmptyState+CTA /apps/new, ErrorState+retry, router.push, nome+app_id, StatusBadge, formatDate), arquivos existentes (backend+frontend)
 - [x] tests/unit/story-4-2/verification-screen.test.mjs - Story 4.2 contratos da tela coringa: hook de polling público (sem fetchWithAuth, intervalo 5-10s, para em status terminal, cleanup de timers, 404→invalid, guarda NaN em getSecondsRemaining, timeout via AbortController), VerificationLayout (sem chrome de dashboard, tokens semânticos), DeepLinkButton (URI-encoded, touch target 48px), VerificationStateCard (6+1 estados incluindo fallback e network, aria-live restrito ao texto de estado, StatusBadge por estado, sem campos sensíveis), page.tsx (DTO real pós-4.1, sem QR code, expired forçado pelo contador local, "opened" 100% guiado pelo servidor — sem clickedOpen)
+- [x] tests/unit/story-6-2/webhook-public-key.test.mjs - Story 6.2 contratos do endpoint público da chave de webhook: round-trip Ed25519 real (sign com chave de teste → verify com public key derivada retorna true; payload adulterado e assinatura forjada retornam false), determinismo do encoding base64 padrão (não base64url), use case/viewmodel/controller/presenter/rota, validação de formato hex e gate de stage TEST na substituição da chave de teste (review patches), confirmação de que `environments.ts`/`middleware.ts` não precisaram de alteração
 
 ## Coverage
 
@@ -232,3 +233,24 @@
 #### Notes
 - Os testes desta story seguem a convenção estrutural já estabelecida no projeto (`readFileSync` + regex/string matching sobre `node:test`), pois não há `jsdom`/`@testing-library` instalado — decisão de escopo pré-existente, não introduzida por esta story
 - 3 itens foram deferidos do code review para `deferred-work.md`: (1) sem backoff/limite em falhas de fetch repetidas — parcialmente mitigado pela distinção de erro de rede, (2) throttling de timers em aba em segundo plano não tratado, (3) ausência de testes comportamentais (jsdom/simulação de timers) — mesma limitação estrutural mencionada acima, registrada explicitamente como dívida técnica
+
+### Story 6.2 — Endpoint Público da Chave de Webhook
+- Acceptance criteria: 3/3 cobertos
+  - AC#1 (`GET /api/webhook-public-key` retorna `{ publicKey, algorithm: "Ed25519" }` derivado de `WEBHOOK_SIGNING_PRIVATE_KEY`, determinístico): coberto pelos testes estruturais de `get_webhook_public_key_usecase.ts`/`viewmodel.ts` e pelo teste comportamental de determinismo do encoding base64 (duas derivações consecutivas produzem a mesma string)
+  - AC#2 (public key retornada verifica assinaturas legítimas como `true` e adulteradas/forjadas como `false`): coberto por 3 testes comportamentais reais com `@noble/ed25519` (`sign` com a chave de teste → `verify` com a public key derivada; payload adulterado; assinatura forjada com outra chave)
+  - AC#3 (boot-fail em PROD/HOMOLOG sem a env, getter falha explicitamente em DEV/DOTENV): coberto por testes de contrato confirmando que `environments.ts` já tem `WEBHOOK_SIGNING_PRIVATE_KEY` em `productionRequiredEnvNames` e que o getter usa `requireConfiguredValue` — nenhuma mudança foi feita nesse arquivo, então a cobertura pré-existente já vale para este endpoint
+- Caminhos críticos: 23/23 testes passando
+  - `GetWebhookPublicKeyUseCase`: deriva via `ed.getPublicKeyAsync`, encoding base64 padrão (`Buffer.from(...).toString("base64")`, não base64url), fallback de chave de teste distinto do issuer (`...002`)
+  - Patches do code review: `hexToBytes` valida formato via `HEX_PRIVATE_KEY_PATTERN` e lança erro em hex malformado/tamanho ímpar em vez de silenciosamente corromper a chave; substituição da chave de teste restrita a `stage === Stage.TEST` (constructor recebe `stage: Stage` como segundo parâmetro, injetado pelo presenter — usecase não acessa `Environments.getEnvs()` diretamente, mantendo a convenção do projeto)
+  - Módulo completo (`usecase`/`viewmodel`/`controller`/`presenter`/`route.ts`) segue o padrão de `get_proof_session_*` e `issue_credential_presenter.ts`
+  - Confirmado que `src/shared/environments.ts` e `src/shared/middleware.ts` não precisaram de nenhuma alteração (toda a infraestrutura de `WEBHOOK_SIGNING_PRIVATE_KEY` e a classificação da rota como pública já existiam)
+  - TypeScript: `npx tsc --noEmit` sem erros; `npx eslint` sem erros/warnings
+
+#### Validation
+- `npm run test:story:6.2`: **passed** — 23/23
+- `npm test` (suite completa): **passed** — 518/518
+
+#### Notes
+- Mesma convenção estrutural do projeto (`node:test` + regex sobre source), mas complementada por testes comportamentais reais com `@noble/ed25519` para a lógica criptográfica (round-trip sign/verify), já que essa parte é uma função pura facilmente testável sem precisar importar a classe TypeScript diretamente
+- 2 itens deferidos do code review para `deferred-work.md`: (1) sem cache da public key entre requisições (otimização de performance, não exigida pelos ACs), (2) duplicação de forma entre `GetWebhookPublicKeyOutput` (usecase) e `GetWebhookPublicKeyOutputDTO` (viewmodel) — refactor de baixo risco fora de escopo
+- Story 6.1 (WebhookSigner e Entrega de Webhook) permanece em `backlog` — é independente desta story; a Story 6.2 não depende da implementação do signer, apenas da mesma env var já pré-configurada
