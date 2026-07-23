@@ -20,6 +20,7 @@
     "test:story:5.1": "node --test \"tests/unit/story-5-1/*.test.mjs\"",
     "test:story:5.2": "node --test \"tests/unit/story-5-2/*.test.mjs\"",
     "test:story:4.2": "node --test \"tests/unit/story-4-2/*.test.mjs\"",
+    "test:story:6.2": "node --test \"tests/unit/story-6-2/*.test.mjs\"",
     "start": "next start",
     "lint": "eslint"
   },
