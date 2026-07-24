@@ -1,3 +1,9 @@
+## Deferred from: code review of story-6-2-endpoint-publico-da-chave-de-webhook (2026-07-22)
+
+- **Sem cache da public key entre requisições** — `GetWebhookPublicKeyUseCase.execute()` recomputa `ed.getPublicKeyAsync` a cada `GET /api/webhook-public-key`, mesmo a resposta sendo determinística (constante enquanto `WEBHOOK_SIGNING_PRIVATE_KEY` não mudar). Sem `Cache-Control`/`ETag` na rota. Otimização de performance para uma rota pública que pode ser chamada com frequência; não exigida pelos ACs da Story 6.2. [`src/modules/webhook/app/get_webhook_public_key_usecase.ts`, `app/api/webhook-public-key/route.ts`]
+
+- **Duplicação de forma de saída sem fonte única de verdade** — `GetWebhookPublicKeyOutput` (interface no usecase) e `GetWebhookPublicKeyOutputDTO` (type no viewmodel) declaram a mesma forma `{ publicKey: string; algorithm: "Ed25519" }` de forma independente, e o literal `"Ed25519"` é repetido em 3 lugares (interface, DTO, valor retornado). Risco baixo de drift; refactor de unificação é de baixo risco mas fora do escopo desta story. [`src/modules/webhook/app/get_webhook_public_key_usecase.ts`, `src/modules/webhook/app/get_webhook_public_key_viewmodel.ts`]
+
 ## Deferred from: code review of story-4-2-tela-coringa-com-polling-e-6-estados-visuais (2026-07-15)
 
 - **Sem backoff/limite em falhas de fetch repetidas** — `useProofSessionPolling` retenta a cada 7s indefinidamente mesmo com falhas consecutivas, sem backoff exponencial ou limite de tentativas. Parcialmente mitigado pelo patch que distingue erro de rede na UI (usuário passa a ver o erro em vez de tela travada). Implementar backoff/cap fica para hardening futuro fora do escopo do MVP. [`app/v/[sessionToken]/use-proof-session-polling.ts`]

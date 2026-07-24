@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-07-15
+# last_updated: 2026-07-22
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-07-15
+last_updated: 2026-07-22
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -89,7 +89,7 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: Webhooks e Conclusão do Fluxo B2B
-  epic-6: backlog
+  epic-6: in-progress
   6-1-webhooksigner-e-entrega-de-webhook: backlog
-  6-2-endpoint-publico-da-chave-de-webhook: backlog
+  6-2-endpoint-publico-da-chave-de-webhook: done
   epic-6-retrospective: optional
