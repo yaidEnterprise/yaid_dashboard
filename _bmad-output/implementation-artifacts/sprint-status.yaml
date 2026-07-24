@@ -60,7 +60,7 @@ development_status:
 
   2-1-listagem-de-aplicacoes: done
   2-2-criacao-de-app-com-api-key-one-shot: done
-  2-3-detalhe-e-edicao-de-app: backlog
+  2-3-detalhe-e-edicao-de-app: done
   epic-2-retrospective: optional
 
   # Epic 3: Proof Requests e Dashboard de Validações
@@ -84,12 +84,12 @@ development_status:
   5-2-wrapper-blockchainclient: done
   5-3-challenge-e-abertura-de-sessao: done
   5-4-emissao-de-verifiable-credential: done
-  5-5-verificacao-de-verifiable-presentation: backlog
-  5-6-cancel-de-sessao-e-revogacao-de-credencial: review
+  5-5-verificacao-de-verifiable-presentation: done
+  5-6-cancel-de-sessao-e-revogacao-de-credencial: done
   epic-5-retrospective: optional
 
   # Epic 6: Webhooks e Conclusão do Fluxo B2B
   epic-6: in-progress
-  6-1-webhooksigner-e-entrega-de-webhook: backlog
+  6-1-webhooksigner-e-entrega-de-webhook: done
   6-2-endpoint-publico-da-chave-de-webhook: done
   epic-6-retrospective: optional
