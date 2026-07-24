@@ -7,6 +7,7 @@ import { ProofRequestRepository } from "@/shared/domain/interfaces/repositories/
 import { ProofRequestStatus } from "@/shared/domain/enums/ProofRequestStatus";
 import { ProofSessionStatus } from "@/shared/domain/enums/ProofSessionStatus";
 import { VerifyPresentationOutputDTO } from "./verify_presentation_viewmodel";
+import type { DeliverWebhookUseCase } from "@/modules/webhook/app/deliver_webhook_usecase";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,8 @@ export class VerifyPresentationUseCase {
     private readonly requestRepo: ProofRequestRepository,
     private readonly hasher: ApiKeyHasher,
     private readonly blockchainClient: BlockchainClient,
-    private readonly issuerPrivateKey: string
+    private readonly issuerPrivateKey: string,
+    private readonly deliverWebhook?: DeliverWebhookUseCase
   ) {}
 
   async execute(
@@ -101,6 +103,7 @@ export class VerifyPresentationUseCase {
     // Helper: mark proof_request as rejected and return { valid: false }
     const reject = async (): Promise<VerifyPresentationOutputDTO> => {
       await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.REJECTED);
+      this.fireWebhook(proofRequestId, ProofRequestStatus.REJECTED);
       return { valid: false };
     };
 
@@ -279,7 +282,25 @@ export class VerifyPresentationUseCase {
     session.approveByUser(now);
     await this.sessionRepo.update(session);
     await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.APPROVED);
+    this.fireWebhook(proofRequestId, ProofRequestStatus.APPROVED);
 
     return { valid: true };
+  }
+
+  /**
+   * Fire-and-forget webhook delivery. Never blocks the response.
+   */
+  private fireWebhook(proofRequestId: string, status: ProofRequestStatus): void {
+    if (!this.deliverWebhook) return;
+    this.deliverWebhook
+      .execute({
+        proofRequestId,
+        status,
+        proofType: "verification",
+        updatedAt: new Date().toISOString(),
+      })
+      .catch((err) =>
+        console.error(`[webhook] fire-and-forget error: ${err}`)
+      );
   }
 }
