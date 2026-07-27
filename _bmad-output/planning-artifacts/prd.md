@@ -1,3 +1,18 @@
+---
+workflowType: 'prd'
+workflow: 'edit'
+inputDocuments:
+  - 'sprint-change-proposal-2026-07-27.md'
+stepsCompleted:
+  - 'step-e-01-discovery'
+  - 'step-e-02-review'
+  - 'step-e-03-edit'
+lastEdited: '2026-07-27'
+editHistory:
+  - date: '2026-07-27'
+    changes: 'Correct Course — ambientes por app (homol/prod), review manual em homologação, allowlist can_create_apps, VC entregue como VC-JWT (EdDSA), proof_requests.updated_at, remoção da Resposta da API na tela unitária, topbar dinâmica, versionamento de schema via Supabase Migrations; reversão parcial do Out of Scope de ambientes.'
+---
+
 # PRD — Dashboard Empresarial + Backend YaID
 
 > Documento de produto/requisitos da codebase única em Next.js que entrega o
@@ -9,7 +24,9 @@
 > Para a linguagem do domínio (DID, VC, VP, Holder, Issuer, Verifier, Company,
 > Proof Request, Proof Session), ver [CONTEXT.md](../CONTEXT.md).
 >
-> **Última atualização:** 2026-05-11
+> **Última atualização:** 2026-07-27 (revisão via Correct Course — Sprint Change
+> Proposal 2026-07-27: ambientes por app, allowlist de criação de apps, review
+> manual em homologação, VC entregue como JWT assinado, versionamento de schema)
 
 ---
 
@@ -33,7 +50,7 @@ A experiência da empresa parceira é simples: cria uma proof_request via API, r
 
 A experiência do holder é simples: abre o link no celular, app mobile assina uma VP com challenge emitido pela YaID, validação acontece sem compartilhar PII.
 
-A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mora em tabela centralizada da YaID; a chain é a única fonte centralizada e contém apenas DID + hash de revogação; o claim na VC é booleano, não há SD-JWT/ZKP, mas também não há vazamento.
+A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mora em tabela centralizada da YaID; a chain é a única fonte centralizada e contém apenas DID + hash de revogação; o claim na VC é booleano, não há SD-JWT/ZKP, mas também não há vazamento. A VC é entregue ao app mobile como **JWT assinado (VC-JWT, EdDSA)**, formato compacto verificável na apresentação.
 
 ## Implementation Decisions
 
@@ -48,8 +65,12 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 - **Quatro tabelas centralizadas**, todas referentes ao lado empresarial: `company`, `company_apps`, `proof_requests`, `proof_sessions`. Nenhuma sobre o holder.
 - Tabela `identity_submissions` (sugerida no PRD antigo) é **proibida** pelo princípio de privacidade. Emissão de VC é síncrona e sem persistência relacional.
 - `proof_sessions` mantém `id` próprio. Adiciona campos `challenge_nonce_hash` e `challenge_created_at`. Remove colunas `verification_page_url` e `deep_link_url` (derivadas do token).
+- `proof_requests` possui coluna `updated_at TIMESTAMPTZ DEFAULT now()`, atualizada em **toda** transição de status. É a fonte de "Atualizada em" no dashboard (antes o campo vinha aliasado de `validated_at` e ficava `null` sem transição de validação).
+- `company` possui coluna `can_create_apps BOOLEAN NOT NULL DEFAULT false` — allowlist de quais empresas podem criar apps (comportamento tipo assinatura, sem Stripe). Empresas existentes recebem `true` via backfill na migration.
+- `company_apps` possui coluna `environment` (`homol` | `prod`) escolhida na criação do app; define comportamento por ambiente (ver Telas do dashboard e review manual). Default seguro `homol`.
 - `proof_type` é enum de string única por request: `personhood` | `age_over_18`. Pedidos compostos viram dois proof_requests separados.
 - VC carrega claims booleanos derivados (`personhood: true`, `ageOver18: true`). Data de nascimento, nome e CPF nunca entram na VC.
+- **Versionamento de schema:** o banco é versionado via **Supabase Migrations** (`supabase/migrations/`, CLI linkada ao project-ref). Um baseline (`supabase db pull`) captura o schema hoje deployado e encerra o drift entre código e base; toda mudança estrutural passa a ser um arquivo de migration timestampado. SQL manual pelo dashboard do Supabase deixa de ser a fonte estrutural.
 
 ### Identidade descentralizada e criptografia
 
@@ -57,7 +78,8 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 - **Holder:** identificado por `did:yaid:user:<holder-public-key>` derivado de keypair local gerada no primeiro uso do app. Sem cadastro centralizado.
 - **Posse de DID em emissão:** body de `POST /api/credentials/issue` é assinado pela private key do holder; backend valida `verify(signature, payload, public_key)`, retirando a public key do did.
 - **Auth do app mobile em todas as rotas:** headers `X-YaID-DID`, `X-YaID-Signature`, `X-YaID-Timestamp` (tolerância ±5min para replay protection). **A public key é extraída diretamente do DID** (formato `did:yaid:user:<holder-public-key>`), eliminando a necessidade de header separado e o check "`derive(public_key) === did`" — a relação é tautológica por construção.
-- **Disclosure da VP:** sem SD-JWT/BBS+/ZKP. A VP carrega a VC inteira, e como a VC só tem booleanos, não há vazamento.
+- **Formato da VC (emissão):** VC-JWT compacto assinado com `ISSUER_PRIVATE_KEY` (JWS EdDSA). Header `{alg:"EdDSA", typ:"JWT", kid:"<issuerDid>#key-1"}`; payload `{iss, sub:<holderDid>, jti, iat, nbf, vc:{...claims booleanos}}`. `POST /api/credentials/issue` retorna a string JWT (não mais JSON-LD com `proof.Ed25519Signature2020` embutido).
+- **Disclosure da VP:** sem SD-JWT/BBS+/ZKP. A VP carrega a VC inteira (VC-JWT), e como a VC só tem booleanos, não há vazamento. `POST /api/presentations/verify` decodifica e valida a VC no formato JWT.
 - **Revogação:** somente o holder revoga (via app mobile, assinando `vc_id`). Backend registra `hash(vc_id)` on-chain. YaID não mantém nem consulta lista local de VCs.
 
 ### Blockchain
@@ -92,7 +114,8 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 - Ações destrutivas (logout, desabilitar app) exigem confirmação.
 - 401 redireciona para `/sign-in?next=<path>` via fetch wrapper global.
 - PT-BR fixo, sem i18n no MVP. Desktop-first; mobile funcional não otimizado.
-- Componentes compartilhados já disponíveis: `MetricCard`, `StatusBadge`, `FilterPopover`, `CodeBlock`/`InlineCode`, `PageHeader`. (`EnvBadge` existe na codebase mas **não é usado no MVP** dado que não há distinção de ambientes.)
+- Componentes compartilhados já disponíveis: `MetricCard`, `StatusBadge`, `FilterPopover`, `CodeBlock`/`InlineCode`, `PageHeader`. Ambientes passam a existir **por app** (`homol`/`prod`) — `EnvBadge` é usado no **nível do app** (não como badge global de topbar).
+- **Topbar dinâmica:** o header consome `GET /api/companies/me` e exibe o **nome real da company logada** + inicial dinâmica no avatar. Removidos os valores hardcoded ("Acme Identidade Ltda.", "Maria R./MR") e o badge global "Homologação" — o ambiente é atributo do app, não da sessão.
 
 ### Telas do dashboard
 
@@ -100,11 +123,11 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 - `/sign-up`: form único com email, senha, confirmação de senha, **nome da empresa (required)** e **CNPJ obrigatório com máscara**. Submit chama um endpoint atômico (ex: `POST /api/auth/sign-up`) que cria `auth.users` e `public.company` na mesma operação — qualquer falha aborta ambos. Pós-cadastro redireciona direto para `/`.
 - ~~`/onboarding/company`~~: **rota descontinuada**. Os campos da company foram absorvidos pelo form de signup. A pasta `app/onboarding/` existente hoje deve ser removida ou redirecionar 301 para `/sign-up`.
 - `/(dashboard)` overview: 4 metric cards (total/aprovadas/pendentes/rejeitadas dos últimos 30 dias), card "próximo passo recomendado" adaptativo, card "apps ativos", tabela "solicitações recentes" (top 5), aviso institucional de privacidade. **Hoje usa dados mockados — migrar para API.**
-- `/(dashboard)/apps`: tabela com busca por nome/id e filtro multi-select por status, footer com contador. **Hoje usa localStorage — migrar para `GET /api/company-apps`.**
-- `/(dashboard)/apps/new`: form em 2 cards (Identificação, Webhook) + sidebar institucional. Submit abre **modal bloqueante** com API key (font-mono, copiável), aviso amarelo "única vez", **checkbox bloqueante de confirmação**, botão de conclusão disabled até marcar. Esc não fecha.
+- `/(dashboard)/apps`: tabela com busca por nome/id e filtro multi-select por status, footer com contador. **Hoje usa localStorage — migrar para `GET /api/company-apps`.** Se a company não tem `can_create_apps`, o CTA "Criar app" fica desabilitado com banner explicativo (comportamento tipo assinatura, sem Stripe).
+- `/(dashboard)/apps/new`: form em 2 cards (Identificação, Webhook) + sidebar institucional, incluindo **seletor de ambiente** (`environment`: "Homologação"/"Produção", Zod `z.enum(["homol","prod"])`, default seguro `homol`) enviado no `POST /api/company-apps`. Bloqueado (redirect/estado desabilitado) quando `can_create_apps` é falso. Submit abre **modal bloqueante** com API key (font-mono, copiável), aviso amarelo "única vez", **checkbox bloqueante de confirmação**, botão de conclusão disabled até marcar. Esc não fecha.
 - `/(dashboard)/apps/[appId]`: detalhe com nome, badges, cards editáveis (Identificação, Webhook), card de chave (só app_id, nunca secret), toggle de status com confirmação ao desabilitar.
 - `/(dashboard)/proof-requests`: 4 mini-cards de resumo, busca + filtros (status, app, período), tabela com paginação refletida na URL.
-- `/(dashboard)/proof-requests/[requestId]`: header com Request ID + status, grid 2 colunas (resumo + atributos confirmados + JSON da resposta || timeline + privacy card).
+- `/(dashboard)/proof-requests/[requestId]`: header com Request ID + status, grid 2 colunas (resumo + atributos confirmados || timeline + privacy card). **Sem a seção "Resposta da API"** (saída bruta da rota GET removida — informação técnica desnecessária ao usuário-empresa). Em apps de **homologação** e status não-terminal, exibe botões **Aprovar/Reprovar** (review manual) via `POST /api/proof-requests/{requestId}/review`; em apps de **produção** os botões não aparecem nem são aceitos (guard server-side). A ação transiciona `proof_request` → `approved`/`rejected`, seta `updated_at = now()` e dispara o webhook normal (`DeliverWebhookUseCase`). O campo "Atualizada em" reflete a coluna real `updated_at`.
 - `/(dashboard)/proof-requests/new` (helper de teste): form com app + proof_type + external_reference; precisa de endpoint internal autenticado por sessão (não API key, já que dashboard não tem o secret).
 - `/(dashboard)/settings`: perfil da company com inputs editáveis (`PATCH /api/companies/me` a criar), Stripe card como placeholder fora-de-escopo, botão de logout com confirmação. **Hoje usa dados mockados — migrar.**
 - Cleanup: pasta duplicada `/apps/novo` deve ser removida ou redirecionar para `/apps/new`.
@@ -119,7 +142,7 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 
 ### APIs
 
-- **Dashboard (sessão Supabase, cookie-based):** `POST /api/companies`, `GET/PATCH /api/companies/me`, `POST/GET /api/company-apps`, `GET/PATCH /api/company-apps/{appId}`, `GET /api/proof-requests`, `GET /api/proof-requests/{id}`, `POST /api/auth/sign-out`.
+- **Dashboard (sessão Supabase, cookie-based):** `POST /api/companies`, `GET/PATCH /api/companies/me`, `POST/GET /api/company-apps`, `GET/PATCH /api/company-apps/{appId}`, `GET /api/proof-requests`, `GET /api/proof-requests/{id}`, `POST /api/proof-requests/{requestId}/review` (review manual em apps de homologação; guard rejeita apps de produção), `POST /api/auth/sign-out`.
 - **B2B (API key bearer):** `POST /api/proof-requests`.
 - **Tela coringa (público + posse do token):** `GET /api/proof-sessions/{sessionToken}`.
 - **App mobile (assinatura por DID + posse do session_token):** `POST /api/credentials/issue`, `POST /api/credentials/revoke`, `GET /api/proof-sessions/{sessionToken}/challenge`, `POST /api/presentations/verify`, `POST /api/proof-sessions/{sessionToken}/cancel`.
@@ -147,6 +170,9 @@ Não testar: getters de entity, factory composition, framework code (Next.js rou
 - **Endpoint de validação de VP (a implementar):** todas as 11 regras de validação em §6.5 do esboço anterior viram casos de teste, cada um produzindo o motivo correto.
 - **Auth do app mobile (a implementar):** payload com timestamp fora da janela é rejeitado; signature mismatch é rejeitado; DID malformado (não no formato `did:yaid:user:<pubkey>` ou pubkey não-decodificável) é rejeitado.
 - **Webhook signer (a implementar):** assinatura Ed25519 verificável com a public key publicada; corpo bruto preservado (não re-serializado).
+- **Guard de allowlist (`CreateCompanyAppUseCase`):** company com `can_create_apps = false` é rejeitada com `AppError(403)`; company com `true` cria normalmente.
+- **Review manual (`ReviewProofRequestUseCase`):** review em app `homol` transiciona status, seta `updated_at` e dispara o webhook; review em app `prod` é rejeitado pelo guard; review de status terminal é rejeitado.
+- **VC-JWT signer:** JWT emitido é verificável com a public key do issuer (JWS EdDSA), header/payload no formato esperado; app decodifica claims booleanos corretamente.
 - **Frontend — fluxo de revelação da API key:** componente do modal não permite avançar sem o checkbox confirmado.
 - **Frontend — fetch wrapper 401:** uma resposta 401 dispara redirect com `?next=<path>` preservado.
 
@@ -160,7 +186,7 @@ Hoje a codebase não tem testes automatizados estabelecidos. A introdução deve
 - Implementação interna do smart contract — codebase separada. Este PRD documenta apenas o esboço da interface.
 - Selective disclosure criptográfico (SD-JWT, BBS+) e ZKP.
 - Múltiplos proof_types em uma única request (composição de claims).
-- Distinção sandbox / production / homologação. **No MVP cada app é apenas um app** — não há campo `environment`, não há ambientes separados, não há comportamento diferenciado por ambiente. Quando uma proof_request é criada, ela é "real" — não existe modo simulado. Filtros, badges e telas que exibiriam ambiente ficam removidos do MVP.
+- ~~Distinção sandbox / production / homologação.~~ **Revertido parcialmente (Sprint Change 2026-07-27):** ambientes existem **por app** via `company_apps.environment` (`homol` | `prod`), escolhidos na criação. Comportamento diferenciado: apps de homologação permitem **review manual** (aprovar/reprovar) de proof_requests; apps de produção não. **Continua fora de escopo** a infraestrutura pesada de ambientes: chains/registries separados por ambiente, simulador/modo mock de emissão, e dados isolados por ambiente — uma proof_request continua "real" em qualquer ambiente.
 - Tabela `identity_submissions` ou qualquer tabela com referência a holder/VC (proibido pelo princípio de privacidade).
 - Cadastro/login centralizado de holders (Supabase Auth para holder).
 - Rotação de API key e múltiplas API keys por app.
@@ -192,7 +218,7 @@ Hoje a codebase não tem testes automatizados estabelecidos. A introdução deve
 ### Decisões em aberto (TBD)
 
 - Provider de OCR concreto (Google Vision, AWS Textract, IDWall, Unico, etc.) — decidir após prototipar com 1–2 amostras de RG.
-- Reintrodução de ambientes (sandbox vs production) como feature pós-MVP: estratégia a definir (chains separadas, simulador, flag por app etc).
+- ~~Reintrodução de ambientes (sandbox vs production) como feature pós-MVP.~~ **Resolvido (Sprint Change 2026-07-27):** ambientes entram no escopo via flag `company_apps.environment` (`homol`/`prod`), com review manual apenas em homologação. Chains separadas e simulador seguem fora de escopo.
 - Métricas específicas exibidas no overview e definição precisa dos trends (vs período anterior).
 - Política de retry de webhook e formato da tabela `webhook_deliveries`.
 - Razões de rejeição estruturadas: enum (`user_cancelled` | `vc_invalid` | `vc_revoked` | `session_expired` | `nonce_mismatch` | `holder_mismatch`) ou ausência no MVP.
@@ -210,8 +236,10 @@ Hoje a codebase não tem testes automatizados estabelecidos. A introdução deve
 
 **Implementado mas precisa ajuste:** `proof_sessions` ainda persiste `verification_page_url` e `deep_link_url` (remover, derivar do token); falta `challenge_nonce_hash` e `challenge_created_at`; hash da API key é SHA-256 simples (avaliar Argon2/bcrypt); Overview/Settings/Apps usam dados mockados ou localStorage (migrar para API real); falta fetch wrapper 401-redirect; faltam confirmações destrutivas; tela coringa sem polling/QR/estados completos; pasta duplicada `/apps/novo`.
 
+**Ajustes do Sprint Change 2026-07-27 (a implementar):** ícone oficial YaID (`public/yaid_icon.svg`) nas 4 telas de logo em vez do placeholder `ShieldHalf`/"YaID" hardcoded; topbar dinâmica consumindo a company logada (remover valores hardcoded e badge "Homologação"); coluna `proof_requests.updated_at` + `updateStatus()` gravando `now()` (corrige "Atualizada em" `null`); remoção da seção "Resposta da API" na tela unitária; seletor de `environment` na criação de app; allowlist `company.can_create_apps` com guard no `CreateCompanyAppUseCase` + backfill; endpoint/usecase de review manual em homologação; emissão de VC como VC-JWT (EdDSA) + verificação no `presentations/verify`; versionamento de schema via Supabase Migrations (baseline + forward migrations).
+
 **A implementar:** todos os fluxos do app mobile (issue, challenge, presentations/verify, cancel, revoke), módulo blockchain + smart contract + integração ethers, módulo webhook com assinatura Ed25519, `GET /api/webhook-public-key`, signup atômico unificado (com remoção da rota `/onboarding/company`), deploy Sepolia.
 
 ### Definição de pronto do MVP
 
-Demo ponta a ponta: empresa cria conta em um formulário único (email + senha + nome + CNPJ obrigatório → `auth.users` + `public.company` criados atomicamente), cai direto no overview, cria um app, copia API key, chama `POST /api/proof-requests`, recebe verification_url, holder abre no app mobile (já com VC emitida em fluxo separado contra documento, com DID registrado em Sepolia), assina VP, backend valida tudo (incluindo lookup on-chain de DID e revogação), envia webhook Ed25519, empresa vê request approved no dashboard com timeline. Holder revoga VC; tentativa subsequente da empresa é rejected. Nenhum dado pessoal aparece em qualquer tabela do Supabase. Os envs de chave estão configurados e validados no boot em `PROD`/`HOMOLOG`; em dev local, fluxos que não usam issuer/blockchain não dependem deles. **Em nenhum momento existe uma sessão sem company associada.**
+Demo ponta a ponta: empresa cria conta em um formulário único (email + senha + nome + CNPJ obrigatório → `auth.users` + `public.company` criados atomicamente), cai direto no overview, cria um app **escolhendo o ambiente (homologação/produção)** — sujeito à allowlist `can_create_apps` —, copia API key, chama `POST /api/proof-requests`, recebe verification_url, holder abre no app mobile (já com VC emitida como **JWT assinado** em fluxo separado contra documento, com DID registrado em Sepolia), assina VP, backend valida tudo (incluindo lookup on-chain de DID e revogação), envia webhook Ed25519, empresa vê request approved no dashboard com timeline e "Atualizada em" refletindo a última transição. Em apps de homologação, a empresa consegue **aprovar/reprovar manualmente** uma proof_request e o webhook real dispara. Holder revoga VC; tentativa subsequente da empresa é rejected. Nenhum dado pessoal aparece em qualquer tabela do Supabase. Os envs de chave estão configurados e validados no boot em `PROD`/`HOMOLOG`; em dev local, fluxos que não usam issuer/blockchain não dependem deles. **Em nenhum momento existe uma sessão sem company associada.**

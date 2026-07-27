@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node --input-type=module)"
+      "Bash(node --input-type=module)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-correct-course --key workflow)",
+      "Bash(supabase --version)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-edit-prd --key workflow)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-create-ux-design --key workflow)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-create-architecture --key workflow)",
+      "Bash(grep -nE '^#{2,3} ' /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad-output/planning-artifacts/architecture.md)",
+      "Bash(python3 _bmad/scripts/resolve_customization.py --skill .claude/skills/bmad-create-epics-and-stories --key workflow)"
     ]
   }
 }
