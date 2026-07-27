@@ -3,18 +3,30 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-05-11'
+revisedAt: '2026-07-27'
 inputDocuments:
   - docs/prd.md
   - CONTEXT.md
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-27.md
 workflowType: 'architecture'
 project_name: 'yaid_dashboard'
 user_name: 'Victordegasperi'
 date: '2026-05-11'
+editHistory:
+  - date: '2026-07-27'
+    changes: 'Correct Course — edição direcionada: versionamento de schema via Supabase Migrations (baseline + forward); company.can_create_apps (allowlist); company_apps.environment (homol/prod); proof_requests.updated_at reforçado em toda transição; endpoint/usecase de review manual em homologação; VC emitida como VC-JWT (EdDSA); guard de allowlist no CreateCompanyAppUseCase.'
 ---
 
 # Architecture Decision Document
 
 _Este documento é construído colaborativamente através de descoberta passo a passo. Seções são adicionadas conforme avançamos em cada decisão arquitetural juntos._
+
+> **Revisão 2026-07-27 (Correct Course — Sprint Change Proposal 2026-07-27):** edição
+> direcionada sobre a arquitetura já finalizada. Mudanças de schema (`company.can_create_apps`,
+> `company_apps.environment`, `proof_requests.updated_at`), versionamento via Supabase Migrations,
+> endpoint/usecase de review manual em homologação, guard de allowlist e VC entregue como VC-JWT
+> (EdDSA). As demais decisões permanecem válidas e inalteradas.
 
 ## Análise de Contexto do Projeto
 
@@ -136,7 +148,19 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 
 ### Arquitetura de Dados
 
-- **Migrations:** SQL manual via dashboard do Supabase — sem versionamento no MVP.
+- **Migrations (versionamento de schema):** **Supabase Migrations** via CLI, com o diretório
+  `supabase/` versionado (`config.toml`, `migrations/`, `seed.sql`). A CLI é linkada ao
+  project-ref `lygkwhcwsrxfozswhxyo`. Um **baseline** (`supabase db pull`) captura o schema
+  hoje deployado — encerrando o drift entre código e base — e cada mudança estrutural posterior
+  passa a ser um arquivo de migration timestampado. Fluxo: `supabase db reset` (local) →
+  `supabase db push` (remoto); CI opcional roda `supabase db diff --check` no PR. SQL manual
+  pelo dashboard do Supabase **deixa de ser** a fonte estrutural. `.gitignore` cobre
+  `supabase/.branches` e `supabase/.temp`.
+  - **Forward migrations do Sprint Change:** `add_updated_at_to_proof_requests`,
+    `add_can_create_apps_to_company` (+ backfill `true` para empresas existentes) e ajuste de
+    `environment`/default em `company_apps`. O baseline reflete o schema atual (que carrega o
+    drift real — `validated_at`/`external_ref`/`result`, sem `updated_at`); as forward migrations
+    reconciliam o banco com o schema-alvo descrito abaixo.
 - **Caching:** Nenhum — MVP busca tudo diretamente do banco.
 - **Isolamento:** Server-side por `company_id` nas queries — sem RLS no MVP.
 - **ORM:** Nenhum — queries diretas via Supabase client.
@@ -145,6 +169,20 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 
 - **Hash de API key:** SHA-256 — mantém implementação atual. Adequado para keys longas e aleatórias.
 - **Proxy de auth:** `proxy.ts` global (convenção Next.js 16) com roteamento por prefixo de rota. A lógica vive em `src/shared/middleware.ts` e cada mecanismo de auth (sessão Supabase, API key, DID signature, session token) é resolvido pelo prefixo correspondente.
+
+### Credenciais & Formato da VC
+
+- **Emissão da VC como VC-JWT (EdDSA):** o módulo `identity` (`issue_credential_usecase`) emite a
+  Verifiable Credential como **JWT compacto assinado** (JWS EdDSA), não mais como JSON-LD com
+  `proof.Ed25519Signature2020` embutido. Header `{alg:"EdDSA", typ:"JWT", kid:"<issuerDid>#key-1"}`;
+  payload `{iss, sub:<holderDid>, jti, iat, nbf, vc:{...claims booleanos}}`, assinado com
+  `ISSUER_PRIVATE_KEY`. `POST /api/credentials/issue` retorna a **string JWT**.
+- **Verificação:** `verify_presentation_usecase` (módulo `presentation`) decodifica e valida a VC no
+  formato JWT (assinatura do issuer via public key off-chain + claims booleanos + lookup on-chain de
+  DID/revogação). A VP carrega a VC-JWT inteira; como a VC só tem booleanos, não há vazamento de PII.
+- **Invariante preservado:** a VC continua carregando apenas claims booleanos derivados
+  (`personhood`, `ageOver18`) — nunca PII. A mudança é de **formato de serialização/assinatura**, não
+  de conteúdo. Coordenação externa necessária com a codebase do app mobile YaID Wallet.
 
 ### API & Comunicação
 
@@ -176,6 +214,7 @@ CREATE TABLE company (
   name        TEXT NOT NULL,
   document_number TEXT NOT NULL,                       -- CNPJ obrigatório no cadastro
   status      TEXT NOT NULL DEFAULT 'active',          -- active | inactive
+  can_create_apps BOOLEAN NOT NULL DEFAULT false,      -- allowlist de criação de apps (tipo assinatura, sem Stripe); backfill true p/ empresas existentes
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -187,6 +226,7 @@ CREATE TABLE company_apps (
   app_id        TEXT NOT NULL UNIQUE,   -- parte pública da API key (exibida no dashboard)
   api_key_hash  TEXT NOT NULL,          -- SHA-256 de "<app_id>.<secret>" — secret nunca persiste
   webhook_url   TEXT,                   -- nullable: empresa pode não configurar webhook
+  environment   TEXT NOT NULL DEFAULT 'homol',    -- homol | prod — escolhido na criação; homol habilita review manual
   status        TEXT NOT NULL DEFAULT 'active',   -- active | disabled
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -227,6 +267,9 @@ CREATE TABLE proof_sessions (
 - `api_key_hash` nunca contém o secret — apenas `SHA-256("<app_id>.<secret>")`.
 - `session_token_hash` — o token bruto é devolvido uma única vez na resposta de criação da proof_request e nunca mais armazenado.
 - `challenge_nonce_hash` e `challenge_created_at` — `NULL` enquanto status = `waiting_user`; preenchidos quando o holder abre a sessão.
+- `proof_requests.updated_at` — seta `NOW()` em **toda** transição de status (`updateStatus()` grava `status` **e** `updated_at`). É a fonte única do "Atualizada em" no dashboard; nunca mais aliasado de `validated_at`.
+- `company.can_create_apps` — gate de allowlist: só empresas com `true` criam apps. Default `false`; empresas pré-existentes recebem `true` via backfill na migration (evita bloqueio retroativo).
+- `company_apps.environment` (`homol` | `prod`) — atributo **do app**, não da sessão/company. `homol` habilita review manual de proof_requests; `prod` não. Uma proof_request continua "real" em qualquer ambiente (sem chains/registries separados nem modo mock).
 - Nenhuma tabela referencia holder, DID, VC ou VP. Esses dados existem apenas na blockchain e no app mobile.
 
 ## Padrão de Arquitetura Backend
@@ -426,6 +469,11 @@ yaid_dashboard/
 ├── package.json
 ├── tsconfig.json
 │
+├── supabase/                              # ★ versionamento de schema (Supabase CLI, project-ref lygkwhcwsrxfozswhxyo)
+│   ├── config.toml
+│   ├── seed.sql
+│   └── migrations/                        # baseline (db pull) + forward timestampadas
+│
 ├── app/
 │   ├── globals.css
 │   ├── layout.tsx
@@ -460,7 +508,9 @@ yaid_dashboard/
 │       │   └── [appId]/route.ts           # GET + PATCH
 │       ├── proof-requests/
 │       │   ├── route.ts                   # POST (API key) + GET (sessão)
-│       │   └── [requestId]/route.ts       # GET
+│       │   └── [requestId]/
+│       │       ├── route.ts               # GET
+│       │       └── review/route.ts        # ★ POST (sessão) — aprovar/reprovar em apps homol
 │       ├── proof-sessions/
 │       │   └── [sessionToken]/
 │       │       ├── route.ts               # GET (público)
@@ -487,7 +537,8 @@ yaid_dashboard/
 │   │   ├── proof-request/app/
 │   │   │   ├── create_proof_request_{usecase,viewmodel,controller,presenter}.ts
 │   │   │   ├── get_proof_request_{usecase,viewmodel,controller,presenter}.ts
-│   │   │   └── list_proof_requests_{usecase,viewmodel,controller,presenter}.ts
+│   │   │   ├── list_proof_requests_{usecase,viewmodel,controller,presenter}.ts
+│   │   │   └── review_proof_request_{usecase,viewmodel,controller,presenter}.ts  # ★ review manual (homol)
 │   │   ├── proof-session/app/             # ★ separado de proof-request
 │   │   │   ├── get_proof_session_{usecase,viewmodel,controller,presenter}.ts
 │   │   │   ├── get_challenge_{usecase,viewmodel,controller,presenter}.ts
@@ -585,8 +636,8 @@ Os três módulos existentes (`company`, `company-app`, `proof-request`) saem de
 | Requisito Funcional | Módulos | Rotas API |
 |---------------------|---------|-----------|
 | Gestão empresarial (signup, settings) | `company` | `/api/auth/sign-up`, `/api/companies/me` |
-| Gestão de apps + API keys | `company-app` | `/api/company-apps/**` |
-| Proof Requests (B2B) | `proof-request` | `/api/proof-requests/**` |
+| Gestão de apps + API keys (com allowlist `can_create_apps`) | `company-app` | `/api/company-apps/**` |
+| Proof Requests (B2B) + review manual em homolog | `proof-request` | `/api/proof-requests/**`, `/api/proof-requests/{id}/review` |
 | Tela coringa + challenge | `proof-session` | `/api/proof-sessions/**` |
 | Emissão e revogação de VC | `identity` | `/api/credentials/**` |
 | Verificação de VP | `presentation` | `/api/presentations/verify` |
@@ -602,7 +653,11 @@ Os três módulos existentes (`company`, `company-app`, `proof-request`) saem de
 
 **Backend → OCR:** somente via `shared/clients/ocr/` — ⚠️ TBD.
 
-**Backend → Empresa (webhook):** módulo `webhook` dispara após transição de `proof_request`; tentativa única; falha logada.
+**Backend → Empresa (webhook):** módulo `webhook` (`DeliverWebhookUseCase`) dispara após transição de `proof_request`; tentativa única; falha logada. O **review manual** (`review_proof_request_usecase`, apps `homol`) transiciona para `approved`/`rejected`, seta `updated_at = NOW()` e dispara o webhook normal — mesmo caminho de um fluxo real.
+
+**Guards de negócio server-side (defesa em profundidade):**
+- `CreateCompanyAppUseCase` rejeita com `AppError(403)` quando `company.can_create_apps === false` (o frontend também desabilita o CTA, mas o guard é a fonte da verdade).
+- `review_proof_request_usecase` rejeita review em app `prod` (só `homol`) e em proof_request de status terminal — o botão ausente no frontend é reforçado pelo guard.
 
 ## Validação da Arquitetura
 
@@ -619,9 +674,9 @@ Os três módulos existentes (`company`, `company-app`, `proof-request`) saem de
 | RF | Módulos | Status |
 |----|---------|--------|
 | RF1 — Gestão empresarial | `company` + `/api/auth/sign-up` | ★ a criar |
-| RF2 — Proof Requests B2B | `proof-request` + `withApiKeyAuth` | ✅ |
+| RF2 — Proof Requests B2B (+ review manual em homolog) | `proof-request` + `withApiKeyAuth` + `withSessionAuth` (review) | ✅ |
 | RF3 — Tela Coringa | `proof-session` + `app/v/[sessionToken]` | ✅ |
-| RF4 — Fluxos App Mobile | `identity` + `presentation` + `withDIDAuth` | ⚠️ TBDs abertos |
+| RF4 — Fluxos App Mobile (VC como VC-JWT) | `identity` + `presentation` + `withDIDAuth` | ⚠️ TBDs abertos |
 | RF5 — Dashboard B2B | pages + `fetchWithAuth` + React Hook Form | ✅ |
 
 NFRs críticos cobertos: privacidade do holder (sem tabelas de holder), segurança de chaves (`environments.ts`), webhook assimétrico (`WebhookSigner`), auditabilidade (timeline via `updated_at` + `proof_sessions`).

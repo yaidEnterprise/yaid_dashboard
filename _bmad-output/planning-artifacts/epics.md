@@ -5,6 +5,13 @@ completedAt: '2026-05-11'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-27.md
+  - _bmad-output/planning-artifacts/ux-design-specification.md
+sprintChangeRun:
+  date: '2026-07-27'
+  stepsCompleted: [1, 2, 3]
+  approach: 'Incremento sobre epics.md concluído — Epics 1–6 (todas stories done) permanecem intocados; Sprint Change 2026-07-27 entra como novo(s) épico(s) inserido(s).'
+  newRequirements: 'FR26–FR34, UX-DR1–UX-DR6, requisitos adicionais de migrations/VC-JWT.'
 ---
 
 # yaid_dashboard - Epic Breakdown
@@ -67,6 +74,26 @@ FR24: A autenticação do app mobile deve usar headers `X-YaID-DID`, `X-YaID-Sig
 
 FR25: O backend deve validar hash de API key usando SHA-256 de `"<app_id>.<secret>"`, nunca armazenando o secret em texto puro.
 
+<!-- ── Sprint Change 2026-07-27: requisitos novos (FR26–FR34). Não alteram FR1–FR25. ── -->
+
+FR26 (#1 Marca): O sistema deve substituir o placeholder `ShieldHalf` + texto "YaID" hardcoded pelo ícone oficial `public/yaid_icon.svg` nas 4 superfícies de marca (sidebar do dashboard 28px, tela coringa 48px, `/sign-in`, `/sign-up`), preservando dimensões/posição e removendo imports órfãos. Troca puramente de asset — não altera layout, hierarquia nem paleta.
+
+FR27 (#2 Topbar): A topbar deve ser dinâmica, consumindo `GET /api/companies/me` — exibindo o nome real da company logada + avatar com inicial dinâmica derivada desse nome. Exibe `Skeleton` durante o carregamento; em erro mantém avatar neutro sem bloquear navegação. Remove os valores hardcoded ("Acme Identidade Ltda.", "Maria R."/"MR") e o badge global "Homologação"/`EnvBadge` da topbar.
+
+FR28 (#3 Ambiente por app): A criação de app deve incluir um seletor de `environment` (`Select` Homologação/Produção, Zod `z.enum(["homol","prod"])`, default seguro `homol`) enviado no `POST /api/company-apps`. O `EnvBadge` passa a ser exibido no nível do app (âmbar Homologação / azul Produção) em `/apps` e `/apps/[appId]`, ao lado do `StatusBadge`. Ambiente é propriedade estável do app — imutável após criação no MVP.
+
+FR29 (#4 Review manual): O sistema deve expor `POST /api/proof-requests/{requestId}/review` (auth sessão) + usecase que, apenas para apps em `homol` e proof_request em status não-terminal, transiciona a request para `approved`/`rejected`, seta `updated_at = now()` e dispara o webhook normal (`DeliverWebhookUseCase`). Botões Aprovar/Reprovar condicionais na UI de detalhe (com `AlertDialog`); guard server-side rejeita review em apps `prod` e em status terminal (defesa em profundidade).
+
+FR30 (#5 updated_at): O sistema deve adicionar a coluna `proof_requests.updated_at TIMESTAMPTZ DEFAULT now()`, propagá-la em entity/mapper/repositório; `updateStatus()` grava `updated_at = now()` em toda transição de status; o viewmodel mapeia da coluna real (corrige o "Atualizada em" sempre `null`, antes aliasado de `validated_at`).
+
+FR31 (#6 Resposta da API): O sistema deve remover a seção "Resposta da API" (saída bruta da rota GET em `CodeBlock`/`payload`) da tela unitária da proof_request, mantendo resumo, atributos confirmados, timeline e `PrivacyCard`. Limpar imports órfãos.
+
+FR32 (#7 Allowlist): O sistema deve adicionar a coluna `company.can_create_apps BOOLEAN NOT NULL DEFAULT false` (backfill `true` para empresas existentes na migration); guard no `CreateCompanyAppUseCase` que rejeita com `AppError("Company not allowed to create apps", 403)` quando `false`; frontend desabilita o CTA "Criar app" com banner explicativo (comportamento tipo assinatura, sem Stripe).
+
+FR33 (#8 VC-JWT): O backend deve emitir a Verifiable Credential como VC-JWT compacto assinado (JWS EdDSA) — header `{alg:"EdDSA", typ:"JWT", kid:"<issuerDid>#key-1"}`, payload `{iss, sub:<holderDid>, jti, iat, nbf, vc:{...claims booleanos}}`, assinado com `ISSUER_PRIVATE_KEY` — em vez de JSON-LD com `proof.Ed25519Signature2020` embutido. `POST /api/credentials/issue` retorna a string JWT; `POST /api/presentations/verify` decodifica e valida a VC no formato JWT. Invariante preservado: a VC continua carregando apenas claims booleanos — muda o formato de serialização/assinatura, não o conteúdo.
+
+FR34 (#9 Migrations): O sistema deve versionar o schema via Supabase Migrations — diretório `supabase/` versionado (`config.toml`, `migrations/`, `seed.sql`), CLI linkada ao project-ref `lygkwhcwsrxfozswhxyo`. Baseline (`supabase db pull`) captura o schema hoje deployado (encerra o drift); forward migrations timestampadas para `add_updated_at_to_proof_requests`, `add_can_create_apps_to_company` (+ backfill) e ajuste de `environment`/default em `company_apps`. `.gitignore` cobre `supabase/.branches` e `supabase/.temp`; CI opcional roda `supabase db diff --check` no PR.
+
 ### NonFunctional Requirements
 
 NFR1: Nenhum dado pessoal do holder pode ser armazenado em tabela relacional — apenas `hash(vc_id)` e DID na blockchain (princípio de privacidade não-negociável e estrutural).
@@ -115,9 +142,28 @@ NFR14: Toda listagem cobre 3 estados: loading, erro, vazio (CTA), populado.
 - `session_token_hash` — o token bruto é devolvido apenas na resposta de criação da proof_request; nunca rearmazenado.
 - Deploy do smart contract em Sepolia testnet; YaID paga gas com wallet de serviço; holder nunca paga gas.
 
+<!-- ── Sprint Change 2026-07-27: requisitos adicionais ── -->
+
+- **Baseline de migration fiel ao deployado:** o baseline (`supabase db pull`) deve refletir fielmente o schema hoje em produção — que carrega o drift real (`validated_at`/`external_ref`/`result`, sem `updated_at`) — **antes** de qualquer `db push`. As forward migrations reconciliam o banco com o schema-alvo (`updated_at`, `can_create_apps`, `environment`).
+- **VC-JWT exige coordenação externa** com a codebase do app mobile YaID Wallet — o formato do JWT (header/payload/assinatura) é um contrato cripto entre backend e mobile e deve ser acordado antes do rollout.
+- **Biblioteca de JWS/EdDSA** para emissão/verificação do VC-JWT — ⚠️ **TBD**: agente implementador deve questionar qual biblioteca usar antes de implementar (#8).
+- **Ordem de implementação recomendada (Seção 3 do Sprint Change):** #9 (migrations) → #5/#7 (schema) → #3 (ambiente) → #4 (review) → #2/#1/#6 (frontend) → #8 (VC-JWT). Reduz retrabalho: migrations primeiro estabelecem o canal para as mudanças de schema seguintes.
+
 ### UX Design Requirements
 
-Nenhum documento UX Design encontrado — sem requisitos UX adicionais a extrair.
+Documento UX encontrado: [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md), com seção dedicada "Atualizações de Design — Sprint Change 2026-07-27". UX-DRs extraídos abaixo (referentes ao Sprint Change; o restante do UX Spec já está refletido nas stories concluídas dos Epics 1–6).
+
+UX-DR1 (#1 Marca): Trocar o asset de marca pelo `public/yaid_icon.svg` nas 4 superfícies, preservando layout, hierarquia e paleta — troca puramente de asset.
+
+UX-DR2 (#2 Topbar): Topbar dinâmica com `Skeleton` no carregamento (nunca nome placeholder), avatar com inicial + `aria-label` contendo o nome real da company (texto da inicial não basta para leitor de tela), sem badge global de ambiente.
+
+UX-DR3 (#3 Ambiente): `Select` de ambiente no card *Identificação* de `/apps/new` com texto auxiliar explicativo ("Apps de homologação permitem aprovar/reprovar verificações manualmente para teste. Produção não."); `EnvBadge` (âmbar Homologação / azul Produção, sempre acompanhado de texto) ao lado do `StatusBadge` em `/apps` e `/apps/[appId]`.
+
+UX-DR4 (#4 Review): Botões Aprovar (primary/green) e Reprovar (destructive) na área de ações do header do detalhe, visíveis apenas em `homol` + status não-terminal; cada um com `AlertDialog` de confirmação ("Esta ação envia o webhook real para o app e não pode ser desfeita.") e `toast.success` ao concluir; atualiza status na tela e o campo "Atualizada em".
+
+UX-DR5 (#6 Resposta da API): Remover a seção "Resposta da API" da tela de detalhe preservando a grade 2 colunas (resumo + atributos confirmados || timeline + privacy card).
+
+UX-DR6 (#7 Allowlist): CTA "Criar app" em estado bloqueado com banner explicativo quando `can_create_apps` é falso (comportamento tipo assinatura, sem Stripe).
 
 ### FR Coverage Map
 
@@ -146,6 +192,15 @@ FR19: Epic 5 — Revogação de VC on-chain pelo holder
 FR24: Epic 5 — Auth mobile via DID signature + replay protection ±5min
 FR20: Epic 6 — Webhook Ed25519 assimétrico (tentativa única, falha logada)
 FR21: Epic 6 — GET /api/webhook-public-key público
+FR34: Epic 7 — Versionamento de schema (baseline + forward migrations) [fundação]
+FR30: Epic 7 — proof_requests.updated_at em toda transição de status
+FR32: Epic 7 — Allowlist can_create_apps (guard 403 + UI bloqueada + backfill)
+FR28: Epic 7 — Seletor de ambiente na criação de app + EnvBadge no nível do app
+FR29: Epic 7 — Review manual (aprovar/reprovar) em apps homol + webhook real
+FR31: Epic 7 — Remoção da seção "Resposta da API" no detalhe da proof_request
+FR26: Epic 8 — Ícone oficial yaid_icon.svg nas 4 superfícies de marca
+FR27: Epic 8 — Topbar dinâmica (company logada, sem badge global de ambiente)
+FR33: Epic 9 — Emissão/verificação da VC como VC-JWT (EdDSA)
 
 ## Epic List
 
@@ -184,6 +239,26 @@ Holder com app mobile pode emitir sua Verifiable Credential via OCR em memória 
 Empresa parceira recebe notificações automáticas e criptograficamente verificáveis (Ed25519) sobre o resultado das validações, podendo checar autenticidade dos webhooks com a chave pública publicada.
 
 **FRs cobertos:** FR20, FR21
+
+<!-- ── Sprint Change 2026-07-27: novos épicos (7, 8, 9). Epics 1–6 permanecem intocados. ── -->
+
+### Epic 7: Ambientes por App, Governança de Criação e Review em Homologação
+
+A empresa cria apps escolhendo o ambiente (homologação/produção) e sujeita à allowlist de criação; apps de homologação permitem aprovar/reprovar verificações manualmente disparando o webhook real; o campo "Atualizada em" reflete cada transição. Estabelece a fundação de versionamento de schema (Supabase Migrations) que serve a todas as mudanças de banco.
+
+**FRs cobertos:** FR34, FR30, FR32, FR28, FR29, FR31
+
+### Epic 8: Marca Oficial e Topbar Integrada
+
+O dashboard reflete a identidade visual oficial da YaID (ícone real em todas as superfícies) e o usuário logado (nome real da company + avatar dinâmico), removendo placeholders de demonstração e o badge global de ambiente.
+
+**FRs cobertos:** FR26, FR27
+
+### Epic 9: Verifiable Credential como VC-JWT
+
+O app mobile passa a receber a VC como JWT assinado (EdDSA) — formato compacto verificável na apresentação — em vez de JSON-LD com prova embutida. Isolado nos módulos `identity` + `presentation`; exige coordenação externa com a codebase do YaID Wallet.
+
+**FRs cobertos:** FR33
 
 ---
 
@@ -1008,3 +1083,310 @@ Para que meu sistema possa verificar a autenticidade das notificações de webho
 **When** `STAGE` é `PROD` ou `HOMOLOG`
 **Then** o servidor falha ao iniciar com erro explícito — nunca sobe com chave ausente
 **And** em `DOTENV`/`DEV`, o getter de webhook falha explicitamente quando o endpoint dependente for usado sem a env configurada
+
+---
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- Sprint Change 2026-07-27 — Epics 7, 8, 9 (novos). Epics 1–6 intocados.    -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+## Epic 7: Ambientes por App, Governança de Criação e Review em Homologação
+
+A empresa cria apps escolhendo o ambiente (homologação/produção) e sujeita à allowlist de criação; apps de homologação permitem aprovar/reprovar verificações manualmente disparando o webhook real; o campo "Atualizada em" reflete cada transição. Estabelece a fundação de versionamento de schema (Supabase Migrations) que serve a todas as mudanças de banco.
+
+### Story 7.1: Fundação de Versionamento de Schema (Supabase Migrations + Baseline)
+
+Como desenvolvedor,
+Quero versionar o schema via Supabase Migrations com um baseline fiel ao banco hoje deployado,
+Para que toda mudança estrutural futura tenha um ponto único de verdade e o drift entre código e banco seja encerrado.
+
+**Acceptance Criteria:**
+
+**Given** o projeto sem o diretório `supabase/` versionado
+**When** a infraestrutura de migrations é inicializada (`supabase init` + `supabase link --project-ref lygkwhcwsrxfozswhxyo`)
+**Then** `supabase/config.toml` (com `project_id` definido), `supabase/migrations/` e `supabase/seed.sql` estão versionados no repositório
+**And** o `.gitignore` cobre `supabase/.branches` e `supabase/.temp`
+
+**Given** o banco hoje deployado no project-ref remoto
+**When** o baseline é gerado (`supabase db pull`)
+**Then** a migration inicial captura **fielmente** o schema atual — incluindo o drift real (`proof_requests` com `validated_at`/`external_ref`/`result` e **sem** `updated_at`; `company_apps` com `environment`; `company` **sem** `can_create_apps`)
+**And** nenhuma coluna nova é adicionada nesta story — as forward migrations de colunas entram nas stories que as consomem (7.2, 7.3, 7.4)
+
+**Given** o baseline aplicado em ambiente local
+**When** `supabase db reset` é executado
+**Then** o schema local é recriado idêntico ao remoto, sem erros
+
+**Given** um Pull Request com mudança de schema (CI opcional configurada)
+**When** `supabase db diff --check` roda no PR
+**Then** divergências entre as migrations versionadas e o schema são detectadas antes do merge
+
+> ⚠️ **Cuidado operacional:** o baseline precisa refletir fielmente o banco de produção **antes** de qualquer `db push`. Validar o diff manualmente antes do primeiro push remoto.
+
+---
+
+### Story 7.2: Coluna `updated_at` e Gravação em Toda Transição
+
+> 📋 **Referência:** corrige a causa-raiz do item #5 do Sprint Change — "Atualizada em" sempre `null` porque `updated_at` não existia e o viewmodel aliasava de `validated_at`.
+
+Como empresa parceira,
+Quero que o campo "Atualizada em" reflita a última transição de status da proof_request,
+Para que eu saiba quando a validação mudou de estado.
+
+**Acceptance Criteria:**
+
+**Given** a fundação de migrations (Story 7.1) aplicada
+**When** a forward migration `add_updated_at_to_proof_requests` é criada e aplicada
+**Then** a coluna `proof_requests.updated_at TIMESTAMPTZ NOT NULL DEFAULT now()` é adicionada
+**And** o backfill preenche `updated_at = created_at` para as linhas existentes
+
+**Given** a entidade `ProofRequest` e o `ProofRequestMapper`
+**When** revisados após esta story
+**Then** ambos incluem `updatedAt` (entity) / `updated_at` (persistência), mapeados corretamente
+
+**Given** o `SupabaseProofRequestRepository.updateStatus()`
+**When** qualquer transição de status ocorre
+**Then** o método grava `status` **e** `updated_at = now()` na mesma operação — nunca só o status
+
+**Given** o `get_proof_request_viewmodel`
+**When** monta a resposta de detalhe
+**Then** mapeia `updatedAt` da coluna real `updated_at` (não mais alias de `validated_at`)
+**And** a tela de detalhe exibe o valor real em "Atualizada em" após cada transição
+
+---
+
+### Story 7.3: Allowlist de Criação de Apps (`can_create_apps`)
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — UX-DR6 (CTA "Criar app" bloqueado com banner explicativo, comportamento tipo assinatura sem Stripe).
+
+Como operador da YaID,
+Quero controlar quais empresas podem criar apps,
+Para que a criação seja liberada como uma assinatura, sem cobrança automática, sem que empresas não autorizadas criem apps livremente.
+
+**Acceptance Criteria:**
+
+**Given** a fundação de migrations (Story 7.1) aplicada
+**When** a forward migration `add_can_create_apps_to_company` é criada e aplicada
+**Then** a coluna `company.can_create_apps BOOLEAN NOT NULL DEFAULT false` é adicionada
+**And** o backfill concede `can_create_apps = true` a **todas** as empresas existentes (evita bloqueio retroativo)
+
+**Given** a entidade `Company` e o `CompanyMapper`
+**When** revisados
+**Then** incluem `canCreateApps`, propagado do banco à resposta de `GET /api/companies/me`
+
+**Given** uma empresa com `can_create_apps = false`
+**When** chama `POST /api/company-apps`
+**Then** o `CreateCompanyAppUseCase` rejeita com `AppError("Company not allowed to create apps", 403)` — o guard é a fonte da verdade
+**And** uma empresa com `can_create_apps = true` cria o app normalmente
+
+**Given** a página `/(dashboard)/apps` para uma empresa com `canCreateApps = false`
+**When** a página carrega
+**Then** o CTA "Criar app" fica desabilitado e um banner explicativo é exibido (tipo assinatura, sem Stripe)
+**And** `/apps/new` é bloqueada (redirect ou estado desabilitado) para essa empresa
+
+---
+
+### Story 7.4: Seletor de Ambiente na Criação de App + EnvBadge
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — UX-DR3 e seção "#3 — Ambiente por App" (Select no card Identificação com texto auxiliar; `EnvBadge` âmbar Homologação / azul Produção sempre com texto).
+
+Como empresa parceira,
+Quero escolher o ambiente (homologação/produção) ao criar um app,
+Para que apps de teste fiquem claramente separados dos de produção e o comportamento de review seja inequívoco.
+
+**Acceptance Criteria:**
+
+**Given** a página `/(dashboard)/apps/new`
+**When** o formulário é renderizado
+**Then** o card *Identificação* contém um `Select` de ambiente com opções "Homologação" e "Produção", validado por Zod `z.enum(["homol","prod"])`, default seguro **`homol`**
+**And** há texto auxiliar abaixo do label: "Apps de homologação permitem aprovar/reprovar verificações manualmente para teste. Produção não."
+
+**Given** o formulário submetido
+**When** `POST /api/company-apps` é chamado
+**Then** o campo `environment` é enviado e persistido (a coluna `company_apps.environment` já existe; o default do schema de criação passa de `dev` para escolha explícita com fallback `homol`)
+
+**Given** as telas `/(dashboard)/apps` (tabela) e `/(dashboard)/apps/[appId]` (detalhe)
+**When** um app é exibido
+**Then** um `EnvBadge` (âmbar para Homologação, azul para Produção, sempre acompanhado de texto) aparece ao lado do `StatusBadge`
+**And** o ambiente não é editável após a criação no MVP
+
+---
+
+### Story 7.5: Review Manual (Aprovar/Reprovar) em Apps de Homologação
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — UX-DR4 e seção "#4 — Review manual" (botões Aprovar primary/green e Reprovar destructive na área de ações do header, visíveis só em `homol` + status não-terminal, `AlertDialog` de confirmação, `toast.success`).
+
+Como empresa parceira com um app de homologação,
+Quero aprovar ou reprovar manualmente uma proof_request pelo dashboard,
+Para que eu exercite o ciclo completo até o webhook real sem depender do app mobile durante os testes.
+
+**Acceptance Criteria:**
+
+**Given** um `POST /api/proof-requests/{requestId}/review` autenticado por sessão, com body `{ decision: "approve" | "reject" }`, para uma proof_request de um app `homol` em status não-terminal
+**When** o `ReviewProofRequestUseCase` executa
+**Then** `approve` transiciona a proof_request para `approved` e `reject` para `rejected`
+**And** `updated_at = now()` é gravado (via `updateStatus()` da Story 7.2)
+**And** `DeliverWebhookUseCase` (Story 6.1) é disparado — o mesmo caminho de um fluxo real
+
+**Given** uma proof_request cujo app tem `environment = "prod"`
+**When** o endpoint de review é chamado
+**Then** o guard server-side rejeita com `AppError` (403/422) — defesa em profundidade, independente da UI
+
+**Given** uma proof_request em status terminal (`approved`, `rejected`, `expired`)
+**When** o review é chamado
+**Then** o guard rejeita com `AppError(422)` — não há re-transição de estado terminal
+
+**Given** um `requestId` que não pertence à company autenticada
+**When** o endpoint é chamado
+**Then** retorna 404 (isolamento por company, sem enumeration)
+
+**Given** a página `/(dashboard)/proof-requests/[requestId]` para um app `homol` e status não-terminal (`pending_user`/`opened`)
+**When** o header do detalhe é renderizado
+**Then** os botões **Aprovar** (primary/green) e **Reprovar** (destructive) aparecem na área de ações
+**And** cada um exige `AlertDialog` de confirmação ("Esta ação envia o webhook real para o app e não pode ser desfeita.")
+**And** ao concluir, exibe `toast.success` ("Verificação aprovada"/"Verificação reprovada"), atualiza o status na tela e o campo "Atualizada em"
+
+**Given** um app `prod` ou uma proof_request em status terminal
+**When** a página de detalhe é renderizada
+**Then** os botões de review não aparecem na UI
+
+---
+
+### Story 7.6: Remoção da Seção "Resposta da API" no Detalhe
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — UX-DR5 e seção "#6" (remover saída bruta da rota GET; manter resumo, atributos confirmados, timeline e `PrivacyCard`; preservar a grade 2 colunas).
+
+Como empresa parceira,
+Quero uma tela de detalhe sem payload técnico cru,
+Para que eu foque no resultado e no significado da validação, sem ruído de SSI.
+
+**Acceptance Criteria:**
+
+**Given** a página `/(dashboard)/proof-requests/[requestId]`
+**When** revisada após esta story
+**Then** a seção "Resposta da API" (o `CodeBlock` com o `payload` bruto da rota GET) é removida
+**And** permanecem o card de resumo, o card de atributos confirmados, a timeline e o `PrivacyCard`
+**And** a grade de 2 colunas do detalhe (resumo + atributos confirmados || timeline + privacy card) é preservada
+
+**Given** os imports do arquivo de detalhe
+**When** a seção é removida
+**Then** imports órfãos (ex: `CodeBlock`, `payload`) que não são mais usados na página são removidos
+
+**Given** qualquer status da proof_request
+**When** a tela de detalhe é exibida
+**Then** nenhuma saída bruta de JSON da rota é exibida ao usuário-empresa
+
+---
+
+## Epic 8: Marca Oficial e Topbar Integrada
+
+O dashboard reflete a identidade visual oficial da YaID (ícone real em todas as superfícies) e o usuário logado (nome real da company + avatar dinâmico), removendo placeholders de demonstração e o badge global de ambiente.
+
+### Story 8.1: Ícone Oficial YaID nas 4 Superfícies de Marca
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — UX-DR1 e seção "#1 — Marca oficial YaID" (troca puramente de asset, preservando layout/hierarquia/paleta).
+
+Como usuário (empresa ou holder),
+Quero ver o ícone oficial da YaID em todas as superfícies de marca,
+Para que eu reconheça a marca legítima em vez de um placeholder de validação.
+
+**Acceptance Criteria:**
+
+**Given** as 4 superfícies de marca (sidebar do dashboard, tela coringa, `/sign-in`, `/sign-up`)
+**When** revisadas após esta story
+**Then** o placeholder `ShieldHalf` (Lucide) + texto "YaID" hardcoded é substituído pelo ícone oficial `public/yaid_icon.svg`
+**And** as dimensões e posições originais são preservadas (sidebar 28px, tela coringa 48px)
+**And** o layout, a hierarquia e a paleta não mudam — a troca é puramente de asset
+
+**Given** os componentes `app-sidebar.tsx`, `verification-layout.tsx`, `app/sign-in/page.tsx` e `app/sign-up/page.tsx`
+**When** o novo asset é aplicado
+**Then** imports órfãos do ícone antigo (`ShieldHalf`, e `yaid_icon.png` se existir) são removidos
+
+---
+
+### Story 8.2: Topbar Dinâmica Integrada à Company Logada
+
+> 📋 **Referência UX:** [`ux-design-specification.md`](_bmad-output/planning-artifacts/ux-design-specification.md) — UX-DR2 e seção "#2 — Topbar dinâmica" (nome real via `GET /api/companies/me`, avatar com inicial dinâmica + `aria-label`, `Skeleton` no load, sem badge global de ambiente).
+
+Como empresa parceira logada,
+Quero ver meu nome real e avatar na topbar,
+Para que o dashboard reflita quem está logado em vez de um placeholder de demonstração.
+
+**Acceptance Criteria:**
+
+**Given** a topbar (`app-topbar.tsx`) de um usuário autenticado
+**When** a topbar carrega
+**Then** consome `GET /api/companies/me` e exibe o nome real da company + avatar com inicial dinâmica derivada desse nome
+
+**Given** a chamada `GET /api/companies/me` ainda em andamento
+**When** a topbar renderiza
+**Then** exibe `Skeleton` no lugar do nome e do avatar — nunca um nome placeholder
+**And** em erro de carregamento, mantém um avatar neutro e não bloqueia a navegação
+
+**Given** o avatar dinâmico
+**When** revisado para acessibilidade
+**Then** possui `aria-label` com o nome real da company (o texto da inicial não basta para leitor de tela)
+
+**Given** a topbar após esta story
+**When** revisada
+**Then** os valores hardcoded ("Acme Identidade Ltda.", "Maria R."/"MR") e o badge global "Homologação"/`EnvBadge` foram removidos — o ambiente é atributo do app, não da sessão
+
+---
+
+## Epic 9: Verifiable Credential como VC-JWT
+
+O app mobile passa a receber a VC como JWT assinado (EdDSA) — formato compacto verificável na apresentação — em vez de JSON-LD com prova embutida. Isolado nos módulos `identity` + `presentation`; exige coordenação externa com a codebase do YaID Wallet.
+
+### Story 9.1: Emissão da VC como VC-JWT (EdDSA)
+
+Como app mobile do holder,
+Quero receber a Verifiable Credential como um JWT assinado,
+Para que eu a armazene em formato compacto e verificável, alinhado ao que o app espera.
+
+**Acceptance Criteria:**
+
+**Given** o `issue_credential_usecase` (módulo `identity`)
+**When** uma VC é emitida
+**Then** ela é construída como VC-JWT compacto com header `{alg:"EdDSA", typ:"JWT", kid:"<issuerDid>#key-1"}` e payload `{iss:<issuerDid>, sub:<holderDid>, jti, iat, nbf, vc:{...claims booleanos}}`
+**And** é assinada (JWS compacto) com `ISSUER_PRIVATE_KEY` (EdDSA)
+**And** os claims permanecem **apenas booleanos** (`personhood`/`ageOver18`) — nenhuma PII entra no payload
+
+**Given** o `issue_credential_viewmodel` e a rota `POST /api/credentials/issue`
+**When** a resposta é montada
+**Then** retorna a **string JWT** — não mais JSON-LD com `proof.Ed25519Signature2020` embutido
+
+**Given** o JWT emitido
+**When** verificado com a public key do issuer
+**Then** a assinatura é válida e o header/payload seguem o formato acima
+
+**Given** o fluxo existente de emissão (Story 5.4)
+**When** esta story é aplicada
+**Then** o OCR em memória, o descarte de PII e o registro on-chain (`registerDID`) permanecem inalterados — muda apenas o formato de serialização/assinatura da VC
+
+> ⚠️ **TBD para o agente implementador:** questionar qual biblioteca de JWS/EdDSA usar antes de implementar. **Coordenação externa** com a codebase do YaID Wallet é obrigatória — o formato do JWT é um contrato entre backend e mobile.
+
+---
+
+### Story 9.2: Verificação da VC-JWT em `presentations/verify`
+
+Como sistema backend,
+Quero validar a VC no formato JWT durante a verificação da apresentação,
+Para que apenas apresentações com credencial íntegra e não-revogada sejam aprovadas.
+
+**Acceptance Criteria:**
+
+**Given** uma `POST /api/presentations/verify` cuja VP carrega a VC-JWT inteira
+**When** o `verify_presentation_usecase` executa
+**Then** decodifica a VC-JWT e valida a assinatura do issuer (JWS EdDSA via public key off-chain), substituindo a validação anterior de JSON-LD `Ed25519Signature2020`
+**And** valida header/payload no formato esperado e que os claims são booleanos (sem PII)
+
+**Given** as 11 regras de validação da Story 5.5
+**When** a verificação roda sobre a VC-JWT
+**Then** todas permanecem em vigor, adaptadas ao formato JWT (DID do holder == autenticado, nonce/challenge, janela de validade, `isDIDRegistered`, `isVCRevoked`, sessão em `opened`, etc.)
+
+**Given** todas as validações passam
+**When** o use case conclui
+**Then** retorna `{ valid: true }` e as transições de status (`proof_session` → `approved_by_user`, `proof_request` → `approved`, `updated_at`) e o webhook seguem como na Story 5.5
+
+**Given** qualquer validação falha (ex: assinatura do issuer inválida, VC-JWT malformada)
+**When** o use case conclui
+**Then** retorna `{ valid: false }` sem detalhar qual regra falhou, e a proof_request transiciona para `rejected`

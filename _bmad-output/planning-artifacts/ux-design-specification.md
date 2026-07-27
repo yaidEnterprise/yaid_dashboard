@@ -4,12 +4,18 @@ inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/epics.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-27.md
+lastEdited: '2026-07-27'
+editHistory:
+  - date: '2026-07-27'
+    changes: 'Correct Course — marca/logo oficial (public/yaid_icon.svg) nas 4 telas (#1); topbar dinâmica consumindo a company logada, sem badge Homologação (#2); ambiente por app (seletor em apps/new + EnvBadge no nível do app) (#3); botões Aprovar/Reprovar no detalhe da proof request em homologação (#4); remoção da seção Resposta da API na tela unitária (#6). Ver seção "Atualizações de Design — Sprint Change 2026-07-27".'
 ---
 
 # UX Design Specification — yaid_dashboard
 
 **Author:** Victordegasperi
 **Date:** 2026-05-12
+**Última revisão:** 2026-07-27 (Sprint Change Proposal — marca oficial, topbar dinâmica, ambiente por app, review manual em homologação, remoção da Resposta da API)
 
 ---
 
@@ -588,8 +594,8 @@ Showcase interativo gerado em `_bmad-output/planning-artifacts/ux-design-directi
 **Direção B — Sidebar Azul (blue-900)**
 
 Sidebar em azul escuro (`#1e3a8a` / blue-900) com texto branco e itens ativos com
-highlight semi-transparente. Topbar branca com borda inferior. Logo YaID (`static/yaid_icon.png`)
-no topo da sidebar. Conteúdo principal em fundo branco com max-w-7xl.
+highlight semi-transparente. Topbar branca com borda inferior. Logo oficial YaID
+(`public/yaid_icon.svg`) no topo da sidebar. Conteúdo principal em fundo branco com max-w-7xl.
 
 ### Design Rationale
 
@@ -609,18 +615,20 @@ no topo da sidebar. Conteúdo principal em fundo branco com max-w-7xl.
 - Texto padrão: `text-white/70`
 - Item ativo: `bg-white/15 text-white font-medium`
 - Hover: `bg-white/10`
-- Logo: `static/yaid_icon.png`, 28×28px, `rounded-md`
+- Logo: `public/yaid_icon.svg` (ícone oficial), 28×28px
 
-**Topbar:**
+**Topbar (dinâmica — consome `GET /api/companies/me`):**
 - Fundo: `bg-white border-b border-gray-200`, altura 56px
-- Avatar do usuário à direita
+- Exibe o **nome real da company logada** (não mais valores hardcoded como "Acme Identidade Ltda.")
+- Avatar à direita com **inicial dinâmica** derivada do nome da company (não mais "MR"/"Maria R.")
+- **Sem badge global de ambiente** — o antigo `EnvBadge`/"Homologação" na topbar foi removido; ambiente é atributo do app, não da sessão (ver Ambiente por App)
 
 **Conteúdo:**
 - Fundo: `bg-white`, padding `px-8 py-8`, máximo `max-w-7xl mx-auto`
 
 **Tela Coringa:**
 - Layout independente (sem sidebar, sem topbar)
-- Logo YaID centralizada: `static/yaid_icon.png`, 48×48px, `rounded-xl`
+- Logo oficial YaID centralizada: `public/yaid_icon.svg`, 48×48px
 - Container: `max-w-[520px] mx-auto`, `min-h-screen flex items-center justify-center`
 - Fundo: `bg-gray-50`
 
@@ -770,7 +778,7 @@ Ações reversíveis (reabilitar app) não exigem.
 | `Table`              | Listagem de apps, proof requests                      |
 | `Badge`              | Status de apps e proof requests                       |
 | `Switch`             | Toggle de status do app                               |
-| `Select`             | Formulário do helper /proof-requests/new              |
+| `Select`             | Helper /proof-requests/new; seletor de ambiente em /apps/new |
 | `Separator`          | Divisores de seção em cards e sidebar                 |
 | `Skeleton`           | Loading states de tabelas e cards                     |
 
@@ -801,13 +809,23 @@ Variantes: `inline` (ao lado de string) | `standalone`. Usado em: API key, app_i
 **EmptyState** — Estado vazio de listagens com ícone, título, descrição e CTA opcional.
 Variantes: `with-cta` | `no-cta`. Usado em: /apps (sem apps), /proof-requests (sem requests).
 
-**AppSidebar** — Navegação lateral azul (bg `#1e3a8a`). Logo `yaid_icon.png` 28px + "YaID".
+**AppSidebar** — Navegação lateral azul (bg `#1e3a8a`). Logo oficial `public/yaid_icon.svg`
+28px (substitui o placeholder `ShieldHalf`/`yaid_icon.png` + texto "YaID" hardcoded).
 Itens: Aplicações, Proof Requests, Configurações. Estados: default/hover/ativo.
 Fixo em desktop, drawer em mobile.
 
+**AppTopbar** — Topbar dinâmica que consome `GET /api/companies/me`. Exibe o nome real da
+company logada e um avatar com inicial derivada desse nome. **Não** renderiza mais valores
+hardcoded ("Acme Identidade Ltda.", "Maria R."/"MR") nem o badge global "Homologação"/`EnvBadge`.
+
 **VerificationLayout** — Layout independente da tela coringa. `min-h-screen flex items-center
-justify-center bg-gray-50`. Card central `max-w-[520px]`. Logo YaID 48px no topo.
-Sem nenhum elemento do dashboard (sem sidebar, sem topbar).
+justify-center bg-gray-50`. Card central `max-w-[520px]`. Logo oficial `public/yaid_icon.svg`
+48px no topo. Sem nenhum elemento do dashboard (sem sidebar, sem topbar).
+
+**EnvBadge** — Badge de ambiente (`Homologação` | `Produção`) usado **no nível do app**
+(listagem `/apps`, detalhe `/apps/[appId]` e resumo do detalhe de proof request). **Nunca**
+como badge global na topbar. Cores semânticas: `Homologação` → âmbar (`amber-100`/`amber-700`),
+`Produção` → azul (`blue-100`/`blue-700`).
 
 **VerificationStateCard** — Renderiza um dos 6 estados da sessão: `waiting_user` (botão
 deep link), `opened` (spinner), `approved_by_user` (check verde + botão retorno se returnUrl),
@@ -822,9 +840,9 @@ Label: "Abrir YaID Wallet". Fallback de texto se app não instalado.
 **Organização:**
 ```
 components/
-  layout/        app-sidebar.tsx, page-header.tsx
+  layout/        app-sidebar.tsx, app-topbar.tsx, page-header.tsx
   ui/            componentes shadcn/ui copiados via CLI
-  shared/        copy-button.tsx, empty-state.tsx, status-badge.tsx
+  shared/        copy-button.tsx, empty-state.tsx, status-badge.tsx, env-badge.tsx
   apps/          api-key-modal.tsx
   verification/  verification-layout.tsx, verification-state-card.tsx, deep-link-button.tsx
 ```
@@ -1059,3 +1077,63 @@ Padrão da indústria para plataformas B2B com dados operacionais sensíveis.
 
 **Regra geral — MVP:**
 Não adicionar classes responsivas `sm:`, `md:` em nenhum componente. Sua presença indica expansão de escopo — validar com produto antes de implementar.
+
+## Atualizações de Design — Sprint Change 2026-07-27
+
+Esta seção consolida as mudanças de UX introduzidas pelo Sprint Change Proposal de
+2026-07-27 ([sprint-change-proposal-2026-07-27.md](sprint-change-proposal-2026-07-27.md)).
+Os pontos #1 (marca/logo) e #2 (topbar) também foram corrigidos inline nas seções
+*Visual Design Foundation* e *Component Strategy*; os demais (#3, #4, #6) são adições
+novas de comportamento de tela documentadas aqui.
+
+### #1 — Marca oficial YaID
+
+O placeholder de validação (`ShieldHalf` do Lucide + texto "YaID" hardcoded) é substituído
+pelo **ícone oficial `public/yaid_icon.svg`** em todas as 4 superfícies de marca: sidebar do
+dashboard (28px), tela coringa (48px), `/sign-in` e `/sign-up`. Preservar dimensões e posição
+originais; remover imports órfãos do ícone antigo. A troca é puramente de asset — não altera
+layout, hierarquia nem paleta.
+
+### #2 — Topbar dinâmica (integrada ao usuário logado)
+
+**Princípio:** a topbar reflete quem está logado, não um placeholder de demonstração.
+
+- **Antes:** `"Acme Identidade Ltda."` · `<EnvBadge env="homol" />` · avatar `"MR"`/`"Maria R."` (tudo hardcoded).
+- **Depois:** nome real da company (via `GET /api/companies/me`) + avatar com **inicial dinâmica** derivada desse nome. Badge global de ambiente **removido**.
+- **Estados da topbar:** enquanto `GET /api/companies/me` carrega, exibir `Skeleton` no lugar do nome e do avatar (nunca um nome placeholder). Em erro de carregamento, manter avatar neutro e não bloquear a navegação.
+- **Racional:** ambiente deixou de ser atributo da sessão — passou a ser atributo do app. Manter o badge "Homologação" na topbar comunicaria um estado global que não existe mais e confundiria empresas com apps em ambientes distintos.
+
+### #3 — Ambiente por App (seletor + EnvBadge)
+
+Ambientes passam a existir **por app** (`homol` | `prod`), escolhidos na criação. Não há
+mais noção de ambiente global de sessão.
+
+- **`/apps/new` — seletor de ambiente:** `Select` (shadcn/ui) com opções **"Homologação"** e **"Produção"**, dentro do card *Identificação*. Zod `z.enum(["homol","prod"])`, default seguro **"Homologação"**. Texto auxiliar abaixo do label: *"Apps de homologação permitem aprovar/reprovar verificações manualmente para teste. Produção não."* — para que a escolha seja informada.
+- **`/apps` e `/apps/[appId]` — `EnvBadge`:** cada app exibe seu ambiente via `EnvBadge` (âmbar para Homologação, azul para Produção), ao lado do `StatusBadge`. O ambiente é uma propriedade estável do app — nunca editável após criação no MVP.
+- **Racional:** o ambiente muda o comportamento disponível (review manual só em homologação), então precisa ser visível e inequívoco em toda superfície que lista ou detalha apps.
+
+### #4 — Review manual (Aprovar/Reprovar) no detalhe da proof request
+
+Em `/(dashboard)/proof-requests/[requestId]`, apps de **homologação** ganham um par de
+ações que permitem à empresa simular a resposta do sistema durante testes.
+
+- **Visibilidade condicional:** os botões **Aprovar** (primary/green) e **Reprovar** (destructive) aparecem **apenas** quando `app.environment === "homol"` **e** o status é não-terminal (`pending_user`/`opened`). Em apps de **produção** os botões não existem na UI (e o backend rejeita via guard — defesa em profundidade).
+- **Posicionamento:** área de ações do header do detalhe (ao lado do Request ID + status), separada do conteúdo informativo.
+- **Confirmação:** por serem ações que disparam webhook real e transicionam estado terminal, ambas exigem `AlertDialog` de confirmação ("Esta ação envia o webhook real para o app e não pode ser desfeita.").
+- **Feedback:** ao concluir, `toast.success` ("Verificação aprovada" / "Verificação reprovada"), atualização do status na tela e do campo **"Atualizada em"** (ver #5 — reflete a coluna real `updated_at`).
+- **Racional:** sem app mobile no fluxo de teste, a empresa em homologação precisa de um caminho no dashboard para exercitar o ciclo completo até o webhook. O gate por ambiente evita que isso vaze para produção.
+
+### #6 — Remoção da seção "Resposta da API" na tela unitária
+
+Em `/(dashboard)/proof-requests/[requestId]`, a seção **"Resposta da API"** (saída bruta
+da rota GET em `CodeBlock`) é **removida** — é informação técnica interna sem valor para o
+usuário-empresa e conflita com o princípio de *Abstração total de SSI*.
+
+- **Mantido:** resumo, atributos confirmados, timeline e `PrivacyCard`. A grade 2 colunas do detalhe permanece (resumo + atributos confirmados || timeline + privacy card).
+- **Racional:** o dashboard comunica resultado e significado, não payloads. Expor o JSON cru contradiz a diretriz de que vocabulário e artefatos técnicos não aparecem na interface.
+
+### Impacto em acessibilidade e consistência
+
+- **EnvBadge** segue a regra de *status nunca só por cor*: sempre acompanhado do texto ("Homologação"/"Produção").
+- **Botões de review** herdam a *Button Hierarchy* existente (primary/destructive) e o padrão de *Confirmação Assimétrica* (ação irreversível → `AlertDialog`).
+- **Avatar dinâmico** da topbar precisa de `aria-label` com o nome da company (o texto da inicial não é suficiente para leitor de tela).
