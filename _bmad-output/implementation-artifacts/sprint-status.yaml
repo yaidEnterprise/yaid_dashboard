@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-07-22
+# last_updated: 2026-07-28
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-07-22
+last_updated: 2026-07-28
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -93,3 +93,13 @@ development_status:
   6-1-webhooksigner-e-entrega-de-webhook: done
   6-2-endpoint-publico-da-chave-de-webhook: done
   epic-6-retrospective: optional
+
+  # Epic 7: Ambientes por App, Governança de Criação e Review em Homologação
+  epic-7: in-progress
+  7-1-fundacao-de-versionamento-de-schema: done
+  7-2-coluna-updated-at-e-gravacao-em-toda-transicao: backlog
+  7-3-allowlist-de-criacao-de-apps: backlog
+  7-4-seletor-de-ambiente-na-criacao-de-app: backlog
+  7-5-review-manual-em-apps-homologacao: backlog
+  7-6-remocao-secao-resposta-da-api: backlog
+  epic-7-retrospective: optional

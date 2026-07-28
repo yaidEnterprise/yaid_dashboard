@@ -21,6 +21,8 @@
 - [x] tests/unit/story-2-1/listagem-de-aplicacoes.test.mjs - Story 2.1 contratos de listagem: GET /api/company-apps (handler, x-company-id, usecase filtra por companyId, viewmodel camelCase), apps-store (fetchWithAuth, /api/company-apps, json.items), page (listApps, skeleton/animate-pulse, EmptyState+CTA /apps/new, ErrorState+retry, router.push, nome+app_id, StatusBadge, formatDate), arquivos existentes (backend+frontend)
 - [x] tests/unit/story-4-2/verification-screen.test.mjs - Story 4.2 contratos da tela coringa: hook de polling público (sem fetchWithAuth, intervalo 5-10s, para em status terminal, cleanup de timers, 404→invalid, guarda NaN em getSecondsRemaining, timeout via AbortController), VerificationLayout (sem chrome de dashboard, tokens semânticos), DeepLinkButton (URI-encoded, touch target 48px), VerificationStateCard (6+1 estados incluindo fallback e network, aria-live restrito ao texto de estado, StatusBadge por estado, sem campos sensíveis), page.tsx (DTO real pós-4.1, sem QR code, expired forçado pelo contador local, "opened" 100% guiado pelo servidor — sem clickedOpen)
 - [x] tests/unit/story-6-2/webhook-public-key.test.mjs - Story 6.2 contratos do endpoint público da chave de webhook: round-trip Ed25519 real (sign com chave de teste → verify com public key derivada retorna true; payload adulterado e assinatura forjada retornam false), determinismo do encoding base64 padrão (não base64url), use case/viewmodel/controller/presenter/rota, validação de formato hex e gate de stage TEST na substituição da chave de teste (review patches), confirmação de que `environments.ts`/`middleware.ts` não precisaram de alteração
+- [x] tests/unit/story-7-1/schema-baseline.test.mjs - Story 7.1 (dev) contratos estruturais do baseline: existência de `supabase/config.toml`/`migrations/`/`seed.sql`, `.gitignore` cobre `.branches`/`.temp`, migration baseline contém as 4 tabelas reais (`proof_request` singular), ausência de `updated_at`/`can_create_apps` (drift esperado), presença de `environment`, guarda whole-file contra vazamento de colunas de forward-migration
+- [x] tests/unit/story-7-1/migrations-regression.test.mjs - Story 7.1 (QA) cobertura adicional: `.gitignore` verificado via `git check-ignore` real (não só regex de texto) para `.branches`/`.temp`, confirma que a migration em si NÃO é ignorada, regressão dos 3 patches do code review com efeito funcional (`DROP EXTENSION IF EXISTS`, sem `.gitkeep` morto, `SUPABASE_DB_PASSWORD` documentada em `.env.local.example`), wiring do script `test:story:7.1`, compilação TypeScript limpa
 
 ## Coverage
 
@@ -254,3 +256,21 @@
 - Mesma convenção estrutural do projeto (`node:test` + regex sobre source), mas complementada por testes comportamentais reais com `@noble/ed25519` para a lógica criptográfica (round-trip sign/verify), já que essa parte é uma função pura facilmente testável sem precisar importar a classe TypeScript diretamente
 - 2 itens deferidos do code review para `deferred-work.md`: (1) sem cache da public key entre requisições (otimização de performance, não exigida pelos ACs), (2) duplicação de forma entre `GetWebhookPublicKeyOutput` (usecase) e `GetWebhookPublicKeyOutputDTO` (viewmodel) — refactor de baixo risco fora de escopo
 - Story 6.1 (WebhookSigner e Entrega de Webhook) permanece em `backlog` — é independente desta story; a Story 6.2 não depende da implementação do signer, apenas da mesma env var já pré-configurada
+
+### Story 7.1 — Fundação de Versionamento de Schema (Supabase Migrations + Baseline)
+- Acceptance criteria: 2/4 testáveis por unit test, 2/4 coberto por verificação manual documentada nos Dev Notes
+  - AC#1 (`supabase/` versionado, `.gitignore` cobre `.branches`/`.temp`): coberto por `schema-baseline.test.mjs` (existência dos arquivos, `project_id` presente) e reforçado por `migrations-regression.test.mjs` com `git check-ignore` real, não apenas regex de texto
+  - AC#2 (baseline fiel ao schema real, incluindo drift, sem colunas novas): coberto por `schema-baseline.test.mjs` (4 tabelas, ausência de `updated_at`/`can_create_apps`, presença de `environment`, guarda contra forward-migration leak)
+  - AC#3 (`supabase db reset` recria localmente sem erro): **não testável por unit test** — exige Docker + Postgres local real, que os testes desta suíte explicitamente evitam (consistente com a convenção do projeto de não depender de serviços externos). Validado manualmente durante o dev-story (`supabase start` + `supabase db reset`, ambos sem erro; `supabase db diff` pós-reset confirmou zero divergência) — evidência no Debug Log da story, não em teste automatizado
+  - AC#4 (`supabase db diff --check` em CI): **não implementado, deferido** — não existe `.github/workflows/` no repositório para anexar o step; nada a testar
+- Caminhos críticos: 18/18 testes passando (10 do dev-story + 8 adicionados nesta etapa de QA)
+  - QA adicionou: verificação comportamental real do `.gitignore` via `git check-ignore` (mais forte que checar o texto do arquivo), regressão dos 3 patches do code review com efeito funcional em tempo de execução, wiring do script npm, compilação TypeScript
+
+#### Validation
+- `npm run test:story:7.1`: **passed** — 18/18
+- `npm test` (suite completa): **passed** — 568/568
+
+#### Notes
+- Story arquitetural/infraestrutural (migrations do Supabase, não lógica de aplicação) — nenhum arquivo em `src/` foi tocado, então os testes são estruturais/comportamentais sobre arquivos de configuração e SQL gerado, não sobre código TypeScript de domínio
+- AC#3 e AC#4 não têm — e não deveriam ter — testes automatizados: exigiriam Docker/Postgres real (AC#3) ou um pipeline de CI que não existe (AC#4). Ambos foram validados manualmente e documentados nos Dev Notes/Debug Log da story em vez de simulados por um teste que daria falsa confiança
+- 2 itens deferidos do code review para `deferred-work.md`: (1) grants amplos (`anon`/`authenticated`) + RLS habilitado sem políticas nas 4 tabelas — estado pré-existente no banco de produção, capturado fielmente, não introduzido por esta story, (2) `GRANT ALL` na função `rls_auto_enable()` para `anon`/`authenticated` — artefato da própria plataforma Supabase
