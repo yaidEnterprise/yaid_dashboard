@@ -1,3 +1,9 @@
+## Deferred from: code review of story-7-1-fundacao-de-versionamento-de-schema (2026-07-28)
+
+- **Grants amplos + RLS habilitado sem políticas nas 4 tabelas públicas** — o baseline captura `GRANT DELETE, INSERT, SELECT, UPDATE` para `anon`/`authenticated` em `company`, `company_apps`, `proof_request`, `proof_sessions`, com RLS habilitado mas zero políticas definidas. Estado pré-existente no banco de produção (capturado fielmente por esta story, não introduzido por ela). Hoje o app usa a service role key server-side (bypassa RLS), consistente com `architecture.md` ("sem RLS no MVP"), então não é uma vulnerabilidade ativa — mas vale uma story de governança de RLS dado o tema do Epic 7 ("Governança de Criação"). [`supabase/migrations/20260728015653_remote_schema.sql`]
+
+- **`GRANT ALL` na função `rls_auto_enable()` para `anon`/`authenticated`** — permite `EXECUTE` direto numa função `SECURITY DEFINER` fora do contexto de event trigger. Artefato injetado pela própria plataforma Supabase (não escrito pela equipe), capturado fielmente no baseline. Fora do escopo de uma story de captura de schema; considerar revogar o grant numa forward migration futura se alguém tocar em `company`/`company_apps`/`proof_request`/`proof_sessions`. [`supabase/migrations/20260728015653_remote_schema.sql`]
+
 ## Deferred from: code review of story-6-2-endpoint-publico-da-chave-de-webhook (2026-07-22)
 
 - **Sem cache da public key entre requisições** — `GetWebhookPublicKeyUseCase.execute()` recomputa `ed.getPublicKeyAsync` a cada `GET /api/webhook-public-key`, mesmo a resposta sendo determinística (constante enquanto `WEBHOOK_SIGNING_PRIVATE_KEY` não mudar). Sem `Cache-Control`/`ETag` na rota. Otimização de performance para uma rota pública que pode ser chamada com frequência; não exigida pelos ACs da Story 6.2. [`src/modules/webhook/app/get_webhook_public_key_usecase.ts`, `app/api/webhook-public-key/route.ts`]
