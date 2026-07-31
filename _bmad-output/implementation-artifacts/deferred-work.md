@@ -1,3 +1,11 @@
+## Deferred from: code review of story-5-8-correspondencia-entre-claim-e-proof-type (2026-07-31)
+
+- **`requestRepo.findById(proofRequestId)` sem try/catch** — se retornar `null` (integridade referencial quebrada), o método sai por `{ valid: false }` sem chamar `updateStatus` nem disparar webhook (sem rastro de auditoria); se a chamada lançar (erro transitório de rede/DB), a exceção só é convertida em 500 genérico na borda da rota (`handleHttpError`), diferente do padrão gracioso `reject()` usado nas Regras 9/10 para chamadas de blockchain. A chamada irmã `sessionRepo.findByTokenHash` (linha 95) já é igualmente desprotegida — corrigir só o `findById` novo criaria uma inconsistência local; corrigir ambas está fora do escopo desta story. [`src/modules/presentation/app/verify_presentation_usecase.ts:106-110`]
+
+- **`cancel_proof_session_usecase.ts:50` mantém o literal `"verification"` hardcoded no payload do webhook** — use case e endpoint diferentes (Story 5.6, `POST /api/proof-sessions/{token}/cancel`). Nenhuma AC da Story 5.8 cobre esse fluxo; já documentado como fora de escopo no Dev Notes da própria story. [`src/modules/proof-session/app/cancel_proof_session_usecase.ts:50`]
+
+- **Suíte de testes é 100% estática** — nenhum teste dinâmico/comportamental instancia `VerifyPresentationUseCase` com repositórios mockados para verificar o `{ valid: true/false }` retornado em runtime nem a transição real de `proof_request.status` para os novos cenários de correspondência claim ↔ proof_type. Padrão sistêmico em todas as stories desde a 5.4/5.5, já deferido no code review da Story 5.7. [`tests/unit/story-5-8/claim-proof-type-correspondence.test.mjs`]
+
 ## Deferred from: code review of story-5-7-consolidacao-de-claims-na-emissao (2026-07-31)
 
 - **Payload assinado (`documentImage` puro) sem domain separator/nonce** — replayable se o mesmo valor assinado for reaproveitado. Pré-existente desde a Story 5.4 (o antigo `:${proofType}` no payload não funcionava como nonce/anti-replay, era só um classificador fixo); não introduzido nem agravado pela consolidação de claims desta story. [`src/modules/credential/app/issue_credential_usecase.ts:83`]

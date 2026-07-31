@@ -89,7 +89,7 @@ development_status:
   # Sprint Change 2026-07-28 — entrega ACOPLADA: 5-7 e 5-8 não podem ser liberadas separadamente
   # (5-7 sem 5-8 faz a credencial de um menor de idade aprovar um pedido de age_over_18)
   5-7-consolidacao-de-claims-na-emissao: done
-  5-8-correspondencia-entre-claim-e-proof-type: backlog
+  5-8-correspondencia-entre-claim-e-proof-type: done
   epic-5-retrospective: optional
 
   # Epic 6: Webhooks e Conclusão do Fluxo B2B
