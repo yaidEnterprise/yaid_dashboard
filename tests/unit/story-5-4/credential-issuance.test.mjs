@@ -104,10 +104,10 @@ test("Story 5.4 IssueCredentialUseCase processes OCR document in-memory", () => 
   );
 });
 
-test("Story 5.4 IssueCredentialUseCase verifies age is >= 18 for ageOver18", () => {
+test("Story 5.4 IssueCredentialUseCase computes ageOver18 from birth date (superseded by Story 5.7 — claims are consolidated, minority no longer throws)", () => {
   const src = readText("src/modules/credential/app/issue_credential_usecase.ts");
-  assert.match(src, /ageOver18/, "Must handle ageOver18 proofType");
-  assert.match(src, /age\s*<\s*18/, "Must verify age requirement and throw if not met");
+  assert.match(src, /ageOver18/, "Must handle the ageOver18 claim");
+  assert.match(src, /age\s*>=\s*18/, "Must compute age requirement as a boolean, not a rejection");
 });
 
 test("Story 5.4 IssueCredentialUseCase registers DID on-chain", () => {

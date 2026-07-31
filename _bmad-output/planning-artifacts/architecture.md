@@ -3,12 +3,13 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-05-11'
-revisedAt: '2026-07-27'
+revisedAt: '2026-07-28'
 inputDocuments:
   - docs/prd.md
   - CONTEXT.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-27.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-28.md
 workflowType: 'architecture'
 project_name: 'yaid_dashboard'
 user_name: 'Victordegasperi'
@@ -16,12 +17,22 @@ date: '2026-05-11'
 editHistory:
   - date: '2026-07-27'
     changes: 'Correct Course — edição direcionada: versionamento de schema via Supabase Migrations (baseline + forward); company.can_create_apps (allowlist); company_apps.environment (homol/prod); proof_requests.updated_at reforçado em toda transição; endpoint/usecase de review manual em homologação; VC emitida como VC-JWT (EdDSA); guard de allowlist no CreateCompanyAppUseCase.'
+  - date: '2026-07-28'
+    changes: 'Correct Course — edição direcionada na seção Credenciais & Formato da VC: claims consolidadas (personhood + ageOver18 na mesma emissão); ageOver18 pode ser false e menoridade deixa de retornar 422; correspondência obrigatória claim ↔ proof_type na verificação da VP; proofType removido do contrato de POST /api/credentials/issue; enum ProofType compartilhado. Sem impacto em schema, blockchain ou camadas.'
+  - date: '2026-07-28'
+    changes: 'Correct Course (adendo §7) — Regras Obrigatórias: environments.ts entrega valores prontos (proibido remendar configuração no ponto de uso); formato de chave validado no boot e não em runtime; placeholders de TEST_ENV recusados fora do stage TEST. Origem: quatro consumidores substituindo chaves de teste localmente. Epic 10 criado.'
 ---
 
 # Architecture Decision Document
 
 _Este documento é construído colaborativamente através de descoberta passo a passo. Seções são adicionadas conforme avançamos em cada decisão arquitetural juntos._
 
+> **Revisão 2026-07-28 (Correct Course — Sprint Change Proposal 2026-07-28):** edição
+> direcionada na seção *Credenciais & Formato da VC*. Claims consolidadas em uma única emissão,
+> `ageOver18` podendo ser `false` (menoridade deixa de ser 422), correspondência obrigatória entre
+> a claim apresentada e o `proof_type` solicitado, e remoção de `proofType` do contrato de emissão.
+> Sem impacto em schema, blockchain ou separação de camadas.
+>
 > **Revisão 2026-07-27 (Correct Course — Sprint Change Proposal 2026-07-27):** edição
 > direcionada sobre a arquitetura já finalizada. Mudanças de schema (`company.can_create_apps`,
 > `company_apps.environment`, `proof_requests.updated_at`), versionamento via Supabase Migrations,
@@ -183,6 +194,30 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 - **Invariante preservado:** a VC continua carregando apenas claims booleanos derivados
   (`personhood`, `ageOver18`) — nunca PII. A mudança é de **formato de serialização/assinatura**, não
   de conteúdo. Coordenação externa necessária com a codebase do app mobile YaID Wallet.
+
+#### Semântica das claims (Sprint Change 2026-07-28)
+
+- **Claims consolidadas:** uma única emissão produz **ambas** as claims —
+  `{ personhood: true, ageOver18: <boolean> }`. Não existe VC com claim isolada. O holder envia o
+  documento uma vez e a credencial resultante responde às duas perguntas.
+- **`ageOver18` pode ser `false`.** Menoridade não é falha de processamento: a emissão conclui com
+  201 e o holder recebe `personhood: true, ageOver18: false`. O 422 fica reservado a falha real de
+  OCR (documento ilegível, ou sem nome/CPF/data de nascimento) e a data de nascimento não parseável
+  — não se afirma `false` quando a idade é desconhecida.
+- **Contrato de entrada:** `POST /api/credentials/issue` recebe `{ documentImage, bodySignature }`.
+  O campo `proofType` **não é aceito** — com claims consolidadas ele não seleciona mais nada. O
+  payload assinado pelo holder é apenas `documentImage`.
+- **Correspondência claim ↔ proof_type na verificação (obrigatória):** o
+  `verify_presentation_usecase` carrega a `proof_request` da sessão, mapeia seu `proof_type` para a
+  chave de claim e exige que a claim **exista e valha exatamente `true`**. Validar apenas que as
+  claims são booleanas é insuficiente — aprovaria a credencial de um menor de idade em um pedido de
+  `age_over_18`. Claim ausente nunca é aprovação.
+- **Enum compartilhado:** criar `src/shared/domain/enums/ProofType.ts` (previsto na estrutura de
+  diretórios abaixo, mas inexistente na codebase). É o único lugar do mapeamento
+  `age_over_18` ↔ `ageOver18`, consumido por emissão e verificação.
+- **Acoplamento de entrega:** a consolidação de claims e a correspondência claim ↔ proof_type
+  (Stories 5.7 e 5.8) **não podem ser liberadas separadamente** — a primeira sem a segunda introduz
+  a falha descrita acima.
 
 ### API & Comunicação
 
@@ -447,6 +482,9 @@ Manter sempre distintos — nunca passar um onde o outro é esperado:
 ### Regras Obrigatórias para Todos os Agentes
 
 - `process.env` somente em `src/shared/environments.ts`
+- **`environments.ts` entrega valores prontos para uso.** Nenhum use case, provider ou client pode inspecionar, comparar contra placeholder ou substituir valor de configuração no ponto de uso. Se um valor precisa de tratamento para ser utilizável, o tratamento pertence ao `environments.ts` — não ao consumidor. (Sprint Change 2026-07-28: quatro consumidores remendavam chaves de teste localmente.)
+- **Formato de chave é validado no boot, não em runtime.** `z.string().min(1)` é insuficiente para chaves criptográficas; o schema valida o formato concreto (hex de 64 caracteres para chaves Ed25519, endereço válido para o contrato). Precedente: `EthersBlockchainClient` já valida `ethers.isAddress` no construtor para "gerar erro acionável no boot, não em tempo de requisição".
+- **Placeholders de `TEST_ENV` são recusados fora do stage `TEST`** — são valores publicamente conhecidos e versionados no repositório.
 - Campos camelCase em todas as respostas da API (ViewModel é responsável pela transformação)
 - Datas sempre ISO 8601 nas respostas
 - Shape de erro sempre `{ error: string }`

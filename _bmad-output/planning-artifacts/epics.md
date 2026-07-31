@@ -6,12 +6,20 @@ inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-27.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-28.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
 sprintChangeRun:
   date: '2026-07-27'
   stepsCompleted: [1, 2, 3]
   approach: 'Incremento sobre epics.md concluído — Epics 1–6 (todas stories done) permanecem intocados; Sprint Change 2026-07-27 entra como novo(s) épico(s) inserido(s).'
   newRequirements: 'FR26–FR34, UX-DR1–UX-DR6, requisitos adicionais de migrations/VC-JWT.'
+sprintChangeRuns:
+  - date: '2026-07-28'
+    approach: 'Correção de semântica de claims — Ajuste Direto dentro do Epic 5 (in-progress). Stories 5.7 e 5.8 acrescidas; 5.4 e 5.5 recebem notas de superseção parcial; ACs de 9.1/9.2 ajustados para preservar a correção. Nenhuma migration.'
+    decisions: 'Claims consolidadas (ambas na mesma VC); menor de 18 emite com ageOver18:false em vez de 422; verificação passa a exigir correspondência claim ↔ proof_type; proofType removido do body de emissão (opção C1).'
+  - date: '2026-07-28'
+    approach: 'Adendo §7 — higiene de configuração e chaves. Epic 10 criado (transversal a shared/, Epic 5 e Epic 6): stories 10.1 (centralização das chaves de teste no environments.ts, removendo 4 substituições locais) e 10.2 (validação de formato de chaves no boot). Independente das stories 5.7/5.8.'
+    decisions: 'environments.ts entrega valores prontos — proibido remendar configuração no ponto de uso; formato de chave validado no boot, não em runtime; placeholders do TEST_ENV recusados fora do stage TEST; ordem obrigatória 10.1 antes de 10.2.'
 ---
 
 # yaid_dashboard - Epic Breakdown
@@ -234,6 +242,11 @@ Holder com app mobile pode emitir sua Verifiable Credential via OCR em memória 
 
 **FRs cobertos:** FR15, FR16, FR17, FR18, FR19, FR24
 
+> **Sprint Change 2026-07-28:** acrescidas as stories 5.7 (claims consolidadas na emissão — uma
+> credencial responde às duas perguntas; menor de 18 recebe `ageOver18: false`, não 422) e 5.8
+> (a verificação passa a exigir que a claim apresentada corresponda ao `proof_type` pedido).
+> Stories 5.4 e 5.5 recebem notas de superseção parcial.
+
 ### Epic 6: Webhooks e Conclusão do Fluxo B2B
 
 Empresa parceira recebe notificações automáticas e criptograficamente verificáveis (Ed25519) sobre o resultado das validações, podendo checar autenticidade dos webhooks com a chave pública publicada.
@@ -259,6 +272,14 @@ O dashboard reflete a identidade visual oficial da YaID (ícone real em todas as
 O app mobile passa a receber a VC como JWT assinado (EdDSA) — formato compacto verificável na apresentação — em vez de JSON-LD com prova embutida. Isolado nos módulos `identity` + `presentation`; exige coordenação externa com a codebase do YaID Wallet.
 
 **FRs cobertos:** FR33
+
+<!-- ── Sprint Change 2026-07-28: Epic 10 (higiene de configuração). Epics 1–9 inalterados exceto 5 e 9. ── -->
+
+### Epic 10: Higiene de Configuração e Chaves
+
+`environments.ts` volta a ser a fonte única de configuração: as chaves de teste deixam de ser remendadas dentro dos use cases e o formato das chaves passa a ser validado no boot, não na primeira requisição. Elimina o risco de uma chave privada publicamente conhecida ser aceita em produção.
+
+**FRs cobertos:** nenhum (dívida técnica / hardening) — decorre da decisão de arquitetura *"`process.env` somente em `src/shared/environments.ts`"* e da exigência de validação de chaves no boot em `PROD`/`HOMOLOG`.
 
 ---
 
@@ -916,6 +937,13 @@ Para que minha Verifiable Presentation seja vinculada a essa sessão específica
 
 ### Story 5.4: Emissão de Verifiable Credential
 
+> ⚠️ **Parcialmente superada pela Story 5.7 (Sprint Change 2026-07-28).** O AC de claims
+> (`{ personhood: true }` **ou** `{ ageOver18: true }`) e o retorno 422 para menor de 18 anos
+> **não valem mais** — a VC passa a carregar ambas as claims em uma única emissão, e menor de
+> idade recebe `ageOver18: false` com sucesso. O parâmetro `proofType` deixa de existir no body.
+> As demais regras (assinatura do body, OCR em memória, descarte de PII, `registerDID`) seguem
+> válidas. Story mantida como registro do que foi entregue.
+
 Como holder com app mobile,
 Quero emitir minha Verifiable Credential apresentando meu documento,
 Para que eu possa usar essa credencial para verificações futuras sem entregar meu documento a terceiros.
@@ -945,6 +973,11 @@ Para que eu possa usar essa credencial para verificações futuras sem entregar 
 ---
 
 ### Story 5.5: Verificação de Verifiable Presentation
+
+> ⚠️ **Regra 5 superada pela Story 5.8 (Sprint Change 2026-07-28).** Validar apenas que as claims
+> são booleanas é insuficiente: a verificação passa a exigir que a claim correspondente ao
+> `proof_type` da `proof_request` exista e seja **exatamente `true`**. As regras 1–4 e 6–11 seguem
+> válidas e inalteradas. Story mantida como registro do que foi entregue.
 
 Como sistema backend,
 Quero validar a Verifiable Presentation do holder contra todas as regras de segurança e privacidade,
@@ -1012,6 +1045,107 @@ Para que eu tenha controle total sobre minha identidade digital.
 **Given** falha no registro de revogação on-chain
 **When** `revokeVC` lança exceção
 **Then** retorna HTTP 502 com `{ error: "Blockchain revocation failed" }` sem retornar sucesso parcial
+
+---
+
+### Story 5.7: Consolidação de Claims na Emissão de Credencial
+
+> Origem: Sprint Change Proposal 2026-07-28. Supersede parte da Story 5.4.
+> **Entrega acoplada à Story 5.8 — não liberar isoladamente** (ver nota ao final da 5.8).
+
+Como holder com app mobile,
+Quero que minha credencial responda às duas perguntas em uma única emissão,
+Para que eu não precise enviar meu documento mais de uma vez.
+
+**Acceptance Criteria:**
+
+**Given** uma chamada `POST /api/credentials/issue` autenticada por DID
+**When** a emissão é processada com sucesso
+**Then** a VC é construída com **ambas** as claims: `{ personhood: true, ageOver18: <boolean> }`
+**And** `personhood` é sempre `true` — a leitura bem-sucedida do documento é a própria evidência
+**And** `ageOver18` é `true` ou `false`, derivado da data de nascimento lida no documento
+**And** ambas permanecem estritamente booleanas — nenhuma PII entra na VC
+
+**Given** um holder cuja data de nascimento indica **menos de 18 anos**
+**When** a emissão é processada
+**Then** a emissão **conclui com sucesso** (HTTP 201)
+**And** a VC carrega `{ personhood: true, ageOver18: false }`
+**And** **não** é retornado HTTP 422 — não houve falha de processamento
+
+**Given** o contrato de entrada da rota
+**When** o body é validado
+**Then** aceita `{ documentImage, bodySignature }` — o campo `proofType` **não é mais aceito**
+**And** o payload assinado pelo holder passa a ser apenas `documentImage`
+**And** a validação da assinatura ocorre antes de qualquer outra operação, como na Story 5.4
+
+**Given** um documento cujo OCR falha (ilegível, ou sem nome/CPF/data de nascimento)
+**When** o processamento é executado
+**Then** retorna HTTP 422 com `{ error: "Document processing failed" }`
+**And** este é o **único** caminho que produz 422 relacionado ao documento
+
+**Given** uma data de nascimento presente mas não parseável para data válida
+**When** o cálculo de idade é executado
+**Then** retorna HTTP 422 — não é honesto afirmar `ageOver18: false` quando a idade é desconhecida
+
+**Given** o fluxo existente de emissão (Story 5.4)
+**When** esta story é aplicada
+**Then** a validação da assinatura do body, o OCR em memória, o descarte de PII e o
+`registerDID` on-chain permanecem inalterados
+
+> **Vocabulário canônico (fixado nesta story):** `proof_type` na API e no banco usa
+> `personhood` | `age_over_18`; a chave de claim dentro da VC usa `personhood` | `ageOver18`.
+> O mapeamento entre as duas formas vive em **um único lugar** — criar o enum `ProofType` em
+> `src/shared/domain/enums/ProofType.ts` (referenciado no `architecture.md`, mas inexistente hoje),
+> consumido tanto pela emissão quanto pela verificação.
+
+---
+
+### Story 5.8: Correspondência entre Claim Apresentada e Proof Type Solicitado
+
+> Origem: Sprint Change Proposal 2026-07-28. Supersede a Regra 5 da Story 5.5.
+
+Como empresa parceira,
+Quero que uma aprovação signifique que a pergunta que eu fiz foi respondida afirmativamente,
+Para que eu não libere acesso com base numa credencial que responde outra coisa.
+
+**Acceptance Criteria:**
+
+**Given** uma `POST /api/presentations/verify` cuja sessão pertence a uma `proof_request`
+**When** o `verify_presentation_usecase` executa
+**Then** a `proof_request` associada é carregada e seu `proof_type` é lido
+**And** o `proof_type` é mapeado para a chave de claim correspondente
+**And** a Regra 5 passa a exigir: a claim mapeada **existe na VC** e seu valor é **exatamente `true`**
+
+**Given** uma `proof_request` de `age_over_18` e uma VC com `ageOver18: false`
+**When** a verificação executa
+**Then** retorna `{ valid: false }` e a `proof_request` transiciona para `rejected`
+
+**Given** uma `proof_request` de `age_over_18` e uma VC sem a chave `ageOver18`
+**When** a verificação executa
+**Then** retorna `{ valid: false }` — ausência da claim nunca é tratada como aprovação
+
+**Given** uma `proof_request` de `personhood` e uma VC com `personhood: true, ageOver18: false`
+**When** a verificação executa
+**Then** retorna `{ valid: true }` — a claim não solicitada é irrelevante para o resultado
+
+**Given** a validação original de que todas as claims são booleanas
+**When** esta story é aplicada
+**Then** ela é **preservada** — a correspondência é uma exigência adicional, não substituta
+
+**Given** as demais regras da Story 5.5 (1–4 e 6–11)
+**When** esta story é aplicada
+**Then** todas permanecem em vigor e na mesma ordem
+
+**Given** o disparo de webhook após a transição de status
+**When** o webhook é montado
+**Then** o campo `proofType` carrega o `proof_type` real da `proof_request`, substituindo o valor
+hardcoded `"verification"`
+
+> ⚠️ **Restrição de entrega — 5.7 e 5.8 são indivisíveis.** Entregar a 5.7 sem a 5.8 **introduz**
+> uma falha de correção inexistente hoje: com as claims consolidadas, toda VC passa a carregar
+> `ageOver18`, inclusive `false`. Como a Regra 5 original só verifica que o valor é booleano,
+> a credencial de um menor de idade **aprovaria** uma `proof_request` de `age_over_18`.
+> Hoje isso não ocorre apenas porque a claim não existe na credencial.
 
 ---
 
@@ -1348,7 +1482,9 @@ Para que eu a armazene em formato compacto e verificável, alinhado ao que o app
 **When** uma VC é emitida
 **Then** ela é construída como VC-JWT compacto com header `{alg:"EdDSA", typ:"JWT", kid:"<issuerDid>#key-1"}` e payload `{iss:<issuerDid>, sub:<holderDid>, jti, iat, nbf, vc:{...claims booleanos}}`
 **And** é assinada (JWS compacto) com `ISSUER_PRIVATE_KEY` (EdDSA)
-**And** os claims permanecem **apenas booleanos** (`personhood`/`ageOver18`) — nenhuma PII entra no payload
+**And** os claims permanecem **apenas booleanos** — nenhuma PII entra no payload
+**And** o bloco `vc` carrega **ambas** as claims consolidadas pela Story 5.7:
+`{ personhood: true, ageOver18: <boolean> }` — nunca uma claim isolada
 
 **Given** o `issue_credential_viewmodel` e a rota `POST /api/credentials/issue`
 **When** a resposta é montada
@@ -1358,9 +1494,11 @@ Para que eu a armazene em formato compacto e verificável, alinhado ao que o app
 **When** verificado com a public key do issuer
 **Then** a assinatura é válida e o header/payload seguem o formato acima
 
-**Given** o fluxo existente de emissão (Story 5.4)
+**Given** o fluxo existente de emissão (Stories 5.4 e 5.7)
 **When** esta story é aplicada
 **Then** o OCR em memória, o descarte de PII e o registro on-chain (`registerDID`) permanecem inalterados — muda apenas o formato de serialização/assinatura da VC
+**And** a semântica de claims da Story 5.7 é preservada: ambas as claims presentes, menor de 18
+recebe `ageOver18: false` com sucesso, e o body não aceita `proofType`
 
 > ⚠️ **TBD para o agente implementador:** questionar qual biblioteca de JWS/EdDSA usar antes de implementar. **Coordenação externa** com a codebase do YaID Wallet é obrigatória — o formato do JWT é um contrato entre backend e mobile.
 
@@ -1382,6 +1520,10 @@ Para que apenas apresentações com credencial íntegra e não-revogada sejam ap
 **Given** as 11 regras de validação da Story 5.5
 **When** a verificação roda sobre a VC-JWT
 **Then** todas permanecem em vigor, adaptadas ao formato JWT (DID do holder == autenticado, nonce/challenge, janela de validade, `isDIDRegistered`, `isVCRevoked`, sessão em `opened`, etc.)
+**And** a Regra 5 na forma corrigida pela Story 5.8 é **preservada**: a claim correspondente ao
+`proof_type` da `proof_request` precisa existir no bloco `vc` e valer **exatamente `true`** —
+validar apenas que as claims são booleanas é insuficiente e aprovaria a credencial de um menor
+de idade em um pedido de `age_over_18`
 
 **Given** todas as validações passam
 **When** o use case conclui
@@ -1390,3 +1532,89 @@ Para que apenas apresentações com credencial íntegra e não-revogada sejam ap
 **Given** qualquer validação falha (ex: assinatura do issuer inválida, VC-JWT malformada)
 **When** o use case conclui
 **Then** retorna `{ valid: false }` sem detalhar qual regra falhou, e a proof_request transiciona para `rejected`
+
+---
+
+## Epic 10: Higiene de Configuração e Chaves
+
+`environments.ts` volta a ser a fonte única de configuração: as chaves de teste deixam de ser remendadas dentro dos use cases e o formato das chaves passa a ser validado no boot, não na primeira requisição.
+
+> Origem: Sprint Change Proposal 2026-07-28, §7 (adendo). Sem relação de dependência com as
+> Stories 5.7/5.8 — podem correr em paralelo. **Ordem interna obrigatória: 10.1 antes de 10.2.**
+
+### Story 10.1: Centralização de Chaves de Teste no `environments.ts`
+
+Como desenvolvedor deste backend,
+Quero que as chaves do stage de teste saiam prontas do `environments.ts`,
+Para que nenhum use case precise conhecer ou remendar valores de configuração.
+
+**Contexto:** `TEST_ENV` atribui strings-placeholder não-hexadecimais (`"test-issuer-private-key"`) a variáveis que o código consome como chaves hex de 32 bytes. Como o valor não serve para `hexToBytes`, **quatro consumidores remendam o valor no ponto de uso**, cada um redeclarando o par placeholder/valor real.
+
+**Acceptance Criteria:**
+
+**Given** o `TEST_ENV` em `src/shared/environments.ts`
+**When** revisado
+**Then** `ISSUER_PRIVATE_KEY` e `WEBHOOK_SIGNING_PRIVATE_KEY` carregam diretamente os valores hex de 32 bytes hoje produzidos pela substituição (`…0001` e `…0002`, respectivamente)
+**And** as chaves derivadas permanecem **idênticas** às atuais — nenhuma assinatura muda
+
+**Given** os quatro pontos de substituição de placeholder
+**When** esta story é aplicada
+**Then** todos são removidos:
+  1. `src/modules/credential/app/issue_credential_usecase.ts` (linhas 148-151)
+  2. `src/modules/presentation/app/verify_presentation_usecase.ts` (linhas 183-186)
+  3. `src/shared/infra/providers/Ed25519WebhookSigner.ts` (linhas 20-30)
+  4. `src/modules/webhook/app/get_webhook_public_key_usecase.ts` (linhas 4-6, 34-40)
+**And** cada consumidor passa a usar o valor recebido sem inspecioná-lo ou reescrevê-lo
+
+**Given** os testes estruturais que hoje exigem a presença do remendo
+**When** esta story é aplicada
+**Then** `tests/unit/story-6-1/webhook-delivery.test.mjs:85` e `tests/unit/story-6-2/webhook-public-key.test.mjs:119` são reescritos para afirmar o comportamento novo — a chave vem pronta do `environments.ts` — em vez da presença da substituição
+**And** as asserções sobre o valor derivado `…0002` (`story-6-2`, linhas 43, 91, 162) permanecem inalteradas e passando
+
+**Given** a suíte de testes completa
+**When** executada após a mudança
+**Then** passa integralmente — a mudança é preservadora de comportamento por construção
+
+**Given** um novo consumidor de chave criado no futuro
+**When** ele lê a chave via `environments.ts`
+**Then** recebe um valor pronto para uso em qualquer stage, sem precisar conhecer placeholders
+
+---
+
+### Story 10.2: Validação de Formato de Chaves no Boot
+
+Como operador deste backend,
+Quero que uma chave malformada derrube o boot em vez de falhar na primeira requisição,
+Para que nunca seja possível subir produção assinando com uma chave inválida ou publicamente conhecida.
+
+**Contexto:** `envSchema` declara as chaves como `z.string().min(1).optional()` e o `superRefine` verifica apenas **presença** em `PROD`/`HOMOLOG`. Uma chave com typo, tamanho errado ou igual ao placeholder de teste passa na validação de boot. No caso do placeholder, o backend passaria a assinar VCs com uma chave privada que está neste repositório — qualquer pessoa poderia forjar credenciais aceitas pelo `verify_presentation_usecase`.
+
+**Dependência:** requer a Story 10.1 concluída. Validar formato enquanto `TEST_ENV` ainda carrega placeholders não-hex quebraria o stage `TEST` inteiro.
+
+**Acceptance Criteria:**
+
+**Given** `ISSUER_PRIVATE_KEY` e `WEBHOOK_SIGNING_PRIVATE_KEY` no `envSchema`
+**When** o schema é avaliado no boot
+**Then** ambas exigem exatamente 64 caracteres hexadecimais (32 bytes)
+**And** um valor com typo, tamanho incorreto ou caracteres não-hex **falha no boot** com mensagem acionável nomeando a variável
+
+**Given** `BLOCKCHAIN_WALLET_PRIVATE_KEY` e `BLOCKCHAIN_CONTRACT_ADDRESS`
+**When** o schema é avaliado no boot
+**Then** seus formatos também são validados, seguindo o precedente já existente em `EthersBlockchainClient`, que valida `ethers.isAddress` no construtor *"para gerar erro acionável no boot, não em tempo de requisição"*
+
+**Given** o stage `PROD` ou `HOMOLOG`
+**When** qualquer chave recebe um dos valores de placeholder do `TEST_ENV`
+**Then** o boot falha explicitamente — a chave de teste é publicamente conhecida e nunca pode assinar fora de `TEST`
+**And** o mesmo vale para `DOTENV` e `DEV`, encerrando a inconsistência em que apenas `get_webhook_public_key_usecase` fazia esse guard
+
+**Given** o stage `TEST`
+**When** o boot ocorre
+**Then** as chaves de teste do `TEST_ENV` são aceitas normalmente
+
+**Given** o stage `DOTENV` ou `DEV` sem as chaves definidas
+**When** o boot ocorre
+**Then** o comportamento atual é preservado: a ausência é tolerada e o erro só surge se o fluxo específico usar o getter correspondente — permite rodar signup/dashboard local sem blockchain nem issuer
+
+**Given** a suíte de testes completa
+**When** executada após a mudança
+**Then** passa integralmente

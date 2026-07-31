@@ -1,3 +1,23 @@
+## Deferred from: code review of story-5-8-correspondencia-entre-claim-e-proof-type (2026-07-31)
+
+- **`requestRepo.findById(proofRequestId)` sem try/catch** — se retornar `null` (integridade referencial quebrada), o método sai por `{ valid: false }` sem chamar `updateStatus` nem disparar webhook (sem rastro de auditoria); se a chamada lançar (erro transitório de rede/DB), a exceção só é convertida em 500 genérico na borda da rota (`handleHttpError`), diferente do padrão gracioso `reject()` usado nas Regras 9/10 para chamadas de blockchain. A chamada irmã `sessionRepo.findByTokenHash` (linha 95) já é igualmente desprotegida — corrigir só o `findById` novo criaria uma inconsistência local; corrigir ambas está fora do escopo desta story. [`src/modules/presentation/app/verify_presentation_usecase.ts:106-110`]
+
+- **`cancel_proof_session_usecase.ts:50` mantém o literal `"verification"` hardcoded no payload do webhook** — use case e endpoint diferentes (Story 5.6, `POST /api/proof-sessions/{token}/cancel`). Nenhuma AC da Story 5.8 cobre esse fluxo; já documentado como fora de escopo no Dev Notes da própria story. [`src/modules/proof-session/app/cancel_proof_session_usecase.ts:50`]
+
+- **Suíte de testes é 100% estática** — nenhum teste dinâmico/comportamental instancia `VerifyPresentationUseCase` com repositórios mockados para verificar o `{ valid: true/false }` retornado em runtime nem a transição real de `proof_request.status` para os novos cenários de correspondência claim ↔ proof_type. Padrão sistêmico em todas as stories desde a 5.4/5.5, já deferido no code review da Story 5.7. [`tests/unit/story-5-8/claim-proof-type-correspondence.test.mjs`]
+
+## Deferred from: code review of story-5-7-consolidacao-de-claims-na-emissao (2026-07-31)
+
+- **Payload assinado (`documentImage` puro) sem domain separator/nonce** — replayable se o mesmo valor assinado for reaproveitado. Pré-existente desde a Story 5.4 (o antigo `:${proofType}` no payload não funcionava como nonce/anti-replay, era só um classificador fixo); não introduzido nem agravado pela consolidação de claims desta story. [`src/modules/credential/app/issue_credential_usecase.ts:83`]
+
+- **Fallback hardcoded `test-issuer-private-key` → chave privada conhecida publicamente permanece sem guarda fora do stage TEST** — já mapeado como escopo do Epic 10 (Story 10.2 — validação de formato de chaves no boot). Não tocado nesta story por instrução explícita do Dev Notes. [`src/modules/credential/app/issue_credential_usecase.ts:143-146`]
+
+- **`claims` tipado como `Record<string, boolean>` genérico** — sem garantia em tempo de compilação restrita às duas chaves conhecidas (`personhood`, `ageOver18`). Forma de tipo pré-existente desde a Story 5.4. [`src/modules/credential/app/issue_credential_usecase.ts:20`]
+
+- **Suíte de testes é 100% estática (regex sobre o source + `tsc --noEmit`)** — nenhum teste dinâmico/comportamental executa o use case com dependências mockadas para verificar o output em runtime (ex.: assinatura real, cálculo de idade com datas de teste). Padrão sistêmico em todas as stories do projeto, não específico deste diff. [`tests/unit/story-5-7/claim-consolidation.test.mjs`]
+
+- **Robustez de fronteira de `ocrResult.birthDate` depende inteiramente do contrato do `OcrProvider`** — sem checagem defensiva no use case para `OcrResult` nulo/indefinido ou datas de nascimento futuras/implausíveis. O mesmo padrão já existia no branch `ageOver18` pré-5.7 (mesmo código, mesma ausência de guarda), agora exercitado em 100% das requisições em vez de só quando `proofType === "ageOver18"` era pedido. Mitigado hoje porque `ApiOcrProvider` lança exceção antes de retornar dado malformado (`ApiOcrProvider.ts:73`), mas não defendido explicitamente na fronteira do use case. [`src/modules/credential/app/issue_credential_usecase.ts:118-130`]
+
 ## Deferred from: code review of story-7-1-fundacao-de-versionamento-de-schema (2026-07-28)
 
 - **Grants amplos + RLS habilitado sem políticas nas 4 tabelas públicas** — o baseline captura `GRANT DELETE, INSERT, SELECT, UPDATE` para `anon`/`authenticated` em `company`, `company_apps`, `proof_request`, `proof_sessions`, com RLS habilitado mas zero políticas definidas. Estado pré-existente no banco de produção (capturado fielmente por esta story, não introduzido por ela). Hoje o app usa a service role key server-side (bypassa RLS), consistente com `architecture.md` ("sem RLS no MVP"), então não é uma vulnerabilidade ativa — mas vale uma story de governança de RLS dado o tema do Epic 7 ("Governança de Criação"). [`supabase/migrations/20260728015653_remote_schema.sql`]

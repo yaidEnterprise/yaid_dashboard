@@ -190,7 +190,7 @@ setDidAuth('POST', '/api/credentials/issue');
 //   - OCR real: base64 puro de uma imagem legível do documento
 var docImage = pm.collectionVariables.get('docImage') || 'mock-doc-personhood';
 pm.collectionVariables.set('docImage', docImage);
-pm.collectionVariables.set('bodySignature', edSign(docImage + ':personhood'));
+pm.collectionVariables.set('bodySignature', edSign(docImage));
 ```
 
 - **Body** (raw → JSON):
@@ -198,7 +198,6 @@ pm.collectionVariables.set('bodySignature', edSign(docImage + ':personhood'));
 ```json
 {
   "documentImage": "{{docImage}}",
-  "proofType": "personhood",
   "bodySignature": "{{bodySignature}}"
 }
 ```

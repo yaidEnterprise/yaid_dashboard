@@ -3,11 +3,11 @@ import { randomUUID } from "node:crypto";
 import { AppError } from "@/shared/errors/AppError";
 import { BlockchainClient } from "@/shared/domain/interfaces/BlockchainClient";
 import { OcrProvider } from "@/shared/domain/interfaces/OcrProvider";
+import { PROOF_TYPE_CLAIM_KEY, ProofType } from "@/shared/domain/enums/ProofType";
 
 export interface IssueCredentialInput {
   holderDid: string;
   documentImage: string;
-  proofType: string;
   bodySignature: string;
 }
 
@@ -62,7 +62,7 @@ export class IssueCredentialUseCase {
   ) {}
 
   async execute(input: IssueCredentialInput): Promise<VerifiableCredential> {
-    const { holderDid, documentImage, proofType, bodySignature } = input;
+    const { holderDid, documentImage, bodySignature } = input;
 
     // 1. Validar DID e extrair public key do holder
     const parts = holderDid.split(":");
@@ -80,7 +80,7 @@ export class IssueCredentialUseCase {
     const holderPubKeyHex = parts[3];
 
     // 2. Validar assinatura do body pelo holder antes de qualquer outra operação
-    const payloadStr = `${documentImage}:${proofType}`;
+    const payloadStr = documentImage;
     const payloadBytes = new TextEncoder().encode(payloadStr);
 
     let signatureBytes: Uint8Array;
@@ -114,36 +114,32 @@ export class IssueCredentialUseCase {
       throw new AppError("Document processing failed", 422, "UNPROCESSABLE_ENTITY");
     }
 
-    // 4. Construir claims sem PII (apenas booleanos)
-    let claims: Record<string, boolean>;
-    if (proofType === "personhood") {
-      claims = { personhood: true };
-    } else if (proofType === "ageOver18") {
-      const birthDate = new Date(ocrResult.birthDate);
-      if (isNaN(birthDate.getTime())) {
-        throw new AppError("Document processing failed", 422, "UNPROCESSABLE_ENTITY");
-      }
-
-      const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-
-      if (age < 18) {
-        throw new AppError("Document processing failed", 422, "UNPROCESSABLE_ENTITY");
-      }
-
-      claims = { ageOver18: true };
-    } else {
+    // 4. Construir claims sem PII (apenas booleanos) — ambas as claims em uma única emissão
+    const birthDate = new Date(ocrResult.birthDate);
+    if (isNaN(birthDate.getTime())) {
       throw new AppError("Document processing failed", 422, "UNPROCESSABLE_ENTITY");
     }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    const ageOver18 = age >= 18;
+
+    const claims: Record<string, boolean> = {
+      [PROOF_TYPE_CLAIM_KEY[ProofType.PERSONHOOD]]: true,
+      [PROOF_TYPE_CLAIM_KEY[ProofType.AGE_OVER_18]]: ageOver18,
+    };
 
     // 5. Construir e assinar a VC com ISSUER_PRIVATE_KEY
     const id = randomUUID();
     const type = ["VerifiableCredential"];
 
+    // CORRIGIR ISSO! variaveis de ambiente de teste devem ser definidas no environments.ts
+    // Mapear isso e descobrir onde mais existem hardcode de variavel de ambiente por falta de retorno do environments.ts
     let privateKeyHex = this.issuerPrivateKey;
     if (privateKeyHex === "test-issuer-private-key") {
       privateKeyHex = "0000000000000000000000000000000000000000000000000000000000000001";
