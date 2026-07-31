@@ -23,6 +23,7 @@
 - [x] tests/unit/story-6-2/webhook-public-key.test.mjs - Story 6.2 contratos do endpoint público da chave de webhook: round-trip Ed25519 real (sign com chave de teste → verify com public key derivada retorna true; payload adulterado e assinatura forjada retornam false), determinismo do encoding base64 padrão (não base64url), use case/viewmodel/controller/presenter/rota, validação de formato hex e gate de stage TEST na substituição da chave de teste (review patches), confirmação de que `environments.ts`/`middleware.ts` não precisaram de alteração
 - [x] tests/unit/story-7-1/schema-baseline.test.mjs - Story 7.1 (dev) contratos estruturais do baseline: existência de `supabase/config.toml`/`migrations/`/`seed.sql`, `.gitignore` cobre `.branches`/`.temp`, migration baseline contém as 4 tabelas reais (`proof_request` singular), ausência de `updated_at`/`can_create_apps` (drift esperado), presença de `environment`, guarda whole-file contra vazamento de colunas de forward-migration
 - [x] tests/unit/story-7-1/migrations-regression.test.mjs - Story 7.1 (QA) cobertura adicional: `.gitignore` verificado via `git check-ignore` real (não só regex de texto) para `.branches`/`.temp`, confirma que a migration em si NÃO é ignorada, regressão dos 3 patches do code review com efeito funcional (`DROP EXTENSION IF EXISTS`, sem `.gitkeep` morto, `SUPABASE_DB_PASSWORD` documentada em `.env.local.example`), wiring do script `test:story:7.1`, compilação TypeScript limpa
+- [x] tests/unit/story-5-7/claim-consolidation.test.mjs - Story 5.7 consolidação de claims na emissão: enum `ProofType` + `PROOF_TYPE_CLAIM_KEY`, remoção de `proofType` do schema/`.strict()`/controller/input do use case, payload assinado reduzido a `documentImage` puro, ausência do branch por `proofType`, `personhood` sempre `true` + `ageOver18` sempre calculado (`age >= 18`), ausência de throw isolado para `age < 18`, 422 preservado para OCR falho e data de nascimento não parseável, exatamente 2 sites de 422/`UNPROCESSABLE_ENTITY` (AC#4 "único caminho"), presenter sem referência a `proofType`, compilação TypeScript limpa
 
 ## Coverage
 
@@ -274,3 +275,27 @@
 - Story arquitetural/infraestrutural (migrations do Supabase, não lógica de aplicação) — nenhum arquivo em `src/` foi tocado, então os testes são estruturais/comportamentais sobre arquivos de configuração e SQL gerado, não sobre código TypeScript de domínio
 - AC#3 e AC#4 não têm — e não deveriam ter — testes automatizados: exigiriam Docker/Postgres real (AC#3) ou um pipeline de CI que não existe (AC#4). Ambos foram validados manualmente e documentados nos Dev Notes/Debug Log da story em vez de simulados por um teste que daria falsa confiança
 - 2 itens deferidos do code review para `deferred-work.md`: (1) grants amplos (`anon`/`authenticated`) + RLS habilitado sem políticas nas 4 tabelas — estado pré-existente no banco de produção, capturado fielmente, não introduzido por esta story, (2) `GRANT ALL` na função `rls_auto_enable()` para `anon`/`authenticated` — artefato da própria plataforma Supabase
+
+### Story 5.7 — Consolidação de Claims na Emissão de Credencial
+- Acceptance criteria: 6/6 cobertos
+  - AC#1 (claims consolidadas — `{ personhood: true, ageOver18: <boolean> }`, sem PII): coberto por "always sets personhood true and computes ageOver18 boolean via the shared ProofType enum" e pelo teste do enum `ProofType`/`PROOF_TYPE_CLAIM_KEY`
+  - AC#2 (menor de 18 conclui com 201, `ageOver18: false`, sem 422): coberto por "use case never throws for age below 18 in isolation"
+  - AC#3 (contrato sem `proofType`; payload assinado = `documentImage` puro; ordem de validação preservada): coberto por "IssueCredentialSchema no longer accepts proofType" + ".strict()", "IssueCredentialController no longer forwards proofType", "IssueCredentialInput no longer declares proofType", "signed payload no longer includes proofType"
+  - AC#4 (422 único caminho — OCR falho): coberto por "preserves OCR-in-memory failure handling" + "AC#4 — 422 has exactly two document-related causes" (garante que não sobrou nenhum branch extra de 422 por `proofType`)
+  - AC#5 (data de nascimento não parseável → 422): coberto por "use case still throws 422 for unparseable birth date"
+  - AC#6 (assinatura do body, OCR em memória, descarte de PII, `registerDID` inalterados): coberto por "preserves signature validation and DID registration" + "preserves OCR-in-memory failure handling"
+- Caminhos críticos: 17/17 testes passando
+  - Enum compartilhado `ProofType`/`PROOF_TYPE_CLAIM_KEY` (único lugar do mapeamento `age_over_18` ↔ `ageOver18`, per Dev Notes)
+  - Patches do code review cobertos: `.strict()` no `IssueCredentialSchema` (rejeita campos desconhecidos em vez de descartar silenciosamente), presenter confirmado sem referência a `proofType`
+  - Regressão da Story 5.4: 1 asserção obsoleta corrigida (`age < 18` lançando erro → `age >= 18` computando booleano), demais 20 testes da 5.4 intactos
+  - Regressão da Story 5.5: nenhuma alteração necessária — `claims` é lida como `Record<string, unknown>` genérico, agnóstica ao novo shape
+  - TypeScript: `npx tsc --noEmit` sem erros; `npx eslint` sem erros
+
+#### Validation
+- `npm run test:story:5.7`: **passed** — 17/17
+- `npm test` (suite completa): **passed** — 585/585
+
+#### Notes
+- Mesma convenção estrutural do projeto (`node:test` + regex/contagem sobre o source + `tsc --noEmit`). Não foi introduzido um runner de testes comportamentais para TypeScript nesta story: o projeto não tem `ts-node`/`tsx`/`swc-register`, e `ProofType.ts` usa `enum` (sintaxe que gera código em runtime, não apenas tipos) — o `--experimental-strip-types` nativo do Node não cobre `enum`, então executar o use case real exigiria adicionar um transpilador/loader novo ao projeto, o que é infraestrutura de teste fora do escopo de "gerar testes para esta story". Registrado como item deferido no code review (ver `deferred-work.md`, "Suíte de testes é 100% estática").
+- 5 itens deferidos do code review para `deferred-work.md`: payload assinado sem domain separator/nonce (pré-existente desde 5.4), fallback hardcoded de chave de teste sem guarda fora de TEST (Epic 10), `claims` tipado como `Record<string, boolean>` genérico (pré-existente desde 5.4), suíte 100% estática (sistêmico), robustez de fronteira de `ocrResult.birthDate` (mitigada hoje pelo contrato do `ApiOcrProvider`, que já lança exceção antes de retornar dado malformado)
+- **Story 5.8 (correspondência claim ↔ proof_type na verificação) não foi implementada nesta entrega** — decisão consciente do usuário apesar da restrição de entrega acoplada documentada em `epics.md`/`architecture.md`/`sprint-change-proposal-2026-07-28.md` (5.7 sem 5.8 permite que uma credencial de menor de idade aprove um pedido de `age_over_18`). O código desta story não deve ser considerado pronto para liberação/deploy até a Story 5.8 ser implementada.

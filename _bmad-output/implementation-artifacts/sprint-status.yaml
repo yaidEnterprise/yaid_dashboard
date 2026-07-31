@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-07-27
+# last_updated: 2026-07-31
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-07-27
+last_updated: 2026-07-31
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -86,6 +86,10 @@ development_status:
   5-4-emissao-de-verifiable-credential: done
   5-5-verificacao-de-verifiable-presentation: done
   5-6-cancel-de-sessao-e-revogacao-de-credencial: done
+  # Sprint Change 2026-07-28 — entrega ACOPLADA: 5-7 e 5-8 não podem ser liberadas separadamente
+  # (5-7 sem 5-8 faz a credencial de um menor de idade aprovar um pedido de age_over_18)
+  5-7-consolidacao-de-claims-na-emissao: done
+  5-8-correspondencia-entre-claim-e-proof-type: backlog
   epic-5-retrospective: optional
 
   # Epic 6: Webhooks e Conclusão do Fluxo B2B
@@ -115,3 +119,11 @@ development_status:
   9-1-emissao-da-vc-como-vc-jwt-eddsa: backlog
   9-2-verificacao-da-vc-jwt-em-presentations-verify: backlog
   epic-9-retrospective: optional
+
+  # Epic 10: Higiene de Configuração e Chaves (Sprint Change 2026-07-28, adendo §7)
+  # Ordem obrigatória: 10-1 antes de 10-2 (validar formato antes de 10-1 quebra o stage TEST).
+  # Independente das stories 5-7/5-8 — pode correr em paralelo.
+  epic-10: backlog
+  10-1-centralizacao-de-chaves-de-teste-no-environments: backlog
+  10-2-validacao-de-formato-de-chaves-no-boot: backlog
+  epic-10-retrospective: optional

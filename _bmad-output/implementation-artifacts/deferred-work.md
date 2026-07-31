@@ -1,3 +1,15 @@
+## Deferred from: code review of story-5-7-consolidacao-de-claims-na-emissao (2026-07-31)
+
+- **Payload assinado (`documentImage` puro) sem domain separator/nonce** — replayable se o mesmo valor assinado for reaproveitado. Pré-existente desde a Story 5.4 (o antigo `:${proofType}` no payload não funcionava como nonce/anti-replay, era só um classificador fixo); não introduzido nem agravado pela consolidação de claims desta story. [`src/modules/credential/app/issue_credential_usecase.ts:83`]
+
+- **Fallback hardcoded `test-issuer-private-key` → chave privada conhecida publicamente permanece sem guarda fora do stage TEST** — já mapeado como escopo do Epic 10 (Story 10.2 — validação de formato de chaves no boot). Não tocado nesta story por instrução explícita do Dev Notes. [`src/modules/credential/app/issue_credential_usecase.ts:143-146`]
+
+- **`claims` tipado como `Record<string, boolean>` genérico** — sem garantia em tempo de compilação restrita às duas chaves conhecidas (`personhood`, `ageOver18`). Forma de tipo pré-existente desde a Story 5.4. [`src/modules/credential/app/issue_credential_usecase.ts:20`]
+
+- **Suíte de testes é 100% estática (regex sobre o source + `tsc --noEmit`)** — nenhum teste dinâmico/comportamental executa o use case com dependências mockadas para verificar o output em runtime (ex.: assinatura real, cálculo de idade com datas de teste). Padrão sistêmico em todas as stories do projeto, não específico deste diff. [`tests/unit/story-5-7/claim-consolidation.test.mjs`]
+
+- **Robustez de fronteira de `ocrResult.birthDate` depende inteiramente do contrato do `OcrProvider`** — sem checagem defensiva no use case para `OcrResult` nulo/indefinido ou datas de nascimento futuras/implausíveis. O mesmo padrão já existia no branch `ageOver18` pré-5.7 (mesmo código, mesma ausência de guarda), agora exercitado em 100% das requisições em vez de só quando `proofType === "ageOver18"` era pedido. Mitigado hoje porque `ApiOcrProvider` lança exceção antes de retornar dado malformado (`ApiOcrProvider.ts:73`), mas não defendido explicitamente na fronteira do use case. [`src/modules/credential/app/issue_credential_usecase.ts:118-130`]
+
 ## Deferred from: code review of story-7-1-fundacao-de-versionamento-de-schema (2026-07-28)
 
 - **Grants amplos + RLS habilitado sem políticas nas 4 tabelas públicas** — o baseline captura `GRANT DELETE, INSERT, SELECT, UPDATE` para `anon`/`authenticated` em `company`, `company_apps`, `proof_request`, `proof_sessions`, com RLS habilitado mas zero políticas definidas. Estado pré-existente no banco de produção (capturado fielmente por esta story, não introduzido por ela). Hoje o app usa a service role key server-side (bypassa RLS), consistente com `architecture.md` ("sem RLS no MVP"), então não é uma vulnerabilidade ativa — mas vale uma story de governança de RLS dado o tema do Epic 7 ("Governança de Criação"). [`supabase/migrations/20260728015653_remote_schema.sql`]
