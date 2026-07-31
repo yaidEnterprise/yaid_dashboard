@@ -12,7 +12,6 @@ export class IssueCredentialController {
     return this.useCase.execute({
       holderDid: input.holderDid,
       documentImage: parsed.documentImage,
-      proofType: parsed.proofType,
       bodySignature: parsed.bodySignature,
     });
   }
