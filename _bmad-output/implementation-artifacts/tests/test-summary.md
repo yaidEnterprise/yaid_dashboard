@@ -23,6 +23,8 @@
 - [x] tests/unit/story-6-2/webhook-public-key.test.mjs - Story 6.2 contratos do endpoint público da chave de webhook: round-trip Ed25519 real (sign com chave de teste → verify com public key derivada retorna true; payload adulterado e assinatura forjada retornam false), determinismo do encoding base64 padrão (não base64url), use case/viewmodel/controller/presenter/rota, validação de formato hex e gate de stage TEST na substituição da chave de teste (review patches), confirmação de que `environments.ts`/`middleware.ts` não precisaram de alteração
 - [x] tests/unit/story-7-1/schema-baseline.test.mjs - Story 7.1 (dev) contratos estruturais do baseline: existência de `supabase/config.toml`/`migrations/`/`seed.sql`, `.gitignore` cobre `.branches`/`.temp`, migration baseline contém as 4 tabelas reais (`proof_request` singular), ausência de `updated_at`/`can_create_apps` (drift esperado), presença de `environment`, guarda whole-file contra vazamento de colunas de forward-migration
 - [x] tests/unit/story-7-1/migrations-regression.test.mjs - Story 7.1 (QA) cobertura adicional: `.gitignore` verificado via `git check-ignore` real (não só regex de texto) para `.branches`/`.temp`, confirma que a migration em si NÃO é ignorada, regressão dos 3 patches do code review com efeito funcional (`DROP EXTENSION IF EXISTS`, sem `.gitkeep` morto, `SUPABASE_DB_PASSWORD` documentada em `.env.local.example`), wiring do script `test:story:7.1`, compilação TypeScript limpa
+- [x] tests/unit/story-7-6/proof-request-detail-no-api-response.test.mjs - Story 7.6 (dev) contratos da remoção da seção "Resposta da API": ausência do import `CodeBlock`, presença do import `InlineCode`, ausência do heading e da variável `payload`/`JSON.stringify`, ausência de `<CodeBlock` no JSX, preservação dos cards "Resumo"/"Atributos confirmados"/"Privacidade" e do grid `lg:grid-cols-3`/`lg:col-span-2`
+- [x] tests/unit/story-7-6/qa-regression.test.mjs - Story 7.6 (QA) cobertura adicional: guarda codebase-wide confirmando que `CodeBlock` não tem mais nenhum consumidor em nenhum arquivo `.ts/.tsx/.js/.jsx/.mjs` do projeto (não só na página de detalhe), preservação comportamental de `InlineCode` (id da requisição + referência externa), wiring do script `test:story:7.6`, compilação TypeScript real via `node node_modules/typescript/bin/tsc` (não `.bin/tsc`, que falha com `ENOENT` no Windows sob `execFileSync` e mascararia erros como "sem erros" — bug encontrado e corrigido durante esta própria etapa de QA)
 
 ## Coverage
 
@@ -274,3 +276,21 @@
 - Story arquitetural/infraestrutural (migrations do Supabase, não lógica de aplicação) — nenhum arquivo em `src/` foi tocado, então os testes são estruturais/comportamentais sobre arquivos de configuração e SQL gerado, não sobre código TypeScript de domínio
 - AC#3 e AC#4 não têm — e não deveriam ter — testes automatizados: exigiriam Docker/Postgres real (AC#3) ou um pipeline de CI que não existe (AC#4). Ambos foram validados manualmente e documentados nos Dev Notes/Debug Log da story em vez de simulados por um teste que daria falsa confiança
 - 2 itens deferidos do code review para `deferred-work.md`: (1) grants amplos (`anon`/`authenticated`) + RLS habilitado sem políticas nas 4 tabelas — estado pré-existente no banco de produção, capturado fielmente, não introduzido por esta story, (2) `GRANT ALL` na função `rls_auto_enable()` para `anon`/`authenticated` — artefato da própria plataforma Supabase
+
+### Story 7.6 — Remoção da Seção "Resposta da API" no Detalhe
+- Acceptance criteria: 3/3 cobertos
+  - AC#1 (seção "Resposta da API" removida; Resumo/Atributos confirmados/privacidade/grid preservados): coberto por `proof-request-detail-no-api-response.test.mjs` (heading ausente, cards presentes, grid `lg:grid-cols-3`/`lg:col-span-2` preservado)
+  - AC#2 (import `CodeBlock` removido, `InlineCode` preservado, `payload`/`JSON.stringify` removidos): coberto pelos testes de import ausente/presente e ausência da construção de `payload`; reforçado no QA pela preservação comportamental de `InlineCode` (id + referência externa) e pelo guard codebase-wide de que `CodeBlock` não tem mais nenhum consumidor
+  - AC#3 (nenhuma saída JSON bruta exibida): coberto pela ausência de `<CodeBlock` no JSX e de `JSON.stringify`
+- Caminhos críticos: 14/14 testes passando
+  - Regressão corrigida: o teste pré-existente de `tests/unit/story-3-3/proof-request-detail.test.mjs` que exigia `CodeBlock` foi atualizado (não apenas relaxado) para agora exigir sua ausência
+  - QA encontrou e corrigiu um bug no próprio teste de compilação TypeScript adicionado nesta etapa: invocar `.bin/tsc` diretamente via `execFileSync` lança `ENOENT` neste ambiente Windows (script com shebang, sem resolução de shell); o catch genérico teria mascarado isso como "compilação limpa" (stdout vazio = zero erros encontrados). Corrigido invocando `node node_modules/typescript/bin/tsc` (portável) e adicionando um guard explícito que falha se o processo não rodou de verdade (stdout vazio no catch)
+
+#### Validation
+- `npm run test:story:7.6`: **passed** — 14/14
+- `npm test` (suite completa): **passed** — 582/582
+- `npx tsc --noEmit` (via `node node_modules/typescript/bin/tsc`, portável entre Windows/Unix): **passed** — sem erros
+
+#### Notes
+- Story de remoção pura de UI — nenhum arquivo de backend tocado; testes de source-inspection seguem a convenção já estabelecida no projeto
+- 1 item deferido do code review para `deferred-work.md`: `CodeBlock` (`components/api/code-block.tsx`) fica sem consumidores após esta story — `InlineCode`, no mesmo arquivo, segue em uso; decisão explícita de não deletar o arquivo compartilhado nesta story

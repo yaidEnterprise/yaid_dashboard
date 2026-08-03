@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-07-27
+last_updated: 2026-07-30
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -101,7 +101,7 @@ development_status:
   7-3-allowlist-de-criacao-de-apps: backlog
   7-4-seletor-de-ambiente-na-criacao-de-app: backlog
   7-5-review-manual-em-apps-homologacao: backlog
-  7-6-remocao-secao-resposta-da-api: backlog
+  7-6-remocao-secao-resposta-da-api: done
   epic-7-retrospective: optional
 
   # Epic 8: Marca Oficial e Topbar Integrada
