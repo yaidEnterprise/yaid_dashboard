@@ -48,7 +48,7 @@ export function AppSidebar() {
       <div className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center">
-            <Image src="/yaid_icon.svg" alt="YaID" width={16} height={16} className="h-4 w-4 object-contain invert" />
+            <Image src="/yaid_icon.svg" alt="YaID" width={32} height={32} className="h-8 w-8 object-contain invert" />
           </div>
         </div>
       </div>

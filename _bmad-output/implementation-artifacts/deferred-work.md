@@ -1,3 +1,7 @@
+## Deferred from: one-shot icone-maior-e-favicon (2026-08-05)
+
+- **Safari exibe `favicon.ico` placeholder** — Safari não suporta SVG favicon; usa o `app/favicon.ico` padrão do Next.js. Gerar um `.ico` real (16×16 e 32×32) requer tooling externo (sharp, imagemagick). Considerar adicionar um script de build que converta `yaid_icon.svg` para `.ico` quando a stack de build for estabilizada. [`app/favicon.ico`]
+
 ## Deferred from: one-shot remocao-texto-yaid-icone (2026-08-04)
 
 - **Margin do conteúdo principal não ajusta ao colapsar sidebar** — `app/(dashboard)/layout.tsx` hardcoda `lg:ml-[260px]` como offset, mas quando o sidebar colapsa para `w-[60px]` o conteúdo não acompanha, gerando ~200px de espaço em branco. Pré-existente; considerar tornar a margem dinâmica via CSS var ou contexto React. [`app/(dashboard)/layout.tsx`]

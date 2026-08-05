@@ -124,8 +124,8 @@ export default function SignUpPage() {
         <div className="w-full max-w-[420px]">
           {/* Logo */}
           <div className="mb-10 flex items-center">
-            <div className="flex h-10 w-10 items-center justify-center">
-              <Image src="/yaid_icon.svg" alt="YaID" width={20} height={20} className="h-5 w-5 object-contain" />
+            <div className="flex h-12 w-12 items-center justify-center">
+              <Image src="/yaid_icon.svg" alt="YaID" width={48} height={48} className="h-12 w-12 object-contain" />
             </div>
           </div>
 
