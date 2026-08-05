@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-03
+last_updated: 2026-08-05
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -101,7 +101,7 @@ development_status:
   # Epic 7: Ambientes por App, Governança de Criação e Review em Homologação
   epic-7: in-progress
   7-1-fundacao-de-versionamento-de-schema: done
-  7-2-coluna-updated-at-e-gravacao-em-toda-transicao: backlog
+  7-2-coluna-updated-at-e-gravacao-em-toda-transicao: done
   7-3-allowlist-de-criacao-de-apps: backlog
   7-4-seletor-de-ambiente-na-criacao-de-app: backlog
   7-5-review-manual-em-apps-homologacao: backlog

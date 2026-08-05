@@ -1,3 +1,19 @@
+## Deferred from: code review of story-7-2-coluna-updated-at-e-gravacao-em-toda-transicao (2026-08-05)
+
+- **Migration sem transação explícita entre as 3 declarações** — `ADD COLUMN` → `UPDATE` backfill → `ALTER ... SET NOT NULL` não estão envolvidas em `BEGIN`/`COMMIT` explícito; se o runner não tratar o arquivo como uma transação implícita, uma falha no meio deixa a coluna nullable sem default. Pré-existente como padrão do projeto (o baseline da Story 7.1 também não usa transação explícita). [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
+
+- **`ADD COLUMN` sem guarda de idempotência** — replay parcial da migration falha em vez de fazer no-op. Risco baixo, migrations não costumam ser replayadas manualmente neste projeto. [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
+
+- **`ProofRequestMapper`/`GetProofRequestUseCase` confiam em `updated_at` sem guarda contra Invalid Date** — se o valor vier `null`/malformado do banco, `new Date(...)` e o posterior `.toISOString()` falham silenciosa ou ruidosamente. Mesmo padrão já aceito em outros mappers do projeto (ex.: `ProofSessionMapper.challenge_created_at`, deferido desde a Story 1.3). [`src/shared/infra/dto/ProofRequestMapper.ts`, `src/modules/proof-request/app/get_proof_request_usecase.ts`]
+
+- **`SupabaseProofRequestRepository.updateStatus()` não verifica se `id` correspondeu a alguma linha** — update silencioso vira no-op sem sinalizar erro ao chamador. Comportamento pré-existente, não introduzido por esta story (que só adicionou `updated_at` ao payload). [`src/shared/infra/repositories/SupabaseProofRequestRepository.ts:106-112`]
+
+- **Janela estreita de risco: escrita concorrente sem `updated_at` durante a aplicação da migration** — se uma linha for inserida entre o `ADD COLUMN` e o `SET NOT NULL`, este último falha. Risco baixo em deploy single-writer; mesmo perfil de risco de qualquer migration aditiva `NOT NULL`. [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
+
+## Deferred from: story-7-2-coluna-updated-at-e-gravacao-em-toda-transicao (2026-08-05)
+
+- **Migration `add_updated_at_to_proof_requests` não validada contra Postgres real** — ambiente de execução desta story não tinha Docker disponível (`docker info` falhou), então `supabase db reset`/`supabase db diff --schema public` não puderam ser rodados. A migration foi validada apenas estruturalmente (teste lê o SQL e confere a presença de `ADD COLUMN`/`UPDATE ... SET updated_at = created_at`/`SET NOT NULL`). Antes de `supabase db push`, alguém com Docker disponível deve rodar `supabase db reset` localmente e confirmar `supabase db diff --schema public` retornando "No schema changes found". [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
+
 ## Deferred from: one-shot icone-maior-e-favicon (2026-08-05)
 
 - **Safari exibe `favicon.ico` placeholder** — Safari não suporta SVG favicon; usa o `app/favicon.ico` padrão do Next.js. Gerar um `.ico` real (16×16 e 32×32) requer tooling externo (sharp, imagemagick). Considerar adicionar um script de build que converta `yaid_icon.svg` para `.ico` quando a stack de build for estabilizada. [`app/favicon.ico`]
