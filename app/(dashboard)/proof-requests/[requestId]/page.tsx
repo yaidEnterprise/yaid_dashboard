@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { ChevronRight, ChevronLeft, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { StatusBadge, type StatusKind } from "@/components/feedback/status-badge";
 import { EnvBadge } from "@/components/feedback/environment-badge";
-import { CodeBlock, InlineCode } from "@/components/api/code-block";
+import { InlineCode } from "@/components/api/code-block";
 import {
   getProofRequest,
   formatProofType,
@@ -89,23 +89,6 @@ export default function ProofRequestDetailPage() {
   // guards against an approved request that inconsistently carries result=false.
   const claims = isApproved && data.result !== false ? confirmedClaims(data.proofType) : [];
   const statusLabel = PROOF_REQUEST_STATUS_LABELS[data.status] ?? data.status;
-
-  const payload = JSON.stringify(
-    {
-      id: data.id,
-      appId: data.appId,
-      appName: data.appName,
-      environment: data.environment,
-      proofType: data.proofType,
-      status: data.status,
-      result: data.result,
-      externalReference: data.externalReference,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-    },
-    null,
-    2,
-  );
 
   const summary: { k: string; v: string; code?: boolean }[] = [
     { k: "App", v: data.appName },
@@ -216,18 +199,6 @@ export default function ProofRequestDetailPage() {
                 </p>
               </div>
             )}
-          </div>
-
-          {/* Bloco técnico */}
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold text-text-primary">Resposta da API</h2>
-              <p className="text-xs text-text-secondary">
-                Dados não-sensíveis retornados por{" "}
-                <code className="font-mono">GET /api/proof-requests/{"{id}"}</code>.
-              </p>
-            </div>
-            <CodeBlock language="json" code={payload} />
           </div>
         </div>
 
