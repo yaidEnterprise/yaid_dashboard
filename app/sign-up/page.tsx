@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ShieldHalf, Loader2, Code2, Lock, Zap, FlaskConical } from "lucide-react";
+import { Loader2, Code2, Lock, Zap, FlaskConical } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/shared/clients/supabase/client";
 
 const signUpSchema = z
@@ -36,6 +38,7 @@ function formatCNPJ(value: string): string {
 }
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [cnpjDisplay, setCnpjDisplay] = useState("");
 
   const {
@@ -84,11 +87,11 @@ export default function SignUpPage() {
 
     if (signInError) {
       toast.error("Conta criada! Faça login para continuar.");
-      window.location.href = "/sign-in";
+      router.push("/sign-in");
       return;
     }
 
-    window.location.href = "/";
+    router.push("/");
   }
 
   const featureCards = [
@@ -122,7 +125,7 @@ export default function SignUpPage() {
           {/* Logo */}
           <div className="mb-10 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <ShieldHalf className="h-5 w-5 text-white" strokeWidth={2.5} />
+              <Image src="/yaid_icon.svg" alt="YaID" width={20} height={20} className="h-5 w-5 object-contain" />
             </div>
             <span className="text-xl font-bold tracking-tight text-text-primary">
               YaID

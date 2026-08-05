@@ -1,3 +1,6 @@
+## Deferred from: code review of story-7-6-remocao-secao-resposta-da-api (2026-07-30)
+
+- **Componente `CodeBlock` fica sem consumidores após a remoção** — `components/api/code-block.tsx` exporta `CodeBlock` e `InlineCode`; `InlineCode` segue em uso ativo nesta mesma página, mas `CodeBlock` (grep confirmado) não é mais importado em nenhum lugar da codebase após esta story. Não deletado nesta story por decisão explícita de escopo (o arquivo é compartilhado e `InlineCode` continua em uso); avaliar remover o export `CodeBlock` (ou o componente inteiro, se nenhuma outra tela vier a precisar de um bloco de código copiável) numa limpeza futura, ou reaproveitá-lo caso surja uma tela de documentação/API que precise dele. [`components/api/code-block.tsx`]
 ## Deferred from: code review of story-5-8-correspondencia-entre-claim-e-proof-type (2026-07-31)
 
 - **`requestRepo.findById(proofRequestId)` sem try/catch** — se retornar `null` (integridade referencial quebrada), o método sai por `{ valid: false }` sem chamar `updateStatus` nem disparar webhook (sem rastro de auditoria); se a chamada lançar (erro transitório de rede/DB), a exceção só é convertida em 500 genérico na borda da rota (`handleHttpError`), diferente do padrão gracioso `reject()` usado nas Regras 9/10 para chamadas de blockchain. A chamada irmã `sessionRepo.findByTokenHash` (linha 95) já é igualmente desprotegida — corrigir só o `findById` novo criaria uma inconsistência local; corrigir ambas está fora do escopo desta story. [`src/modules/presentation/app/verify_presentation_usecase.ts:106-110`]
@@ -140,3 +143,17 @@
 - **Propagação de click em filhos futuros do `<tr>`** — Sem `e.stopPropagation()` em filhos interativos, qualquer botão adicionado à row no futuro propagará click para o `router.push`. Adicionar `e.stopPropagation()` nos botões ao implementar Story 2.3 (detalhe/edição). [`app/(dashboard)/apps/page.tsx`]
 
 - **`colSpan={3}` hardcoded em EmptyState/ErrorState** — Tech debt MVP: adicionar coluna no futuro exige atualizar manualmente os três estados. Extrair colSpan para constante `COL_COUNT = 3` ou usar `colspan="100%"` via CSS. [`app/(dashboard)/apps/page.tsx`]
+
+## Deferred from: code review of story-9-1-emissao-da-vc-como-vc-jwt-eddsa (2026-08-03)
+
+- **Payload do JWT não carrega claim `exp` (expiração)** — apenas `iat`/`nbf`; uma VC-JWT emitida não tem prazo de validade explícito no próprio JWT, só a revogação on-chain como controle de ciclo de vida. Não exigido pelo AC #1/Dev Notes desta story ("não inventar variações" do formato); considerar em story futura se o produto precisar de expiração automática. [`src/modules/credential/app/issue_credential_usecase.ts:139-146`]
+
+- **Payload do JWT não carrega claim `aud`** (amarração a um verificador/apresentação específica) — mesma razão do achado anterior, fora do formato exato prescrito pelo AC #1. [`src/modules/credential/app/issue_credential_usecase.ts:139-146`]
+
+- **`ed.signAsync` na emissão não tem try/catch dedicado** — diferente do try/catch em torno de `blockchainClient.registerDID`; uma falha de assinatura vira erro genérico não classificado. Padrão pré-existente: a assinatura JSON-LD anterior também não tinha tratamento dedicado — não introduzido pela Story 9.1. [`src/modules/credential/app/issue_credential_usecase.ts:151`]
+
+- **Nenhum teste dinâmico cobre `bodySignature` base64url malformado** (caracteres inválidos, comprimento ímpar) além do caso "64 bytes zerados" — o trecho de validação da assinatura do holder não foi tocado pela Story 9.1 (reaproveitado sem alteração da Story 5.4); gap de cobertura pré-existente. [`tests/unit/story-9-1/issue-credential-usecase.dynamic.test.ts`]
+
+- **Nenhum teste dinâmico cobre `ISSUER_PRIVATE_KEY` vazio/malformado no caminho de emissão** — a resolução da chave do issuer é escopo do Epic 10 (`backlog`), não tocado pela Story 9.1. [`src/modules/credential/app/issue_credential_usecase.ts:126-129`]
+
+- **Verificação EdDSA (allow-list de algoritmo, proteção contra confusão de tipo/alg) pertence à Story 9.2** (`backlog`, verificação) — a Story 9.1 só cobre emissão; nenhuma AC desta story exige código de verificação. [`src/modules/presentation/app/verify_presentation_usecase.ts`]

@@ -1,4 +1,4 @@
-import { IssueCredentialUseCase, VerifiableCredential } from "./issue_credential_usecase";
+import { IssueCredentialUseCase } from "./issue_credential_usecase";
 import { IssueCredentialSchema } from "./issue_credential_viewmodel";
 
 export class IssueCredentialController {
@@ -7,7 +7,7 @@ export class IssueCredentialController {
   async handle(input: {
     body: unknown;
     holderDid: string;
-  }): Promise<VerifiableCredential> {
+  }): Promise<string> {
     const parsed = IssueCredentialSchema.parse(input.body);
     return this.useCase.execute({
       holderDid: input.holderDid,

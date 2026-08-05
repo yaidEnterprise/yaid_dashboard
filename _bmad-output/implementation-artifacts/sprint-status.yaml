@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-07-31
+last_updated: 2026-08-03
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -105,18 +105,18 @@ development_status:
   7-3-allowlist-de-criacao-de-apps: backlog
   7-4-seletor-de-ambiente-na-criacao-de-app: backlog
   7-5-review-manual-em-apps-homologacao: backlog
-  7-6-remocao-secao-resposta-da-api: backlog
+  7-6-remocao-secao-resposta-da-api: done
   epic-7-retrospective: optional
 
   # Epic 8: Marca Oficial e Topbar Integrada
   epic-8: in-progress
-  8-1-icone-oficial-yaid-nas-4-superficies-de-marca: backlog
+  8-1-icone-oficial-yaid-nas-4-superficies-de-marca: done
   8-2-topbar-dinamica-integrada-a-company-logada: done
   epic-8-retrospective: optional
 
   # Epic 9: Verifiable Credential como VC-JWT
-  epic-9: backlog
-  9-1-emissao-da-vc-como-vc-jwt-eddsa: backlog
+  epic-9: in-progress
+  9-1-emissao-da-vc-como-vc-jwt-eddsa: done
   9-2-verificacao-da-vc-jwt-em-presentations-verify: backlog
   epic-9-retrospective: optional
 

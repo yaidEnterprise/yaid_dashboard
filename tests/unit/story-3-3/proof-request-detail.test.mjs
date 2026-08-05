@@ -3,7 +3,8 @@
  *
  * Contract tests (source-inspection, no TypeScript execution) covering:
  * - AC #1: detail page fetches GET /api/proof-requests/{id} via fetchWithAuth; renders
- *          summary / attributes / JSON / privacy card; NO timeline (FR8).
+ *          summary / attributes / privacy card; NO timeline (FR8). Raw API JSON block
+ *          removed by Story 7.6.
  * - AC #2: confirmed claims derived from proofType when status === approved.
  * - AC #3: status-specific messages for non-approved statuses.
  * - AC #4: backend returns 404 (NotFoundError) — never 403 (ForbiddenError) — on company mismatch.
@@ -151,10 +152,10 @@ describe("Story 3.3 — detail page", () => {
     assert.match(src, /result !== false/, "claims must be guarded by result !== false");
   });
 
-  test("renders the API JSON via CodeBlock and keeps the privacy card (AC #1)", () => {
+  test("keeps the privacy card and no longer exposes the raw API JSON (Story 7.6)", () => {
     const src = readText(PAGE);
-    assert.match(src, /CodeBlock/, "must render the response JSON in a CodeBlock");
-    assert.match(src, /JSON\.stringify/, "must serialize the payload");
+    assert.equal(src.includes("CodeBlock"), false, "raw response CodeBlock was removed by Story 7.6");
+    assert.equal(src.includes("JSON.stringify"), false, "raw payload serialization was removed by Story 7.6");
     assert.match(src, /Privacidade/, "must keep the privacy card");
   });
 });

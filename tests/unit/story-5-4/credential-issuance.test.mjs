@@ -115,10 +115,11 @@ test("Story 5.4 IssueCredentialUseCase registers DID on-chain", () => {
   assert.match(src, /blockchainClient\.registerDID/, "Must call registerDID on BlockchainClient");
 });
 
-test("Story 5.4 IssueCredentialUseCase signs VC and appends proof", () => {
+test("Story 5.4 IssueCredentialUseCase signs VC as a compact VC-JWT (superseded by Story 9.1 — EdDSA JWS, not Ed25519Signature2020)", () => {
   const src = readText("src/modules/credential/app/issue_credential_usecase.ts");
   assert.match(src, /ed\.signAsync/, "Must sign VC using ed.signAsync");
-  assert.match(src, /Ed25519Signature2020/, "Must include Ed25519Signature2020 proof type");
+  assert.match(src, /alg:\s*"EdDSA"/, "Must build a JWT header with alg: EdDSA");
+  assert.match(src, /typ:\s*"JWT"/, "Must build a JWT header with typ: JWT");
 });
 
 test("Story 5.4 IssueCredentialUseCase propagates expected API error status codes", () => {

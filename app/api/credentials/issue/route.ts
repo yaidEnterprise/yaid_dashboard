@@ -13,12 +13,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json();
     const controller = await makeIssueCredentialController();
     
-    const verifiableCredential = await controller.handle({
+    const vcJwt = await controller.handle({
       body,
       holderDid,
     });
 
-    return NextResponse.json(verifiableCredential, { status: 201 });
+    return NextResponse.json(vcJwt, { status: 201 });
   } catch (error: any) {
     if (error instanceof AppError) {
       if (

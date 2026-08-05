@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ShieldHalf, Loader2, Code2, Lock, Zap, FlaskConical } from "lucide-react";
+import { Loader2, Code2, Lock, Zap, FlaskConical } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/shared/clients/supabase/client";
 
 const signInSchema = z.object({
@@ -16,6 +18,7 @@ const signInSchema = z.object({
 type SignInFormData = z.infer<typeof signInSchema>;
 
 export default function SignInPage() {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -45,7 +48,7 @@ export default function SignInPage() {
     const next = params.get("next");
     const safePath =
       next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
-    window.location.href = safePath;
+    router.push(safePath);
   }
 
   const featureCards = [
@@ -79,7 +82,7 @@ export default function SignInPage() {
           {/* Logo */}
           <div className="mb-10 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <ShieldHalf className="h-5 w-5 text-white" strokeWidth={2.5} />
+              <Image src="/yaid_icon.svg" alt="YaID" width={20} height={20} className="h-5 w-5 object-contain" />
             </div>
             <span className="text-xl font-bold tracking-tight text-text-primary">YaID</span>
           </div>
