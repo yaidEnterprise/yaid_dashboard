@@ -111,7 +111,7 @@ development_status:
   # Epic 8: Marca Oficial e Topbar Integrada
   epic-8: in-progress
   8-1-icone-oficial-yaid-nas-4-superficies-de-marca: done
-  8-2-topbar-dinamica-integrada-a-company-logada: backlog
+  8-2-topbar-dinamica-integrada-a-company-logada: done
   epic-8-retrospective: optional
 
   # Epic 9: Verifiable Credential como VC-JWT
