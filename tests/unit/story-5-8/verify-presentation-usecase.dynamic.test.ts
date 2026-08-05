@@ -206,6 +206,7 @@ async function buildFixture(opts: {
     result: null,
     externalRef: null,
     createdAt: new Date(),
+    updatedAt: new Date(),
     validatedAt: null,
   });
 
