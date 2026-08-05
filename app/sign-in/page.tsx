@@ -80,11 +80,10 @@ export default function SignInPage() {
       <div className="flex flex-1 items-center justify-center p-8 lg:p-16">
         <div className="w-full max-w-[420px]">
           {/* Logo */}
-          <div className="mb-10 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <Image src="/yaid_icon.svg" alt="YaID" width={20} height={20} className="h-5 w-5 object-contain" />
+          <div className="mb-10 flex items-center justify-center">
+            <div className="flex h-25 w-25 items-center justify-center">
+              <Image src="/yaid_icon.svg" alt="YaID" width={100} height={100} className="h-25 w-25 object-contain" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-text-primary">YaID</span>
           </div>
 
           <h1 className="mb-2 text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">

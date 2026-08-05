@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "YaID Dashboard — Identidade Digital Empresarial",
   description:
     "Gerencie suas integrações de validação de identidade com a YaID. Crie apps, configure webhooks e acompanhe proof requests.",
+  icons: {
+    icon: [{ url: "/yaid_favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
