@@ -28,7 +28,7 @@ export class GetProofRequestUseCase {
       externalReference: row.request.externalRef,
       createdAt: row.request.createdAt.toISOString(),
       validatedAt: row.request.validatedAt?.toISOString() ?? null,
-      updatedAt: row.request.validatedAt?.toISOString() ?? null,
+      updatedAt: row.request.updatedAt.toISOString(),
     };
   }
 }

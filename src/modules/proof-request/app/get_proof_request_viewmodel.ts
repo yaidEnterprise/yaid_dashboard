@@ -11,6 +11,6 @@ export type ProofRequestOutputDTO = {
   externalReference: string | null;
   createdAt: string;
   validatedAt: string | null;
-  /** Latest update timestamp; mapped from validatedAt (no dedicated column yet). */
-  updatedAt: string | null;
+  /** Latest status-transition timestamp, from the proof_request.updated_at column. Equal to createdAt until the first transition. */
+  updatedAt: string;
 };
