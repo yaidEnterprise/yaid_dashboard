@@ -104,10 +104,10 @@ test("Story 5.4 IssueCredentialUseCase processes OCR document in-memory", () => 
   );
 });
 
-test("Story 5.4 IssueCredentialUseCase verifies age is >= 18 for ageOver18", () => {
+test("Story 5.4 IssueCredentialUseCase computes ageOver18 from birth date (superseded by Story 5.7 — claims are consolidated, minority no longer throws)", () => {
   const src = readText("src/modules/credential/app/issue_credential_usecase.ts");
-  assert.match(src, /ageOver18/, "Must handle ageOver18 proofType");
-  assert.match(src, /age\s*<\s*18/, "Must verify age requirement and throw if not met");
+  assert.match(src, /ageOver18/, "Must handle the ageOver18 claim");
+  assert.match(src, /age\s*>=\s*18/, "Must compute age requirement as a boolean, not a rejection");
 });
 
 test("Story 5.4 IssueCredentialUseCase registers DID on-chain", () => {
@@ -115,10 +115,11 @@ test("Story 5.4 IssueCredentialUseCase registers DID on-chain", () => {
   assert.match(src, /blockchainClient\.registerDID/, "Must call registerDID on BlockchainClient");
 });
 
-test("Story 5.4 IssueCredentialUseCase signs VC and appends proof", () => {
+test("Story 5.4 IssueCredentialUseCase signs VC as a compact VC-JWT (superseded by Story 9.1 — EdDSA JWS, not Ed25519Signature2020)", () => {
   const src = readText("src/modules/credential/app/issue_credential_usecase.ts");
   assert.match(src, /ed\.signAsync/, "Must sign VC using ed.signAsync");
-  assert.match(src, /Ed25519Signature2020/, "Must include Ed25519Signature2020 proof type");
+  assert.match(src, /alg:\s*"EdDSA"/, "Must build a JWT header with alg: EdDSA");
+  assert.match(src, /typ:\s*"JWT"/, "Must build a JWT header with typ: JWT");
 });
 
 test("Story 5.4 IssueCredentialUseCase propagates expected API error status codes", () => {

@@ -6,6 +6,7 @@ import { ProofSessionRepository } from "@/shared/domain/interfaces/repositories/
 import { ProofRequestRepository } from "@/shared/domain/interfaces/repositories/ProofRequestRepository";
 import { ProofRequestStatus } from "@/shared/domain/enums/ProofRequestStatus";
 import { ProofSessionStatus } from "@/shared/domain/enums/ProofSessionStatus";
+import { ProofType, PROOF_TYPE_CLAIM_KEY } from "@/shared/domain/enums/ProofType";
 import { VerifyPresentationOutputDTO } from "./verify_presentation_viewmodel";
 import type { DeliverWebhookUseCase } from "@/modules/webhook/app/deliver_webhook_usecase";
 
@@ -100,10 +101,18 @@ export class VerifyPresentationUseCase {
 
     const proofRequestId = session.proofRequestId;
 
+    // Load the associated proof_request once — its proof_type feeds both the
+    // Rule 5 correspondence check below and every webhook delivery from this point on.
+    const proofRequestResult = await this.requestRepo.findById(proofRequestId);
+    if (!proofRequestResult) {
+      return { valid: false };
+    }
+    const proofType = proofRequestResult.request.proofType;
+
     // Helper: mark proof_request as rejected and return { valid: false }
     const reject = async (): Promise<VerifyPresentationOutputDTO> => {
       await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.REJECTED);
-      this.fireWebhook(proofRequestId, ProofRequestStatus.REJECTED);
+      this.fireWebhook(proofRequestId, ProofRequestStatus.REJECTED, proofType);
       return { valid: false };
     };
 
@@ -234,6 +243,14 @@ export class VerifyPresentationUseCase {
       return reject();
     }
 
+    // ── Rule 5 (Story 5.8): claim matching the proof_request's proof_type ────
+    // must exist and be exactly `true`. Absence (undefined !== true) and an
+    // explicit `false` both reject — never treated as approval.
+    const claimKey = PROOF_TYPE_CLAIM_KEY[proofType as ProofType];
+    if (!claimKey || vc.claims[claimKey] !== true) {
+      return reject();
+    }
+
     // ── Rule 6: VC holder DID matches the authenticated DID ──────────────────
     if (vc.holder !== holderDid) {
       return reject();
@@ -282,7 +299,7 @@ export class VerifyPresentationUseCase {
     session.approveByUser(now);
     await this.sessionRepo.update(session);
     await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.APPROVED);
-    this.fireWebhook(proofRequestId, ProofRequestStatus.APPROVED);
+    this.fireWebhook(proofRequestId, ProofRequestStatus.APPROVED, proofType);
 
     return { valid: true };
   }
@@ -290,13 +307,17 @@ export class VerifyPresentationUseCase {
   /**
    * Fire-and-forget webhook delivery. Never blocks the response.
    */
-  private fireWebhook(proofRequestId: string, status: ProofRequestStatus): void {
+  private fireWebhook(
+    proofRequestId: string,
+    status: ProofRequestStatus,
+    proofType: string
+  ): void {
     if (!this.deliverWebhook) return;
     this.deliverWebhook
       .execute({
         proofRequestId,
         status,
-        proofType: "verification",
+        proofType,
         updatedAt: new Date().toISOString(),
       })
       .catch((err) =>

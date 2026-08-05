@@ -3,14 +3,17 @@ workflowType: 'prd'
 workflow: 'edit'
 inputDocuments:
   - 'sprint-change-proposal-2026-07-27.md'
+  - 'sprint-change-proposal-2026-07-28.md'
 stepsCompleted:
   - 'step-e-01-discovery'
   - 'step-e-02-review'
   - 'step-e-03-edit'
-lastEdited: '2026-07-27'
+lastEdited: '2026-07-28'
 editHistory:
   - date: '2026-07-27'
     changes: 'Correct Course — ambientes por app (homol/prod), review manual em homologação, allowlist can_create_apps, VC entregue como VC-JWT (EdDSA), proof_requests.updated_at, remoção da Resposta da API na tela unitária, topbar dinâmica, versionamento de schema via Supabase Migrations; reversão parcial do Out of Scope de ambientes.'
+  - date: '2026-07-28'
+    changes: 'Correct Course — claims da VC consolidadas (personhood + ageOver18 na mesma emissão); menor de 18 emite com ageOver18:false em vez de 422; aprovação passa a exigir correspondência entre a claim apresentada e o proof_type solicitado; vocabulário canônico fixado (age_over_18 na API, ageOver18 na claim); proofType removido do body de POST /api/credentials/issue.'
 ---
 
 # PRD — Dashboard Empresarial + Backend YaID
@@ -24,9 +27,13 @@ editHistory:
 > Para a linguagem do domínio (DID, VC, VP, Holder, Issuer, Verifier, Company,
 > Proof Request, Proof Session), ver [CONTEXT.md](../CONTEXT.md).
 >
-> **Última atualização:** 2026-07-27 (revisão via Correct Course — Sprint Change
-> Proposal 2026-07-27: ambientes por app, allowlist de criação de apps, review
-> manual em homologação, VC entregue como JWT assinado, versionamento de schema)
+> **Última atualização:** 2026-07-28 (revisão via Correct Course — Sprint Change
+> Proposal 2026-07-28: claims da VC consolidadas em uma emissão, menor de 18 sem 422,
+> correspondência obrigatória entre claim apresentada e proof_type solicitado)
+>
+> Revisão anterior: 2026-07-27 (Sprint Change Proposal 2026-07-27 — ambientes por app,
+> allowlist de criação de apps, review manual em homologação, VC entregue como JWT
+> assinado, versionamento de schema)
 
 ---
 
@@ -69,7 +76,10 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 - `company` possui coluna `can_create_apps BOOLEAN NOT NULL DEFAULT false` — allowlist de quais empresas podem criar apps (comportamento tipo assinatura, sem Stripe). Empresas existentes recebem `true` via backfill na migration.
 - `company_apps` possui coluna `environment` (`homol` | `prod`) escolhida na criação do app; define comportamento por ambiente (ver Telas do dashboard e review manual). Default seguro `homol`.
 - `proof_type` é enum de string única por request: `personhood` | `age_over_18`. Pedidos compostos viram dois proof_requests separados.
-- VC carrega claims booleanos derivados (`personhood: true`, `ageOver18: true`). Data de nascimento, nome e CPF nunca entram na VC.
+- **VC carrega ambas as claims booleanas em uma única emissão:** `{ personhood: true, ageOver18: <boolean> }`. Data de nascimento, nome e CPF nunca entram na VC. **`ageOver18` pode ser `false`** — um holder menor de 18 anos emite normalmente (HTTP 201), porque nada falhou: o documento foi lido e a resposta para "tem mais de 18?" é simplesmente não. Ele continua obtendo `personhood: true`, que é o que de fato lhe cabe.
+- **Aprovação exige correspondência claim ↔ proof_type:** a verificação da VP só retorna `valid: true` se a claim correspondente ao `proof_type` da `proof_request` existir na VC **e** valer exatamente `true`. Validar apenas que as claims são booleanas é insuficiente — aprovaria a credencial de um menor de idade em um pedido de `age_over_18`.
+- **Vocabulário canônico:** `proof_type` na API e no banco usa `personhood` | `age_over_18` (snake_case); a chave de claim dentro da VC usa `personhood` | `ageOver18` (camelCase). O mapeamento entre as duas formas vive em um único lugar (enum `ProofType` compartilhado).
+- `POST /api/credentials/issue` **não aceita `proofType`** — com as claims consolidadas o parâmetro não seleciona mais nada. O body é `{ documentImage, bodySignature }` e o payload assinado pelo holder é apenas `documentImage`.
 - **Versionamento de schema:** o banco é versionado via **Supabase Migrations** (`supabase/migrations/`, CLI linkada ao project-ref). Um baseline (`supabase db pull`) captura o schema hoje deployado e encerra o drift entre código e base; toda mudança estrutural passa a ser um arquivo de migration timestampado. SQL manual pelo dashboard do Supabase deixa de ser a fonte estrutural.
 
 ### Identidade descentralizada e criptografia
@@ -103,6 +113,9 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
   - `WEBHOOK_SIGNING_PRIVATE_KEY` (Ed25519) — assina webhooks.
   - `BLOCKCHAIN_WALLET_PRIVATE_KEY` (secp256k1) — assina transações on-chain.
 - Em `PROD` e `HOMOLOG`, essas chaves e `BLOCKCHAIN_CONTRACT_ADDRESS` são obrigatórias no boot. Em `DOTENV`/`DEV`, elas podem ficar ausentes até o fluxo específico usar o getter correspondente; isso permite rodar signup/dashboard local sem depender de blockchain/issuer.
+- **Obrigatoriedade não basta — o formato é validado no boot.** Exigir apenas presença (`z.string().min(1)`) deixa passar chave com typo, tamanho errado ou igual ao placeholder de teste. Chave malformada deve derrubar o boot com mensagem acionável, não falhar na primeira requisição que a usa.
+- **Chaves de teste nunca fora do stage `TEST`.** Os valores de placeholder do `TEST_ENV` são publicamente conhecidos (estão versionados no repositório); aceitá-los em qualquer outro stage permitiria forjar VCs que a verificação aceitaria como legítimas. O boot recusa esses valores fora de `TEST`.
+- **`environments.ts` entrega a chave pronta para uso.** Nenhum use case, provider ou client pode inspecionar, substituir ou remendar valor de configuração no ponto de uso — o consumidor recebe o valor e o usa. Corolário da regra "`process.env` somente em `environments.ts`".
 - Migração para KMS/Vault fica como roadmap.
 
 ### Dashboard (frontend)
@@ -168,6 +181,8 @@ Não testar: getters de entity, factory composition, framework code (Next.js rou
 - **`modules/proof-request` — CreateProofRequestUseCase:** API key inválida ou de app desabilitado é rejeitada; criação atômica de request + session com TTL e token gerado; URLs derivadas no momento da resposta sem persistência.
 - **`modules/proof-request` — GetProofRequestUseCase + isolamento por company:** request de outra company retorna NotFound (não 403, para evitar enumeration).
 - **Endpoint de validação de VP (a implementar):** todas as 11 regras de validação em §6.5 do esboço anterior viram casos de teste, cada um produzindo o motivo correto.
+- **Correspondência claim ↔ proof_type (`VerifyPresentationUseCase`):** `proof_request` de `age_over_18` com VC `ageOver18: false` → `valid: false`; com a claim ausente → `valid: false` (ausência nunca é aprovação); `proof_request` de `personhood` com VC `{ personhood: true, ageOver18: false }` → `valid: true` (a claim não solicitada é irrelevante).
+- **Emissão com claims consolidadas (`IssueCredentialUseCase`):** toda emissão bem-sucedida produz ambas as claims; holder menor de 18 recebe 201 com `ageOver18: false` e nunca 422; OCR sem data de nascimento legível continua produzindo 422; body com `proofType` é rejeitado pelo schema.
 - **Auth do app mobile (a implementar):** payload com timestamp fora da janela é rejeitado; signature mismatch é rejeitado; DID malformado (não no formato `did:yaid:user:<pubkey>` ou pubkey não-decodificável) é rejeitado.
 - **Webhook signer (a implementar):** assinatura Ed25519 verificável com a public key publicada; corpo bruto preservado (não re-serializado).
 - **Guard de allowlist (`CreateCompanyAppUseCase`):** company com `can_create_apps = false` é rejeitada com `AppError(403)`; company com `true` cria normalmente.
