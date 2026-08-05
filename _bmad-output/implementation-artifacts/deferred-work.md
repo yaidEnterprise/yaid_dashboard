@@ -140,3 +140,17 @@
 - **Propagação de click em filhos futuros do `<tr>`** — Sem `e.stopPropagation()` em filhos interativos, qualquer botão adicionado à row no futuro propagará click para o `router.push`. Adicionar `e.stopPropagation()` nos botões ao implementar Story 2.3 (detalhe/edição). [`app/(dashboard)/apps/page.tsx`]
 
 - **`colSpan={3}` hardcoded em EmptyState/ErrorState** — Tech debt MVP: adicionar coluna no futuro exige atualizar manualmente os três estados. Extrair colSpan para constante `COL_COUNT = 3` ou usar `colspan="100%"` via CSS. [`app/(dashboard)/apps/page.tsx`]
+
+## Deferred from: code review of story-9-1-emissao-da-vc-como-vc-jwt-eddsa (2026-08-03)
+
+- **Payload do JWT não carrega claim `exp` (expiração)** — apenas `iat`/`nbf`; uma VC-JWT emitida não tem prazo de validade explícito no próprio JWT, só a revogação on-chain como controle de ciclo de vida. Não exigido pelo AC #1/Dev Notes desta story ("não inventar variações" do formato); considerar em story futura se o produto precisar de expiração automática. [`src/modules/credential/app/issue_credential_usecase.ts:139-146`]
+
+- **Payload do JWT não carrega claim `aud`** (amarração a um verificador/apresentação específica) — mesma razão do achado anterior, fora do formato exato prescrito pelo AC #1. [`src/modules/credential/app/issue_credential_usecase.ts:139-146`]
+
+- **`ed.signAsync` na emissão não tem try/catch dedicado** — diferente do try/catch em torno de `blockchainClient.registerDID`; uma falha de assinatura vira erro genérico não classificado. Padrão pré-existente: a assinatura JSON-LD anterior também não tinha tratamento dedicado — não introduzido pela Story 9.1. [`src/modules/credential/app/issue_credential_usecase.ts:151`]
+
+- **Nenhum teste dinâmico cobre `bodySignature` base64url malformado** (caracteres inválidos, comprimento ímpar) além do caso "64 bytes zerados" — o trecho de validação da assinatura do holder não foi tocado pela Story 9.1 (reaproveitado sem alteração da Story 5.4); gap de cobertura pré-existente. [`tests/unit/story-9-1/issue-credential-usecase.dynamic.test.ts`]
+
+- **Nenhum teste dinâmico cobre `ISSUER_PRIVATE_KEY` vazio/malformado no caminho de emissão** — a resolução da chave do issuer é escopo do Epic 10 (`backlog`), não tocado pela Story 9.1. [`src/modules/credential/app/issue_credential_usecase.ts:126-129`]
+
+- **Verificação EdDSA (allow-list de algoritmo, proteção contra confusão de tipo/alg) pertence à Story 9.2** (`backlog`, verificação) — a Story 9.1 só cobre emissão; nenhuma AC desta story exige código de verificação. [`src/modules/presentation/app/verify_presentation_usecase.ts`]

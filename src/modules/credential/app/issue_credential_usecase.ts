@@ -11,22 +11,6 @@ export interface IssueCredentialInput {
   bodySignature: string;
 }
 
-export interface VerifiableCredential {
-  id: string;
-  type: string[];
-  issuer: string;
-  holder: string;
-  issuedAt: string;
-  claims: Record<string, boolean>;
-  proof: {
-    type: string;
-    created: string;
-    verificationMethod: string;
-    proofPurpose: string;
-    signatureValue: string;
-  };
-}
-
 function base64urlToBytes(b64: string): Uint8Array {
   const padded = b64.replace(/-/g, "+").replace(/_/g, "/");
   const padLen = (4 - (padded.length % 4)) % 4;
@@ -61,7 +45,7 @@ export class IssueCredentialUseCase {
     private readonly issuerPrivateKey: string
   ) {}
 
-  async execute(input: IssueCredentialInput): Promise<VerifiableCredential> {
+  async execute(input: IssueCredentialInput): Promise<string> {
     const { holderDid, documentImage, bodySignature } = input;
 
     // 1. Validar DID e extrair public key do holder
@@ -136,7 +120,6 @@ export class IssueCredentialUseCase {
 
     // 5. Construir e assinar a VC com ISSUER_PRIVATE_KEY
     const id = randomUUID();
-    const type = ["VerifiableCredential"];
 
     // CORRIGIR ISSO! variaveis de ambiente de teste devem ser definidas no environments.ts
     // Mapear isso e descobrir onde mais existem hardcode de variavel de ambiente por falta de retorno do environments.ts
@@ -149,34 +132,24 @@ export class IssueCredentialUseCase {
     const issuerPubKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
     const issuerPubKeyHex = bytesToHex(issuerPubKeyBytes);
     const issuerDid = `did:yaid:issuer:${issuerPubKeyHex}`;
-    const issuedAt = new Date().toISOString();
 
-    const vcPayload = {
-      id,
-      type,
-      issuer: issuerDid,
-      holder: holderDid,
-      issuedAt,
-      claims,
+    // VC-JWT compacto (EdDSA) — substitui a antiga assinatura JSON-LD embutida em "proof" (Epic 9)
+    const header = { alg: "EdDSA", typ: "JWT", kid: `${issuerDid}#key-1` };
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      iss: issuerDid,
+      sub: holderDid,
+      jti: id,
+      iat: now,
+      nbf: now,
+      vc: claims,
     };
 
-    const vcPayloadStr = JSON.stringify(vcPayload);
-    const vcPayloadBytes = new TextEncoder().encode(vcPayloadStr);
-    const issuerSignatureBytes = await ed.signAsync(vcPayloadBytes, privateKeyBytes);
-    const signatureValue = bytesToBase64url(issuerSignatureBytes);
-
-    const proof = {
-      type: "Ed25519Signature2020",
-      created: new Date().toISOString(),
-      verificationMethod: `${issuerDid}#key-1`,
-      proofPurpose: "assertionMethod",
-      signatureValue,
-    };
-
-    const completeVC = {
-      ...vcPayload,
-      proof,
-    };
+    const signingInput = `${bytesToBase64url(new TextEncoder().encode(JSON.stringify(header)))}.${bytesToBase64url(
+      new TextEncoder().encode(JSON.stringify(payload))
+    )}`;
+    const jwtSignatureBytes = await ed.signAsync(new TextEncoder().encode(signingInput), privateKeyBytes);
+    const vcJwt = `${signingInput}.${bytesToBase64url(jwtSignatureBytes)}`;
 
     // 6. Registrar o DID do holder on-chain
     try {
@@ -185,6 +158,6 @@ export class IssueCredentialUseCase {
       throw new AppError("Blockchain registration failed", 502, "BAD_GATEWAY");
     }
 
-    return completeVC;
+    return vcJwt;
   }
 }
