@@ -66,6 +66,7 @@ export class CreateProofRequestUseCase {
       throw new UnprocessableEntityError("App is disabled");
     }
 
+    const now = new Date();
     const request = new ProofRequest({
       id: randomUUID(),
       appId: app.id,
@@ -73,7 +74,8 @@ export class CreateProofRequestUseCase {
       status: ProofRequestStatus.PENDING_USER,
       result: null,
       externalRef: input.body.externalReference?.trim() || null,
-      createdAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
       validatedAt: null,
     });
 
