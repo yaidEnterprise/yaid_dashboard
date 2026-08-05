@@ -1,3 +1,9 @@
+## Deferred from: one-shot remocao-texto-yaid-icone (2026-08-04)
+
+- **Margin do conteúdo principal não ajusta ao colapsar sidebar** — `app/(dashboard)/layout.tsx` hardcoda `lg:ml-[260px]` como offset, mas quando o sidebar colapsa para `w-[60px]` o conteúdo não acompanha, gerando ~200px de espaço em branco. Pré-existente; considerar tornar a margem dinâmica via CSS var ou contexto React. [`app/(dashboard)/layout.tsx`]
+
+- **`useSidebarWidth()` retorna sempre 260** — hook exportado em `app-sidebar.tsx` ignora o estado `collapsed` (local ao componente) e hardcoda 260. Qualquer consumidor futuro receberá o valor errado quando o sidebar estiver colapsado. Pré-existente, não introduzido por esta mudança. [`components/layout/app-sidebar.tsx`]
+
 ## Deferred from: code review of story-7-6-remocao-secao-resposta-da-api (2026-07-30)
 
 - **Componente `CodeBlock` fica sem consumidores após a remoção** — `components/api/code-block.tsx` exporta `CodeBlock` e `InlineCode`; `InlineCode` segue em uso ativo nesta mesma página, mas `CodeBlock` (grep confirmado) não é mais importado em nenhum lugar da codebase após esta story. Não deletado nesta story por decisão explícita de escopo (o arquivo é compartilhado e `InlineCode` continua em uso); avaliar remover o export `CodeBlock` (ou o componente inteiro, se nenhuma outra tela vier a precisar de um bloco de código copiável) numa limpeza futura, ou reaproveitá-lo caso surja uma tela de documentação/API que precise dele. [`components/api/code-block.tsx`]
