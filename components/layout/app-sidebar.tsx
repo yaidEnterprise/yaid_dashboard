@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Boxes, ShieldCheck, User, ShieldHalf, PanelLeft } from "lucide-react";
+import { LayoutDashboard, Boxes, ShieldCheck, User, PanelLeft } from "lucide-react";
 import { cn } from "@/utils/utils";
 
 const navItems = [
@@ -47,7 +48,7 @@ export function AppSidebar() {
       <div className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-trust">
-            <ShieldHalf className="h-4 w-4 text-white" strokeWidth={2.5} />
+            <Image src="/yaid_icon.svg" alt="YaID" width={16} height={16} className="h-4 w-4 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
