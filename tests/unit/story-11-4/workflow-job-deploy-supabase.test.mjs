@@ -275,12 +275,19 @@ test("AC7: job `tests` (Story 11.3) permanece intacto", () => {
   );
 });
 
-test("AC7: production.yml contém APENAS os jobs `tests` e `deploy-supabase`", () => {
+test("AC7: production.yml contém os jobs `tests` e `deploy-supabase` (e o `deploy-amplify` da 11.5)", () => {
+  // NOTA (Story 11.5): o teste original travava a contagem exata em
+  // `["deploy-supabase", "tests"]`. A Story 11.5 adicionou o job `deploy-amplify`
+  // (`needs: deploy-supabase`), então este contrato foi atualizado para
+  // `["deploy-amplify", "deploy-supabase", "tests"]` — análogo ao ajuste que a
+  // 11.4 fez no teste AC5 da 11.3. A intenção da 11.4 permanece: `tests` e
+  // `deploy-supabase` continuam existentes e encadeados (verificado abaixo e nos
+  // testes AC6/AC7 dedicados). O job `smoke-test` (11.6) ainda não existe.
   const doc = loadYaml(workflowPath);
   const jobKeys = Object.keys(doc.jobs).sort();
   assert.deepEqual(
     jobKeys,
-    ["deploy-supabase", "tests"],
-    "nesta story só devem existir os jobs tests e deploy-supabase (sem 11.5/11.6)",
+    ["deploy-amplify", "deploy-supabase", "tests"],
+    "devem existir tests, deploy-supabase e deploy-amplify (sem smoke-test 11.6)",
   );
 });
