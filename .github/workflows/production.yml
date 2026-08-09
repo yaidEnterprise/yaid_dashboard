@@ -1,0 +1,37 @@
+name: Production Release
+
+# Orquestrador base do release de produção (Epic 11, Sprint Change 2026-08-08).
+# Dispara em push na branch `prod`. Esta story (11.3) entrega apenas o job `tests`
+# (primeiro gate). Os jobs seguintes — deploy-supabase (11.4), deploy-amplify (11.5)
+# e smoke-test (11.6) — serão encadeados via `needs:` a partir de `tests` em stories
+# futuras, garantindo que nenhum deploy ocorra se a suíte de testes falhar.
+#
+# Estrutura distribuída (§4-D): cada job vive em `.github/jobs/<nome>/action.yml`
+# como composite action e é chamado por `uses: ./.github/jobs/<nome>`.
+
+# `on` escrito como string entre aspas para evitar a coerção YAML 1.1 (chave nua
+# `on` -> booleano true).
+"on":
+  push:
+    branches:
+      - prod
+
+# Least-privilege (alinha com a postura de segurança do Epic 11, §5.7): o job de
+# testes só precisa ler o conteúdo do repositório (para o checkout). Sem este
+# bloco, o GITHUB_TOKEN herdaria as permissões default (frequentemente amplas) do
+# repositório/organização.
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests (gate)
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout é obrigatório ANTES de usar um composite action local:
+      # `uses: ./...` só resolve depois que o repositório está no runner.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run tests composite
+        uses: ./.github/jobs/tests
