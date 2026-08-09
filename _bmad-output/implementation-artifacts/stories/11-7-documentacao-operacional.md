@@ -338,3 +338,8 @@ claude-opus-4-8
   Principal escopado), e consistência dos timeouts (15 min/5 min) do runbook com os composites reais.
   Suíte da story: 55 testes (38 dev + 17 QA). Suíte completa: 869 síncronos + 14 dinâmicos, 0 falhas.
   `test-summary.md` atualizado. Status → done. Última story do Epic 11 — todas as 7 stories `done`.
+- 2026-08-09: **Runbook atualizado pela Story 11.8** (Sprint Change 2026-08-09) — o §6.2 de
+  `docs/deployment/production-cicd.md` (entregue por esta story) ganhou a seção "Sync de env vars no
+  Amplify — modelo autoritativo (Story 11.8)" substituindo a descrição do sync por MERGE; §3.3, §9.6 e
+  a tabela de troubleshooting (§9.9) também foram revisadas. Este arquivo de story em si não foi
+  reaberto — a Story 11.8 é o registro da mudança.

@@ -353,3 +353,8 @@ claude-opus-4-8
   secrets (composite só usa `inputs.*`), `needs` exatamente `[deploy-supabase]`, região via env em todo
   step AWS e reforço do merge de env. Suíte da story: 36 testes (26 dev + 10 QA). Suíte completa: 781
   síncronos + 14 dinâmicos, 0 falhas. `test-summary.md` atualizado. Status → done.
+- 2026-08-09: **Revisão pela Story 11.8** (Sprint Change 2026-08-09) — o passo de sync de env vars por
+  MERGE entregue aqui (AC #4, §5.4) foi **substituído** pelo modelo autoritativo derivado do
+  `.env.local.example` (replace via `update-branch`, sem `get-branch`). Ver
+  `11-8-sync-autoritativo-de-env-vars-no-amplify.md` para a implementação atual; este arquivo permanece
+  como registro histórico do que foi entregue nesta story e não foi re-editado além desta nota.
