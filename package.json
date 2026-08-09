@@ -29,6 +29,7 @@
     "test:story:8.2": "node --test \"tests/unit/story-8-2/*.test.mjs\"",
     "test:story:9.1": "node --test \"tests/unit/story-9-1/*.test.mjs\" && tsx --test \"tests/unit/story-9-1/*.dynamic.test.ts\"",
     "test:story:7.2": "node --test \"tests/unit/story-7-2/*.test.mjs\" && tsx --test \"tests/unit/story-7-2/*.dynamic.test.ts\"",
+    "test:story:7.3": "node --test \"tests/unit/story-7-3/*.test.mjs\" && tsx --test \"tests/unit/story-7-3/*.dynamic.test.ts\"",
     "start": "next start",
     "lint": "eslint"
   },
