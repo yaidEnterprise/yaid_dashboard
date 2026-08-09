@@ -29,6 +29,7 @@
     "test:story:8.2": "node --test \"tests/unit/story-8-2/*.test.mjs\"",
     "test:story:9.1": "node --test \"tests/unit/story-9-1/*.test.mjs\" && tsx --test \"tests/unit/story-9-1/*.dynamic.test.ts\"",
     "test:story:11.1": "node --test \"tests/unit/story-11-1/*.test.mjs\" && tsx --test \"tests/unit/story-11-1/*.dynamic.test.ts\"",
+    "test:story:11.2": "node --test \"tests/unit/story-11-2/*.test.mjs\"",
     "start": "next start",
     "lint": "eslint"
   },
@@ -56,6 +57,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "js-yaml": "^5.2.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "^5"
