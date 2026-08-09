@@ -284,7 +284,15 @@ O app mobile passa a receber a VC como JWT assinado (EdDSA) — formato compacto
 
 ### Epic 11: Pipeline de CI/CD de Produção
 
-Todo merge/push em `prod` dispara um release determinístico e auditável orquestrado pelo GitHub Actions: roda os testes unitários como gate, aplica migrations pendentes no Supabase Cloud (dry-run antes do push), publica o app no Amplify via `start-job RELEASE` (com auto-build desabilitado), aguarda o deployment em estado terminal e valida a aplicação por health check (`GET /api/health`). Inclui autenticação AWS por `sts:AssumeRole` (least-privilege), sincronização segura de env vars (merge, sem sobrescrever; secrets nunca em `NEXT_PUBLIC_*` nem em logs) e documentação operacional (IAM, custom domain, bootstrap vs release, rollback). Estrutura distribuída: cada job em `.github/jobs/<nome>/action.yml` (composite action), orquestrado por `.github/workflows/production.yml`.
+Todo merge/push em `prod` dispara um release determinístico e auditável orquestrado pelo GitHub Actions: roda os testes unitários como gate, aplica migrations pendentes no Supabase Cloud (dry-run antes do push), publica o app no Amplify via `start-job RELEASE` (com auto-build desabilitado), aguarda o deployment em estado terminal e valida a aplicação por health check (`GET /api/health`). Inclui autenticação AWS por `sts:AssumeRole` (least-privilege), sincronização **autoritativa** de env vars derivada do `.env.local.example` (replace via `update-branch`; nomes vêm do `.env.local.example`, valores resolvidos pela colocação Secrets→Variables; secrets nunca em `NEXT_PUBLIC_*` nem em logs) e documentação operacional (IAM, custom domain, bootstrap vs release, rollback). Estrutura distribuída: cada job em `.github/jobs/<nome>/action.yml` (composite action), orquestrado por `.github/workflows/production.yml`.
+
+> **Nota (Sprint Change 2026-08-09):** a Story 11.8 revisa o sync de env vars para o modelo
+> **autoritativo derivado do `.env.local.example`** (substituindo o `merge` originalmente entregue na
+> Story 11.5): toda variável do `.env.local.example` passa a existir no Amplify e qualquer variável
+> fora dessa lista desaparece do branch. Classificação Secret/Variable por
+> `KEY|PASSWORD|PRIVATE|SECRET|TOKEN`, com exceções `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`→Variable e
+> `BLOCKCHAIN_RPC_URL`→Secret. `YAID_VERIFICATION_BASE_URL` deixa de ser env var e é derivada em
+> `environments.ts` como `${NEXT_PUBLIC_APP_URL}/v`. O secret `AMPLIFY_ENVIRONMENT_VARIABLES` é removido.
 
 **FRs cobertos:** nenhum (infraestrutura de entrega / operação) — decorre de NFR11.
 
