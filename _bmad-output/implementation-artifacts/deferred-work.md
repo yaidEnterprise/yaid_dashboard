@@ -191,3 +191,11 @@
 - **`supabase/setup-cli@v1` usa `version: latest`** — a versão da Supabase CLI instalada no runner não é determinística entre releases; uma mudança de comportamento da CLI poderia alterar `db push` sem aviso. Pinar uma versão específica da CLR (e/ou SHA das actions) na Story 11.7 (hardening operacional), junto com o defer de SHA-pinning de `actions/checkout`/`actions/setup-node` registrado na Story 11.3. [`.github/jobs/deploy-supabase/action.yml`]
 
 - **`supabase db push` (apply) pode exigir confirmação interativa em CI não-TTY** — historicamente a CLI pergunta "Do you want to push these migrations...?"; em runner não interativo isso pode falhar/travar. Não reproduzível no sandbox (GitHub Actions e Supabase Cloud não rodam aqui) e o contrato §4-D da proposta não especifica flag. Verificar no primeiro release real; se necessário, adicionar flag não-interativa/auto-confirm ao step de apply. [`.github/jobs/deploy-supabase/action.yml`]
+
+## Deferred from: code review of story-11.5-workflow-job-deploy-amplify (2026-08-09)
+
+- **`aws-actions/configure-aws-credentials@v4` pinada por tag de major (não SHA)** — a versão da action de auth AWS não é determinística entre releases; uma mudança de comportamento poderia alterar a assunção de role sem aviso. Pinar SHA na Story 11.7 (hardening operacional), junto com os defers de SHA-pinning das actions registrados nas Stories 11.3/11.4. [`.github/jobs/deploy-amplify/action.yml`]
+
+- **Polling do Amplify sem tolerância a erros transitórios da API AWS** — o step de espera roda sob `set -euo pipefail`; uma única falha de rede em `aws amplify get-job` aborta a espera inteira do deploy (exit não-zero). Não reproduzível no sandbox (AWS não roda aqui). Avaliar retry/backoff tolerante a erros transitórios no primeiro release real, mantendo o loop finito (timeout total preservado). [`.github/jobs/deploy-amplify/action.yml`]
+
+- **Sync de env assume payload JSON válido** — `jq --argjson incoming "$NEW_ENVIRONMENT_VARIABLES"` falha se `amplify-environment-variables` não for JSON válido; o step aborta sem mensagem dedicada. Fail-fast é aceitável, mas uma validação/mensagem explícita ("payload de env vars inválido") facilitaria o diagnóstico. Considerar no hardening da Story 11.7. [`.github/jobs/deploy-amplify/action.yml`]

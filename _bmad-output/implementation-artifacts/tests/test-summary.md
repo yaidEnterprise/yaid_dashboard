@@ -463,3 +463,30 @@
 - `js-yaml` reusado para parse semântico real — sem novas dependências
 - Teste AC5 da Story 11.3 atualizado (dismiss documentado na 11.3): em vez de travar a contagem exata de jobs, garante que `tests` é o gate inicial (sem `needs`) e que jobs adicionais dependem via `needs`
 - 2 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `supabase/setup-cli@v1` usa `version: latest` (CLI não determinística); (2) `supabase db push` pode exigir confirmação interativa em runner não-TTY — verificar no primeiro release real
+
+### Story 11.5 — Composite `deploy-amplify` + Job Encadeado (`needs: deploy-supabase`)
+- Acceptance criteria: 8/8 cobertos
+  - AC#1 (composite `.github/jobs/deploy-amplify/action.yml` existe, YAML válido, `runs.using: composite`): coberto por parse real via `js-yaml.load()`
+  - AC#2 (inputs creds AWS/região/role ARN/app-id/branch/env vars, todos `required: true`): coberto
+  - AC#3 (auth via `aws-actions/configure-aws-credentials` com `role-to-assume` = `sts:AssumeRole`; `shell` em todo `run`): coberto
+  - AC#4 (§5.4 CRÍTICO — sync de env por MERGE: `get-branch` lê as vars atuais ANTES do `update-branch`, merge via `jq '$current * $incoming'`, nunca overwrite cego): coberto por testes dedicados de ordem get→update e de evidência de merge
+  - AC#5 (§5.8 CRÍTICO — `start-job --job-type RELEASE` + polling FINITO com `max_attempts`/timeout, sem `while true`, falha explícita `exit 1` em terminal ≠ SUCCEED): coberto
+  - AC#6 (nenhum literal de credencial/ARN; sem echo de secrets; nenhum `NEXT_PUBLIC_*` recebe secret): coberto no composite e no `with:` do job
+  - AC#7 (job `deploy-amplify` com `needs: deploy-supabase`, `ubuntu-latest`, checkout antes do composite, `with:` referenciando `${{ secrets.* }}`): coberto; QA valida alinhamento exato `with:`↔`inputs`
+  - AC#8 (jobs `tests`+`deploy-supabase` intactos e encadeados; apenas `tests`/`deploy-supabase`/`deploy-amplify`, sem smoke-test 11.6): coberto
+- Caminhos críticos: 36/36 testes passando na story (26 dev + 10 QA de contrato)
+  - §5.4 (merge de env): `update-branch` reenvia o mapa mesclado (current ∪ incoming) — preserva secrets server-side exigidos no boot por `environments.ts` quando `STAGE=PROD`
+  - §5.7 (AssumeRole least-privilege): bootstrap creds → `role-to-assume` (deploy role); JSON das policies IAM é escopo da Story 11.7
+  - §5.8 (polling finito): loop 60×15s com falha explícita em FAILED/CANCELLED/inesperado/timeout; guardrail de teste garante ausência de `while true`
+  - Contrato: ordem completa auth→sync→start-job→polling; exatamente 1 start-job RELEASE; jobId via GITHUB_OUTPUT consumido pelo polling; `with:`↔`inputs` alinhados; fronteira de secrets (composite só usa `inputs.*`, nunca `secrets.*`); `needs` exatamente `[deploy-supabase]`
+  - Sem execução real de GitHub Actions/AWS no sandbox — testes de contrato/estruturais sobre o YAML parseado, alinhado às Stories 11.2/11.3/11.4
+
+#### Validation
+- `npm run test:story:11.5`: **passed** — 36/36 (26 dev + 10 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 781 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de infraestrutura de CI (um composite YAML novo + extensão do orquestrador + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
+- `js-yaml` reusado para parse semântico real — sem novas dependências
+- Teste AC7 da Story 11.4 atualizado (precedente da 11.4 sobre a 11.3): `jobKeys` agora `["deploy-amplify", "deploy-supabase", "tests"]`
+- 3 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `aws-actions/configure-aws-credentials@v4` pinada por tag de major (não SHA); (2) polling sem tolerância a erro transitório da API AWS sob `set -euo pipefail`; (3) sync assume payload JSON válido de env vars sem mensagem dedicada em caso de malformação

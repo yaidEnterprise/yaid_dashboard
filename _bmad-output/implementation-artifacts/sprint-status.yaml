@@ -135,7 +135,8 @@ development_status:
   11-2-amplify-yml-e-desabilitar-auto-build: done
   11-3-workflow-job-tests: done
   11-4-workflow-job-deploy-supabase: done
-  11-5-workflow-job-deploy-amplify: backlog
+  11-5-workflow-job-deploy-amplify: done
   11-6-workflow-job-smoke-test: backlog
   11-7-documentacao-operacional: backlog
   epic-11-retrospective: optional
+ 
