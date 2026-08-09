@@ -62,3 +62,31 @@ jobs:
           supabase-access-token: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           supabase-project-ref: ${{ secrets.SUPABASE_PROJECT_REF }}
           supabase-db-password: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+  # Terceiro gate: publica o app Next.js SSR no AWS Amplify. Só roda depois que
+  # `deploy-supabase` aplicar as migrations (`needs: deploy-supabase`) — o deploy
+  # do app é o passo de infra que vem DEPOIS do banco (§4-B/NFR11: tests ->
+  # deploy-supabase -> deploy-amplify -> smoke-test). O job `smoke-test`
+  # (Story 11.6) será encadeado a partir daqui via `needs: deploy-amplify`.
+  deploy-amplify:
+    name: Deploy Amplify (app)
+    runs-on: ubuntu-latest
+    needs: deploy-supabase
+    steps:
+      # Checkout necessário para resolver o composite local `./.github/jobs/...`.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Secrets centralizados no orquestrador e passados via `with:` — nunca
+      # hardcoded no composite. Autenticação bootstrap -> AssumeRole (§5.7);
+      # env vars server-side sincronizadas por merge (§5.4).
+      - name: Run deploy-amplify composite
+        uses: ./.github/jobs/deploy-amplify
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          amplify-app-id: ${{ secrets.AMPLIFY_APP_ID }}
+          amplify-branch-name: ${{ secrets.AMPLIFY_BRANCH_NAME }}
+          amplify-environment-variables: ${{ secrets.AMPLIFY_ENVIRONMENT_VARIABLES }}

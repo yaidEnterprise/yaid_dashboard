@@ -1,0 +1,193 @@
+name: "Deploy Amplify"
+description: >-
+  Composite action que publica o app Next.js SSR no AWS Amplify Hosting como o
+  passo de deploy do app no release de produção (Epic 11), DEPOIS das migrations
+  (deploy-supabase, Story 11.4) e ANTES do smoke-test (Story 11.6). Autentica na
+  AWS via `aws-actions/configure-aws-credentials` com assunção de role
+  (`sts:AssumeRole`, pois OIDC está indisponível), sincroniza as env vars para o
+  branch Amplify por MERGE (lê as atuais e reenvia sem sobrescrever), dispara o
+  deploy via `aws amplify start-job --job-type RELEASE` e faz polling finito
+  (com timeout) até um estado terminal, falhando em qualquer estado ≠ SUCCEED.
+
+# SEGURANÇA (§4-D, §5.4 e §5.7 da sprint change proposal 2026-08-08):
+# Este composite consome SECRETS (credenciais bootstrap AWS, ARN do role de
+# deploy, app-id, branch e o payload de env vars server-side). Eles entram
+# EXCLUSIVAMENTE via `inputs` (passados pelo orquestrador `production.yml` a
+# partir de `${{ secrets.* }}`) — NUNCA hardcoded neste arquivo — e são expostos
+# aos comandos apenas via `env:` ou pelas entradas da action, NUNCA ecoados nos
+# logs (nada de `echo`/`cat`/`printenv` de credenciais ou env vars sensíveis).
+# Nenhum secret server-side é transformado em `NEXT_PUBLIC_*`.
+#
+# §5.4 CRÍTICO (sync de env por MERGE): `aws amplify update-branch
+# --environment-variables` SUBSTITUI o mapa inteiro de env vars do branch. Enviar
+# só as vars novas apagaria as demais (inclusive secrets server-side como
+# ISSUER_PRIVATE_KEY etc., exigidos no boot por `environments.ts` quando
+# STAGE=PROD). Por isso o passo de sync: (1) LÊ o mapa atual (`get-branch`),
+# (2) MESCLA com as novas (valores novos vencem em chaves coincidentes),
+# (3) REENVIA o mapa mesclado — nunca um overwrite cego.
+#
+# §5.7 (IAM least-privilege): as credenciais bootstrap só têm `sts:AssumeRole`;
+# o deploy role assumido só tem `amplify:StartJob/GetJob/GetBranch/UpdateBranch/
+# ListJobs` no ARN do app (o JSON das policies é documentado na Story 11.7). Esta
+# story WIRA o uso do assume-role via `role-to-assume`.
+#
+# §5.8 CRÍTICO (polling finito): o wait do job Amplify tem timeout / número máximo
+# de tentativas (loop finito) e falha explicitamente (exit não-zero) em qualquer
+# estado terminal diferente de SUCCEED (FAILED/CANCELLED) e no estouro do timeout.
+
+inputs:
+  aws-access-key-id:
+    description: >-
+      Access key ID das credenciais bootstrap do IAM User (que só possui
+      `sts:AssumeRole`). Passado via `${{ secrets.AWS_ACCESS_KEY_ID }}`. Nunca
+      hardcoded, nunca ecoado.
+    required: true
+  aws-secret-access-key:
+    description: >-
+      Secret access key das credenciais bootstrap do IAM User. Passado via
+      `${{ secrets.AWS_SECRET_ACCESS_KEY }}`. Nunca hardcoded, nunca ecoado.
+    required: true
+  aws-region:
+    description: >-
+      Região AWS do app Amplify (ex.: us-east-1). Passada via
+      `${{ secrets.AWS_REGION }}` (ou variable). Nunca hardcoded.
+    required: true
+  aws-role-to-assume:
+    description: >-
+      ARN do IAM Role de deploy a ser assumido via `sts:AssumeRole` (least-
+      privilege: apenas ações do Amplify no ARN do app). Passado via
+      `${{ secrets.AWS_DEPLOY_ROLE_ARN }}`. Nunca hardcoded.
+    required: true
+  amplify-app-id:
+    description: >-
+      ID do app no AWS Amplify. Passado via `${{ secrets.AMPLIFY_APP_ID }}`.
+      Nunca hardcoded.
+    required: true
+  amplify-branch-name:
+    description: >-
+      Nome do branch do Amplify a publicar (ex.: prod). Passado via
+      `${{ secrets.AMPLIFY_BRANCH_NAME }}`. Nunca hardcoded.
+    required: true
+  amplify-environment-variables:
+    description: >-
+      Payload JSON (objeto {chave:valor}) com as env vars server-side a
+      sincronizar no branch Amplify. Passado via
+      `${{ secrets.AMPLIFY_ENVIRONMENT_VARIABLES }}`. É MESCLADO com as vars
+      atuais (nunca sobrescreve o mapa inteiro). Nunca hardcoded, nunca ecoado.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    # AUTENTICAÇÃO (§5.7): credenciais bootstrap (só `sts:AssumeRole`) usadas para
+    # ASSUMIR o deploy role via `role-to-assume`. OIDC está indisponível — daí o
+    # fluxo bootstrap creds -> AssumeRole -> deploy role least-privilege.
+    - name: Configura credenciais AWS (bootstrap -> AssumeRole do deploy role)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+        role-to-assume: ${{ inputs.aws-role-to-assume }}
+        role-session-name: yaid-deploy-amplify
+
+    # SYNC DE ENV VARS POR MERGE (§5.4 — propriedade de segurança-chave):
+    # (1) lê o mapa atual, (2) mescla com o novo, (3) reenvia o mapa mesclado.
+    # Sem echo/cat das env vars sensíveis (o GitHub também mascara secrets).
+    - name: Sincroniza env vars no Amplify (merge, sem sobrescrever)
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+        AMPLIFY_APP_ID: ${{ inputs.amplify-app-id }}
+        AMPLIFY_BRANCH_NAME: ${{ inputs.amplify-branch-name }}
+        NEW_ENVIRONMENT_VARIABLES: ${{ inputs.amplify-environment-variables }}
+      run: |
+        set -euo pipefail
+        # (1) LÊ as env vars atuais do branch (o que já está no Amplify).
+        current="$(aws amplify get-branch \
+          --app-id "$AMPLIFY_APP_ID" \
+          --branch-name "$AMPLIFY_BRANCH_NAME" \
+          --query 'branch.environmentVariables' \
+          --output json)"
+        # get-branch pode retornar 'null' se não houver env vars ainda.
+        if [ -z "$current" ] || [ "$current" = "null" ]; then
+          current='{}'
+        fi
+        # (2) MESCLA: chaves atuais preservadas; valores novos vencem em coincidências.
+        #     `.[0] * .[1]` = merge de objetos com o segundo tendo precedência.
+        merged="$(jq -n \
+          --argjson current "$current" \
+          --argjson incoming "$NEW_ENVIRONMENT_VARIABLES" \
+          '$current * $incoming')"
+        # (3) REENVIA o mapa MESCLADO (nunca só o subconjunto novo). Payload via
+        #     --cli-input-json evita escrever secrets em disco ou nos logs.
+        aws amplify update-branch --cli-input-json "$(jq -n \
+          --arg app "$AMPLIFY_APP_ID" \
+          --arg branch "$AMPLIFY_BRANCH_NAME" \
+          --argjson env "$merged" \
+          '{appId: $app, branchName: $branch, environmentVariables: $env}')"
+
+    # DEPLOY (§4-B): dispara o job de RELEASE. O auto-build do Amplify na branch
+    # prod está desabilitado (Story 11.2) — o release é sempre orquestrado aqui.
+    - name: Dispara deploy no Amplify (start-job RELEASE)
+      id: start-job
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+        AMPLIFY_APP_ID: ${{ inputs.amplify-app-id }}
+        AMPLIFY_BRANCH_NAME: ${{ inputs.amplify-branch-name }}
+      run: |
+        set -euo pipefail
+        job_id="$(aws amplify start-job \
+          --app-id "$AMPLIFY_APP_ID" \
+          --branch-name "$AMPLIFY_BRANCH_NAME" \
+          --job-type RELEASE \
+          --query 'jobSummary.jobId' \
+          --output text)"
+        echo "Amplify RELEASE job iniciado: $job_id"
+        echo "job-id=$job_id" >> "$GITHUB_OUTPUT"
+
+    # POLLING FINITO (§5.8): espera até estado terminal com timeout/max tentativas
+    # (60 x 15s = 15 min). SUCCEED -> sucesso; FAILED/CANCELLED/inesperado/timeout
+    # -> exit não-zero. Nunca um loop infinito.
+    - name: Aguarda o job do Amplify (polling com timeout)
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+        AMPLIFY_APP_ID: ${{ inputs.amplify-app-id }}
+        AMPLIFY_BRANCH_NAME: ${{ inputs.amplify-branch-name }}
+        JOB_ID: ${{ steps.start-job.outputs.job-id }}
+      run: |
+        set -euo pipefail
+        max_attempts=60
+        sleep_seconds=15
+        attempt=0
+        while [ "$attempt" -lt "$max_attempts" ]; do
+          attempt=$((attempt + 1))
+          status="$(aws amplify get-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH_NAME" \
+            --job-id "$JOB_ID" \
+            --query 'job.summary.status' \
+            --output text)"
+          echo "Tentativa $attempt/$max_attempts — status do job Amplify: $status"
+          case "$status" in
+            SUCCEED)
+              echo "Deploy do Amplify concluído com sucesso (SUCCEED)."
+              exit 0
+              ;;
+            FAILED|CANCELLED)
+              echo "::error::Job do Amplify terminou em estado não-SUCCEED: $status"
+              exit 1
+              ;;
+            PENDING|PROVISIONING|RUNNING)
+              sleep "$sleep_seconds"
+              ;;
+            *)
+              echo "::error::Status inesperado do job do Amplify: $status"
+              exit 1
+              ;;
+          esac
+        done
+        echo "::error::Timeout aguardando o job do Amplify após $max_attempts tentativas."
+        exit 1
