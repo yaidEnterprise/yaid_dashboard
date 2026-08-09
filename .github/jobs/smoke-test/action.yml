@@ -1,0 +1,80 @@
+name: "Smoke Test"
+description: >-
+  Composite action que valida a aplicação recém-publicada como GATE FINAL do
+  release de produção (Epic 11), DEPOIS do deploy do app (deploy-amplify, Story
+  11.5). Faz `GET $PRODUCTION_URL/api/health` (endpoint público entregue pela
+  Story 11.1) com RETRIES FINITOS (timeout / número máximo de tentativas),
+  considera sucesso apenas em HTTP 200 (e valida o corpo `{status:"ok"}`) e falha
+  explicitamente (exit não-zero) ao esgotar as tentativas — nunca um loop infinito.
+
+# CONTEXTO (§4-D, §5.8 e §6 da sprint change proposal 2026-08-08):
+# Este é o quarto e último composite action da pipeline distribuída. Diferente de
+# deploy-supabase (11.4) e deploy-amplify (11.5), NÃO consome credenciais
+# sensíveis — mas a URL de produção NUNCA é hardcoded: entra via `input`
+# (`production-url`) passado pelo orquestrador `production.yml` a partir de
+# `${{ secrets.PRODUCTION_URL }}` (ou `${{ vars.PRODUCTION_URL }}`).
+#
+# §5.8 CRÍTICO (retries finitos): o smoke-test tem timeout / número máximo de
+# tentativas (loop finito) e falha explicitamente (exit 1) ao esgotar os retries
+# sem obter HTTP 200. NUNCA um `while true` sem saída. O health check pode demorar
+# a responder logo após o deploy (cold start / propagação), daí os retries com
+# `sleep` entre tentativas — mas o limite é finito.
+#
+# §6 (critério de sucesso): `GET $PRODUCTION_URL/api/health` retorna HTTP 200
+# `{status:"ok"}`. O smoke-test só roda após o Amplify `SUCCEED` (garantido por
+# `needs: deploy-amplify` no orquestrador), então o app já deve estar publicado.
+
+inputs:
+  production-url:
+    description: >-
+      URL base da aplicação em produção (ex.: https://app.exemplo.com). O smoke
+      test faz `GET <production-url>/api/health`. Passada via
+      `${{ secrets.PRODUCTION_URL }}` ou `${{ vars.PRODUCTION_URL }}` a partir do
+      orquestrador. NUNCA hardcoded neste arquivo.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    # SMOKE TEST COM RETRIES FINITOS (§5.8 + §6): faz `GET $PRODUCTION_URL/api/health`
+    # até obter HTTP 200 (e corpo `{status:"ok"}`), com timeout/max tentativas
+    # (30 x 10s = 5 min). Sucesso -> exit 0; esgotar as tentativas -> exit 1.
+    # Nunca um loop infinito. A URL vem do input via `env:` (nunca hardcoded).
+    - name: Smoke test do /api/health (GET com retries finitos)
+      shell: bash
+      env:
+        PRODUCTION_URL: ${{ inputs.production-url }}
+      run: |
+        set -euo pipefail
+        # A URL base vem do input; removemos uma eventual barra final para evitar
+        # `//api/health`. O alvo é sempre <base>/api/health (nunca hardcoded).
+        base="${PRODUCTION_URL%/}"
+        health_url="$base/api/health"
+        max_attempts=30
+        sleep_seconds=10
+        attempt=0
+        while [ "$attempt" -lt "$max_attempts" ]; do
+          attempt=$((attempt + 1))
+          # -s silencioso, -S mostra erro, corpo em stdout; o status HTTP é escrito
+          # ao final via -w. --max-time limita cada requisição (não trava numa só).
+          if response="$(curl -sS --max-time 15 -w '\n%{http_code}' "$health_url")"; then
+            http_code="$(printf '%s' "$response" | tail -n1)"
+            body="$(printf '%s' "$response" | sed '$d')"
+            echo "Tentativa $attempt/$max_attempts — HTTP $http_code em $health_url"
+            if [ "$http_code" = "200" ]; then
+              # Sucesso mínimo: HTTP 200. Reforço: o corpo deve conter {"status":"ok"}
+              # (tolerando espaços). Se o status code é 200 mas o corpo diverge,
+              # ainda tratamos como falha para não aprovar um health degradado.
+              if printf '%s' "$body" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+                echo "Smoke test OK: /api/health respondeu 200 com {status:\"ok\"}."
+                exit 0
+              fi
+              echo "HTTP 200 porém corpo inesperado (esperado {status:\"ok\"}). Retentando..."
+            fi
+          else
+            echo "Tentativa $attempt/$max_attempts — requisição a $health_url falhou (sem resposta). Retentando..."
+          fi
+          sleep "$sleep_seconds"
+        done
+        echo "::error::Smoke test FALHOU: /api/health não retornou 200 {status:\"ok\"} após $max_attempts tentativas."
+        exit 1

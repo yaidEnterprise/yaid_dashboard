@@ -3,10 +3,11 @@ name: Production Release
 # Orquestrador do release de produção (Epic 11, Sprint Change 2026-08-08).
 # Dispara em push na branch `prod`. Gates sequenciais via `needs:`:
 #   tests (11.3) -> deploy-supabase (11.4) -> deploy-amplify (11.5) -> smoke-test (11.6).
-# Esta story (11.4) adiciona o job `deploy-supabase` encadeado após `tests`
-# (`needs: tests`): migrations só são aplicadas ao Supabase Cloud depois que a
-# suíte de testes passar. Os jobs deploy-amplify (11.5) e smoke-test (11.6) serão
-# encadeados a partir de `deploy-supabase` em stories futuras.
+# Esta story (11.6) adiciona o job FINAL `smoke-test`, encadeado após
+# `deploy-amplify` (`needs: deploy-amplify`): a validação pós-deploy (GET
+# $PRODUCTION_URL/api/health com retries finitos) só roda depois que o app for
+# publicado no Amplify com sucesso. Com isso a cadeia completa fica
+# tests -> deploy-supabase -> deploy-amplify -> smoke-test.
 #
 # Estrutura distribuída (§4-D): cada job vive em `.github/jobs/<nome>/action.yml`
 # como composite action e é chamado por `uses: ./.github/jobs/<nome>`. Secrets são
@@ -67,7 +68,7 @@ jobs:
   # `deploy-supabase` aplicar as migrations (`needs: deploy-supabase`) — o deploy
   # do app é o passo de infra que vem DEPOIS do banco (§4-B/NFR11: tests ->
   # deploy-supabase -> deploy-amplify -> smoke-test). O job `smoke-test`
-  # (Story 11.6) será encadeado a partir daqui via `needs: deploy-amplify`.
+  # (Story 11.6) é encadeado a partir daqui via `needs: deploy-amplify`.
   deploy-amplify:
     name: Deploy Amplify (app)
     runs-on: ubuntu-latest
@@ -90,3 +91,25 @@ jobs:
           amplify-app-id: ${{ secrets.AMPLIFY_APP_ID }}
           amplify-branch-name: ${{ secrets.AMPLIFY_BRANCH_NAME }}
           amplify-environment-variables: ${{ secrets.AMPLIFY_ENVIRONMENT_VARIABLES }}
+
+  # Gate FINAL: valida a aplicação publicada via health check. Só roda depois que
+  # `deploy-amplify` concluir o RELEASE no Amplify (`needs: deploy-amplify`) — ou
+  # seja, o Amplify já atingiu SUCCEED (Story 11.5) antes de qualquer requisição.
+  # Faz GET $PRODUCTION_URL/api/health (endpoint da Story 11.1) com retries finitos
+  # e falha explicitamente se nunca retornar 200 (§5.8/§6). Fecha a cadeia
+  # tests -> deploy-supabase -> deploy-amplify -> smoke-test.
+  smoke-test:
+    name: Smoke Test (health check)
+    runs-on: ubuntu-latest
+    needs: deploy-amplify
+    steps:
+      # Checkout necessário para resolver o composite local `./.github/jobs/...`.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # A URL de produção é centralizada no orquestrador e passada via `with:` —
+      # nunca hardcoded no composite. O composite a recebe como input.
+      - name: Run smoke-test composite
+        uses: ./.github/jobs/smoke-test
+        with:
+          production-url: ${{ secrets.PRODUCTION_URL }}
