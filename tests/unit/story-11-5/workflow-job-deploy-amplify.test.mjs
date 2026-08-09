@@ -43,7 +43,8 @@ const REQUIRED_INPUTS = [
   "aws-role-to-assume",
   "amplify-app-id",
   "amplify-branch-name",
-  "amplify-environment-variables",
+  "github-variables-json",
+  "github-secrets-json",
 ];
 
 // ---------------------------------------------------------------------------
@@ -131,10 +132,10 @@ test("AC3: todo step com `run` declara `shell` (exigência de composite)", () =>
 });
 
 // ---------------------------------------------------------------------------
-// AC #4 — §5.4 CRÍTICO: sync de env por MERGE (lê atuais + reenvia mesclado)
+// AC #4 — Story 11.8: sync de env AUTORITATIVO (replace, sem get-branch/merge)
 // ---------------------------------------------------------------------------
 
-test("AC4 (§5.4): o sync LÊ as env vars atuais (get-branch) antes de reenviar", () => {
+test("AC4 (Story 11.8): o sync NÃO lê o estado atual do branch (sem get-branch)", () => {
   const doc = loadYaml(actionPath);
   const steps = stepsOf(doc.runs);
   const syncStep = steps.find(
@@ -142,30 +143,24 @@ test("AC4 (§5.4): o sync LÊ as env vars atuais (get-branch) antes de reenviar"
   );
   assert.ok(syncStep, "deve haver um step que faz amplify update-branch");
   assert.ok(
-    /amplify get-branch/.test(syncStep.run),
-    "§5.4: o sync deve LER as vars atuais via `amplify get-branch` antes do update-branch",
+    !/amplify get-branch/.test(syncStep.run),
+    "Story 11.8: o sync é replace autoritativo — não deve chamar `amplify get-branch`",
   );
 });
 
-test("AC4 (§5.4): o update-branch envia o mapa MESCLADO, não um overwrite cego", () => {
+test("AC4 (Story 11.8): os nomes são derivados do .env.local.example", () => {
   const doc = loadYaml(actionPath);
   const steps = stepsOf(doc.runs);
   const syncStep = steps.find(
     (s) => typeof s.run === "string" && /amplify update-branch/.test(s.run),
   );
-  // ordem: get-branch (leitura) deve ocorrer ANTES de update-branch (escrita).
-  const readIdx = syncStep.run.indexOf("amplify get-branch");
-  const writeIdx = syncStep.run.indexOf("amplify update-branch");
-  assert.ok(readIdx >= 0 && writeIdx >= 0, "o step deve conter get-branch e update-branch");
-  assert.ok(readIdx < writeIdx, "get-branch (leitura) deve preceder update-branch (escrita)");
-  // evidência de merge: uso de jq com precedência de objetos (`*`) ou merge explícito.
   assert.ok(
-    /\bjq\b/.test(syncStep.run) && /\*/.test(syncStep.run),
-    "o sync deve MESCLAR (ex.: jq '.[0] * .[1]') as vars atuais com as novas",
+    /\.env\.local\.example/.test(syncStep.run),
+    "o sync deve derivar os nomes de env vars a partir do .env.local.example",
   );
 });
 
-test("AC4 (§5.4): o env-sync usa as env vars novas a partir do input (não literal)", () => {
+test("AC4 (Story 11.8): o valor de cada nome é resolvido por Secrets, senão Variables", () => {
   const doc = loadYaml(actionPath);
   const steps = stepsOf(doc.runs);
   const syncStep = steps.find(
@@ -173,8 +168,27 @@ test("AC4 (§5.4): o env-sync usa as env vars novas a partir do input (não lite
   );
   const envRaw = JSON.stringify(syncStep.env ?? {});
   assert.ok(
-    /inputs\.amplify-environment-variables/.test(envRaw),
-    "as env vars novas devem vir de inputs.amplify-environment-variables",
+    /inputs\.github-secrets-json/.test(envRaw) && /inputs\.github-variables-json/.test(envRaw),
+    "o sync deve receber tanto o JSON de Secrets quanto o de Variables via inputs",
+  );
+  const secretsIdx = syncStep.run.indexOf("SECRETS_JSON");
+  const varsIdx = syncStep.run.indexOf("VARS_JSON");
+  assert.ok(secretsIdx >= 0 && varsIdx >= 0, "o step deve referenciar SECRETS_JSON e VARS_JSON");
+  assert.ok(
+    secretsIdx < varsIdx,
+    "a resolução deve consultar Secrets ANTES de Variables (Secrets tem prioridade)",
+  );
+});
+
+test("AC4 (Story 11.8): o update-branch envia o mapa resolvido como REPLACE total", () => {
+  const doc = loadYaml(actionPath);
+  const steps = stepsOf(doc.runs);
+  const syncStep = steps.find(
+    (s) => typeof s.run === "string" && /amplify update-branch/.test(s.run),
+  );
+  assert.ok(
+    /environmentVariables/.test(syncStep.run),
+    "o payload do update-branch deve setar environmentVariables com o mapa resolvido",
   );
 });
 
@@ -272,7 +286,7 @@ test("AC6: secrets não são ecoados nos steps run (sem echo/cat/printenv de cre
   for (const s of steps) {
     if (typeof s.run !== "string") continue;
     const leaks =
-      /\b(echo|printf|cat|printenv)\b[^\n]*\$?\{?\s*(AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|NEW_ENVIRONMENT_VARIABLES|inputs\.aws-secret-access-key|inputs\.aws-access-key-id|inputs\.amplify-environment-variables)/i.test(
+      /\b(echo|printf|cat|printenv)\b[^\n]*\$?\{?\s*(AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|SECRETS_JSON|VARS_JSON|payload|inputs\.aws-secret-access-key|inputs\.aws-access-key-id|inputs\.github-secrets-json|inputs\.github-variables-json)/i.test(
         s.run,
       );
     assert.ok(!leaks, `step '${s.name ?? s.run}' não pode ecoar credenciais/env sensíveis nos logs`);
@@ -334,12 +348,23 @@ test("AC7: job passa secrets ao composite via with: referenciando ${{ secrets.* 
   );
   assert.ok(compositeStep, "deve haver o step do composite");
   assert.ok(compositeStep.with, "o step do composite deve ter bloco with:");
+  // Os dois inputs de Story 11.8 (github-variables-json/github-secrets-json)
+  // usam toJSON(vars)/toJSON(secrets) — os demais continuam secrets.* diretos.
+  const toJsonInputs = new Set(["github-variables-json", "github-secrets-json"]);
   for (const key of REQUIRED_INPUTS) {
     assert.ok(compositeStep.with[key] !== undefined, `with deve passar '${key}'`);
-    assert.ok(
-      /\$\{\{\s*secrets\./.test(String(compositeStep.with[key])),
-      `with.${key} deve referenciar secrets.* (nunca literal)`,
-    );
+    const value = String(compositeStep.with[key]);
+    if (toJsonInputs.has(key)) {
+      assert.ok(
+        /\$\{\{\s*toJSON\((vars|secrets)\)\s*\}\}/.test(value),
+        `with.${key} deve referenciar toJSON(vars)/toJSON(secrets) (nunca literal)`,
+      );
+    } else {
+      assert.ok(
+        /\$\{\{\s*secrets\./.test(value),
+        `with.${key} deve referenciar secrets.* (nunca literal)`,
+      );
+    }
   }
 });
 

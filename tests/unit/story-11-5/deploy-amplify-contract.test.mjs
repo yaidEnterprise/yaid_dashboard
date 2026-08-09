@@ -147,16 +147,26 @@ test("contract: os steps do composite NUNCA referenciam secrets.* (só inputs.*)
   );
 });
 
-test("contract: o orquestrador só passa valores ${{ secrets.* }} ao composite (nunca literais)", () => {
+test("contract: o orquestrador só passa valores ${{ secrets.* }} ou ${{ toJSON(vars|secrets) }} ao composite (nunca literais)", () => {
   const workflow = loadYaml(workflowPath);
   const compositeStep = stepsOf(workflow.jobs["deploy-amplify"]).find(
     (s) => typeof s.uses === "string" && s.uses === "./.github/jobs/deploy-amplify",
   );
+  // Os inputs github-variables-json/github-secrets-json (Story 11.8) usam
+  // toJSON(vars)/toJSON(secrets); os demais continuam secrets.* diretos.
+  const toJsonKeys = new Set(["github-variables-json", "github-secrets-json"]);
   for (const [key, val] of Object.entries(compositeStep.with ?? {})) {
-    assert.ok(
-      /^\$\{\{\s*secrets\.[A-Z0-9_]+\s*\}\}$/.test(String(val)),
-      `with.${key} deve ser exatamente uma referência a secrets.* (foi: ${val})`,
-    );
+    if (toJsonKeys.has(key)) {
+      assert.ok(
+        /^\$\{\{\s*toJSON\((vars|secrets)\)\s*\}\}$/.test(String(val)),
+        `with.${key} deve ser exatamente uma referência a toJSON(vars)/toJSON(secrets) (foi: ${val})`,
+      );
+    } else {
+      assert.ok(
+        /^\$\{\{\s*secrets\.[A-Z0-9_]+\s*\}\}$/.test(String(val)),
+        `with.${key} deve ser exatamente uma referência a secrets.* (foi: ${val})`,
+      );
+    }
   }
 });
 
@@ -189,20 +199,22 @@ test("contract: todo step de CLI AWS recebe a região via env (a partir do input
 });
 
 // ---------------------------------------------------------------------------
-// Merge de env: o mapa reenviado inclui as vars atuais (não é overwrite cego)
+// Replace autoritativo (Story 11.8): sem leitura/merge do estado atual
 // ---------------------------------------------------------------------------
 
-test("contract: o update-branch reenvia o mapa MESCLADO (current + incoming)", () => {
+test("contract: o update-branch envia REPLACE autoritativo (sem get-branch/merge)", () => {
   const steps = runStepsText(stepsOf(loadYaml(actionPath).runs));
   const syncStep = steps.find((s) => /amplify update-branch/.test(s.run));
-  // a variável mesclada deve ser derivada tanto do current (get-branch) quanto do incoming (input).
-  assert.ok(/current=/.test(syncStep.run), "deve capturar as vars atuais em uma variável `current`");
   assert.ok(
-    /--argjson\s+current/.test(syncStep.run) && /--argjson\s+incoming/.test(syncStep.run),
-    "o merge deve combinar `current` e `incoming` via jq",
+    !/amplify get-branch/.test(syncStep.run),
+    "Story 11.8: não deve haver leitura do estado atual via get-branch",
+  );
+  assert.ok(
+    /\.env\.local\.example/.test(syncStep.run),
+    "os nomes das env vars devem ser derivados do .env.local.example",
   );
   assert.ok(
     /environmentVariables/.test(syncStep.run),
-    "o payload do update-branch deve setar environmentVariables com o mapa mesclado",
+    "o payload do update-branch deve setar environmentVariables com o mapa resolvido",
   );
 });

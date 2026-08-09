@@ -35,6 +35,7 @@
     "test:story:11.5": "node --test \"tests/unit/story-11-5/*.test.mjs\"",
     "test:story:11.6": "node --test \"tests/unit/story-11-6/*.test.mjs\"",
     "test:story:11.7": "node --test \"tests/unit/story-11-7/*.test.mjs\"",
+    "test:story:11.8": "node --test \"tests/unit/story-11-8/*.test.mjs\" && tsx --test \"tests/unit/story-11-8/*.dynamic.test.ts\"",
     "start": "next start",
     "lint": "eslint"
   },
