@@ -199,3 +199,9 @@
 - **Polling do Amplify sem tolerância a erros transitórios da API AWS** — o step de espera roda sob `set -euo pipefail`; uma única falha de rede em `aws amplify get-job` aborta a espera inteira do deploy (exit não-zero). Não reproduzível no sandbox (AWS não roda aqui). Avaliar retry/backoff tolerante a erros transitórios no primeiro release real, mantendo o loop finito (timeout total preservado). [`.github/jobs/deploy-amplify/action.yml`]
 
 - **Sync de env assume payload JSON válido** — `jq --argjson incoming "$NEW_ENVIRONMENT_VARIABLES"` falha se `amplify-environment-variables` não for JSON válido; o step aborta sem mensagem dedicada. Fail-fast é aceitável, mas uma validação/mensagem explícita ("payload de env vars inválido") facilitaria o diagnóstico. Considerar no hardening da Story 11.7. [`.github/jobs/deploy-amplify/action.yml`]
+
+## Deferred from: code review of story-11.6-workflow-job-smoke-test (2026-08-09)
+
+- **`actions/checkout@v4` pinada por tag de major (não SHA) no job `smoke-test`** — a versão da action de checkout não é determinística entre releases. Pinar SHA na Story 11.7 (hardening operacional), junto com os defers de SHA-pinning das actions registrados nas Stories 11.3/11.4/11.5. [`.github/workflows/production.yml`]
+
+- **Smoke-test retenta uniformemente e não valida a URL de produção** — o loop de `curl` retenta qualquer falha (rede transitória ou app indisponível) do mesmo modo; se `production-url` vier vazio/malformado, o step apenas falha após esgotar as 30 tentativas (5 min) sem uma mensagem dedicada. Fail-fast é aceitável (input `required`), mas uma validação explícita da URL e/ou distinção entre erro transitório e app genuinamente fora do ar facilitaria o diagnóstico. Não reproduzível no sandbox (GitHub Actions e HTTP contra produção não rodam aqui). Considerar no hardening da Story 11.7. [`.github/jobs/smoke-test/action.yml`]

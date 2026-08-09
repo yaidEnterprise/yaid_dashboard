@@ -490,3 +490,30 @@
 - `js-yaml` reusado para parse semântico real — sem novas dependências
 - Teste AC7 da Story 11.4 atualizado (precedente da 11.4 sobre a 11.3): `jobKeys` agora `["deploy-amplify", "deploy-supabase", "tests"]`
 - 3 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `aws-actions/configure-aws-credentials@v4` pinada por tag de major (não SHA); (2) polling sem tolerância a erro transitório da API AWS sob `set -euo pipefail`; (3) sync assume payload JSON válido de env vars sem mensagem dedicada em caso de malformação
+
+### Story 11.6 — Composite `smoke-test` + Job Encadeado (`needs: deploy-amplify`) — Gate Final
+- Acceptance criteria: 8/8 cobertos
+  - AC#1 (composite `.github/jobs/smoke-test/action.yml` existe, YAML válido, `runs.using: composite`): coberto por parse real via `js-yaml.load()`
+  - AC#2 (input `production-url`, `required: true`): coberto
+  - AC#3 (`GET .../api/health` via `curl` com URL vinda do input; `shell` em todo `run`): coberto
+  - AC#4 (§5.8 CRÍTICO — retries FINITOS com `max_attempts`/timeout, sem `while true`, falha explícita `exit 1` ao esgotar): coberto por testes dedicados
+  - AC#5 (§6 — sucesso = HTTP 200, lido via `curl -w '%{http_code}'`; reforço opcional do corpo `{status:"ok"}`): coberto
+  - AC#6 (nenhuma URL de produção hardcoded; alvo vem de `${{ inputs.production-url }}`): coberto no composite e no `with:` do job
+  - AC#7 (job `smoke-test` com `needs: deploy-amplify`, `ubuntu-latest`, checkout antes do composite, `with:` referenciando `${{ secrets.* }}`/`${{ vars.* }}`): coberto; QA valida alinhamento exato `with:`↔`inputs`
+  - AC#8 (jobs anteriores intactos e encadeados; conjunto EXATO de 4 jobs `tests`/`deploy-supabase`/`deploy-amplify`/`smoke-test`): coberto
+- Caminhos críticos: 33/33 testes passando na story (20 dev + 13 QA de contrato)
+  - §5.8 (retries finitos): loop 30×10s com `sleep` entre tentativas e falha explícita ao esgotar; guardrail de teste garante ausência de `while true`; `max_attempts` validado como inteiro positivo finito
+  - §6 (critério de sucesso): HTTP 200 via `%{http_code}` + reforço do corpo `{status:"ok"}`
+  - Consome o endpoint `GET /api/health` da Story 11.1 (não toca no código do endpoint)
+  - Contrato: `needs` exatamente `[deploy-amplify]`; cadeia completa `tests → deploy-supabase → deploy-amplify → smoke-test`; smoke-test é FOLHA (nenhum job depende dele); alvo exato `/api/health`; único step de smoke-test; fronteira de secrets (composite só usa `inputs.*`); `with:`↔`inputs` alinhados; `permissions: contents: read` mantido
+  - Sem execução real de GitHub Actions/HTTP contra produção no sandbox — testes de contrato/estruturais sobre o YAML parseado, alinhado às Stories 11.2/11.3/11.4/11.5
+
+#### Validation
+- `npm run test:story:11.6`: **passed** — 33/33 (20 dev + 13 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 814 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de infraestrutura de CI (um composite YAML novo + extensão do orquestrador + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
+- `js-yaml` reusado para parse semântico real — sem novas dependências
+- Testes de conjunto de jobs das Stories 11.5 (AC8) e 11.4 (AC7) relaxados de `deepEqual` exato para verificação de presença; o conjunto EXATO de 4 jobs passa a ser validado pelo teste da 11.6 (precedente da 11.5 sobre 11.4 e da 11.4 sobre 11.3)
+- 2 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `actions/checkout@v4` pinada por tag de major (não SHA) no job smoke-test; (2) smoke-test retenta uniformemente e não valida a URL de produção — validação/distinção de erro transitório no hardening

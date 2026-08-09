@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-07-31
+# last_updated: 2026-08-09
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -136,7 +136,7 @@ development_status:
   11-3-workflow-job-tests: done
   11-4-workflow-job-deploy-supabase: done
   11-5-workflow-job-deploy-amplify: done
-  11-6-workflow-job-smoke-test: backlog
+  11-6-workflow-job-smoke-test: done
   11-7-documentacao-operacional: backlog
   epic-11-retrospective: optional
  
