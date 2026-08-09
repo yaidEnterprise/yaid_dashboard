@@ -36,7 +36,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-05
+last_updated: 2026-08-09
+
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -102,7 +103,7 @@ development_status:
   epic-7: in-progress
   7-1-fundacao-de-versionamento-de-schema: done
   7-2-coluna-updated-at-e-gravacao-em-toda-transicao: done
-  7-3-allowlist-de-criacao-de-apps: backlog
+  7-3-allowlist-de-criacao-de-apps: done
   7-4-seletor-de-ambiente-na-criacao-de-app: backlog
   7-5-review-manual-em-apps-homologacao: backlog
   7-6-remocao-secao-resposta-da-api: done
