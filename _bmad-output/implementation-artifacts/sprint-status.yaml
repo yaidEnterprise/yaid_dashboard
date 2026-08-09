@@ -132,7 +132,7 @@ development_status:
   epic-11: in-progress
   11-1-health-check-endpoint: done
   11-2-amplify-yml-e-desabilitar-auto-build: done
-  11-3-workflow-job-tests: backlog
+  11-3-workflow-job-tests: done
   11-4-workflow-job-deploy-supabase: backlog
   11-5-workflow-job-deploy-amplify: backlog
   11-6-workflow-job-smoke-test: backlog
