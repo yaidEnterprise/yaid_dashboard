@@ -438,3 +438,28 @@
 - Story de infraestrutura de CI (dois YAMLs de GitHub Actions + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
 - `js-yaml` (devDependency desde a Story 11.2) reusado para parse semântico real dos dois YAMLs — sem novas dependências
 - 1 item deferido do code review para `deferred-work.md`: GitHub Actions pinadas por tag de major mutável (`@v4`) em vez de commit SHA — hardening de supply-chain deferido para a Story 11.7 (política de pinning para toda a pipeline). 1 dismiss: o teste AC5 (`jobKeys == ["tests"]`) quebrará em 11.4 por design (base mínima intencional)
+
+### Story 11.4 — Composite `deploy-supabase` + Job Encadeado (`needs: tests`)
+- Acceptance criteria: 7/7 cobertos
+  - AC#1 (composite `.github/jobs/deploy-supabase/action.yml` existe, YAML válido, `runs.using: composite`): coberto por parse real via `js-yaml.load()`
+  - AC#2 (inputs `supabase-access-token`/`supabase-project-ref`/`supabase-db-password`, todos `required: true`): coberto
+  - AC#3 (setup da Supabase CLI, `supabase link` via input, `db push --dry-run`, `db push`, `shell` em todo `run`): coberto
+  - AC#4 (§5.5 CRÍTICO — `db push --dry-run` ANTES de `db push` real): coberto por teste dedicado de ordenação de índices; reforçado no QA pela ordem completa setup-cli → link → dry-run → push e "exatamente um apply" (sem push duplicado)
+  - AC#5 (nenhum literal de secret — project-ref `lygkwhcwsrxfozswhxyo`/token/senha; sem echo de secrets): coberto no composite e no `with:` do job; QA reforça a fronteira de secrets (composite usa só `inputs.*`, nunca lê `secrets.*`)
+  - AC#6 (job `deploy-supabase` com `needs: tests`, `ubuntu-latest`, checkout antes do composite, `with:` referenciando `${{ secrets.* }}`): coberto; QA valida alinhamento exato entre as chaves do `with:` e os `inputs` do composite
+  - AC#7 (job `tests` intacto; apenas `tests` + `deploy-supabase`, sem 11.5/11.6): coberto
+- Caminhos críticos: 29/29 testes passando na story (21 dev + 8 QA de contrato)
+  - Propriedade de segurança-chave (§5.5): dry-run sempre precede o apply — teste dedicado no dev + ordem completa no QA
+  - Fronteira de secrets: secrets vivem no orquestrador como `${{ secrets.* }}` e no composite apenas como `${{ inputs.* }}`, expostos aos comandos só via `env:`, nunca ecoados
+  - Contrato orquestrador↔composite: as chaves do `with:` batem exatamente com os `inputs` declarados
+  - Sem execução real de GitHub Actions/Supabase Cloud no sandbox — testes de contrato/estruturais sobre o YAML parseado, alinhado às Stories 11.2/11.3
+
+#### Validation
+- `npm run test:story:11.4`: **passed** — 29/29 (21 dev + 8 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 745 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de infraestrutura de CI (um composite YAML novo + extensão do orquestrador + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
+- `js-yaml` reusado para parse semântico real — sem novas dependências
+- Teste AC5 da Story 11.3 atualizado (dismiss documentado na 11.3): em vez de travar a contagem exata de jobs, garante que `tests` é o gate inicial (sem `needs`) e que jobs adicionais dependem via `needs`
+- 2 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `supabase/setup-cli@v1` usa `version: latest` (CLI não determinística); (2) `supabase db push` pode exigir confirmação interativa em runner não-TTY — verificar no primeiro release real

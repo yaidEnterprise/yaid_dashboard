@@ -185,3 +185,9 @@
 - **Nenhum teste dinâmico cobre `ISSUER_PRIVATE_KEY` vazio/malformado no caminho de emissão** — a resolução da chave do issuer é escopo do Epic 10 (`backlog`), não tocado pela Story 9.1. [`src/modules/credential/app/issue_credential_usecase.ts:126-129`]
 
 - **Verificação EdDSA (allow-list de algoritmo, proteção contra confusão de tipo/alg) pertence à Story 9.2** (`backlog`, verificação) — a Story 9.1 só cobre emissão; nenhuma AC desta story exige código de verificação. [`src/modules/presentation/app/verify_presentation_usecase.ts`]
+
+## Deferred from: code review of story-11.4-workflow-job-deploy-supabase (2026-08-09)
+
+- **`supabase/setup-cli@v1` usa `version: latest`** — a versão da Supabase CLI instalada no runner não é determinística entre releases; uma mudança de comportamento da CLI poderia alterar `db push` sem aviso. Pinar uma versão específica da CLR (e/ou SHA das actions) na Story 11.7 (hardening operacional), junto com o defer de SHA-pinning de `actions/checkout`/`actions/setup-node` registrado na Story 11.3. [`.github/jobs/deploy-supabase/action.yml`]
+
+- **`supabase db push` (apply) pode exigir confirmação interativa em CI não-TTY** — historicamente a CLI pergunta "Do you want to push these migrations...?"; em runner não interativo isso pode falhar/travar. Não reproduzível no sandbox (GitHub Actions e Supabase Cloud não rodam aqui) e o contrato §4-D da proposta não especifica flag. Verificar no primeiro release real; se necessário, adicionar flag não-interativa/auto-confirm ao step de apply. [`.github/jobs/deploy-supabase/action.yml`]
