@@ -12,7 +12,7 @@ export const CreateCompanyAppSchema = z.object({
     .refine((v) => v === "" || /^https:\/\//i.test(v), {
       message: "webhookUrl must use HTTPS",
     }),
-  environment: z.enum(ENV_VALUES).optional().default("dev"),
+  environment: z.enum(ENV_VALUES).optional().default("homol"),
 });
 
 export type CreateCompanyAppDTO = z.infer<typeof CreateCompanyAppSchema>;

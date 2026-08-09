@@ -13,6 +13,7 @@ import { createApp, type YaidAppWithKey } from "@/utils/apps-store";
 
 const createAppSchema = z.object({
   name: z.string().min(1, "Informe o nome do app").max(50, "Máximo de 50 caracteres"),
+  environment: z.enum(["homol", "prod"]),
   webhookUrl: z
     .string()
     .optional()
@@ -33,7 +34,7 @@ export default function CreateAppPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateAppFormValues>({
     resolver: zodResolver(createAppSchema),
-    defaultValues: { name: "", webhookUrl: "" },
+    defaultValues: { name: "", environment: "homol", webhookUrl: "" },
   });
 
   const onSubmit = async (values: CreateAppFormValues) => {
@@ -41,6 +42,7 @@ export default function CreateAppPage() {
       const webhookUrl = values.webhookUrl?.trim() ?? "";
       const app = await createApp({
         name: values.name.trim(),
+        environment: values.environment,
         ...(webhookUrl ? { webhookUrl } : {}),
       });
       setCreatedApp(app);
@@ -88,6 +90,7 @@ export default function CreateAppPage() {
               <p className="text-xs text-text-secondary">Como esse app aparece para sua equipe.</p>
             </div>
             <div className="space-y-5 px-6 py-5">
+              {/* Nome do app */}
               <div className="space-y-1.5">
                 <label htmlFor="name" className="text-xs font-medium text-text-secondary">
                   Nome do app
@@ -106,6 +109,29 @@ export default function CreateAppPage() {
                   <p className="text-sm text-red-600">{errors.name.message}</p>
                 )}
                 <p className="text-[11px] text-text-tertiary">Visível apenas para sua equipe.</p>
+              </div>
+
+              {/* Ambiente */}
+              <div className="space-y-1.5">
+                <label htmlFor="environment" className="text-xs font-medium text-text-secondary">
+                  Ambiente
+                </label>
+                <select
+                  id="environment"
+                  className={`h-10 w-full rounded-md border bg-surface px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-trust/20 ${
+                    errors.environment ? "border-red-500 focus:border-red-500" : "border-border focus:border-trust"
+                  }`}
+                  {...register("environment")}
+                >
+                  <option value="homol">Homologação</option>
+                  <option value="prod">Produção</option>
+                </select>
+                {errors.environment && (
+                  <p className="text-sm text-red-600">{errors.environment.message}</p>
+                )}
+                <p className="text-[11px] text-text-tertiary">
+                  Apps de homologação permitem aprovar/reprovar verificações manualmente para teste. Produção não.
+                </p>
               </div>
             </div>
           </div>

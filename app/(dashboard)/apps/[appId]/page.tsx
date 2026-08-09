@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { getApp, updateApp, type YaidApp } from "@/utils/apps-store";
 import { StatusBadge } from "@/components/feedback/status-badge";
+import { EnvBadge } from "@/components/feedback/environment-badge";
 import { CopyButton } from "@/components/shared/copy-button";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -535,6 +536,9 @@ export default function AppDetailPage() {
               {app.name}
             </h1>
             <StatusBadge status={app.status} size="md" />
+            {app.environment && app.environment !== "dev" && (
+              <EnvBadge env={app.environment} size="md" />
+            )}
           </div>
           <p className="text-xs text-text-tertiary">
             Criado em {formatDate(app.createdAt)}
