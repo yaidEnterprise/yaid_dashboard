@@ -27,6 +27,7 @@ export class UpdateMyCompanyUseCase {
       email: company.email,
       status: company.status,
       createdAt: company.createdAt,
+      canCreateApps: company.canCreateApps,
     });
 
     await this.companyRepository.update(updated);

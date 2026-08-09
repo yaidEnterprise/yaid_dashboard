@@ -7,6 +7,7 @@ type CompanyProps = {
   email: string;
   status: CompanyStatus;
   createdAt: Date;
+  canCreateApps: boolean;
 };
 
 export class Company {
@@ -38,6 +39,10 @@ export class Company {
 
   get createdAt() {
     return this.props.createdAt;
+  }
+
+  get canCreateApps() {
+    return this.props.canCreateApps;
   }
 
   deactivate() {

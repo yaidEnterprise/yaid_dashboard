@@ -28,6 +28,7 @@ export class CreateCompanyUseCase {
       email: input.email,
       status: CompanyStatus.ACTIVE,
       createdAt: new Date(),
+      canCreateApps: false,
     });
 
     await this.companyRepository.create(company);
