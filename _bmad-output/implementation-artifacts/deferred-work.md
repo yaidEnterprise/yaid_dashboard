@@ -1,3 +1,9 @@
+## Deferred from: code review of story-11-1-health-check-endpoint (2026-08-08)
+
+- **`updateSupabaseSession` roda para toda requisição a `/api/health` antes do check `isPublicApiRoute`** — o `middleware()` refresca a sessão Supabase (chamada de rede) para toda rota interceptada pelo matcher, incluindo `/api/health`, antes de qualquer branch de classificação de rota decidir se ela exige autenticação. Isso injeta uma dependência de rede no caminho do health check, na leitura ampla do AC #5 ("nenhuma chamada de rede/IO bloqueante... pode estar no caminho do handler"). Pré-existente: o mesmo padrão já se aplica a `/api/webhook-public-key`, que também é documentado como rota "sem DB". Corrigir exige reestruturar a ordem de early-return do `middleware()` para toda uma categoria de rotas públicas — fora do escopo de uma story de whitelist de uma linha. [`src/shared/middleware.ts:53`]
+
+- **Teste estrutural de `isPublicApiRoute`/outros classificadores usa `indexOf("function ...")` → `indexOf("\n}", fnStart)` para delimitar o corpo da função** — frágil a blocos com chaves aninhadas antes do fechamento real da função (ex.: um `if` multi-linha). Correto hoje porque nenhuma das 4 funções de classificação (`isDashboardPage`, `isPublicAuthPage`, `isSessionAuthApiRoute`, `isPublicApiRoute`, `isDIDAuthRoute`) tem chaves aninhadas antes do fechamento. Considerar usar um parser real (ex.: regex de limite de função ou AST) se o middleware crescer em complexidade. [`tests/unit/story-11-1/health-check-endpoint.test.mjs`]
+
 ## Deferred from: one-shot icone-maior-e-favicon (2026-08-05)
 
 - **Safari exibe `favicon.ico` placeholder** — Safari não suporta SVG favicon; usa o `app/favicon.ico` padrão do Next.js. Gerar um `.ico` real (16×16 e 32×32) requer tooling externo (sharp, imagemagick). Considerar adicionar um script de build que converta `yaid_icon.svg` para `.ico` quando a stack de build for estabilizada. [`app/favicon.ico`]
