@@ -517,3 +517,36 @@
 - `js-yaml` reusado para parse semântico real — sem novas dependências
 - Testes de conjunto de jobs das Stories 11.5 (AC8) e 11.4 (AC7) relaxados de `deepEqual` exato para verificação de presença; o conjunto EXATO de 4 jobs passa a ser validado pelo teste da 11.6 (precedente da 11.5 sobre 11.4 e da 11.4 sobre 11.3)
 - 2 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `actions/checkout@v4` pinada por tag de major (não SHA) no job smoke-test; (2) smoke-test retenta uniformemente e não valida a URL de produção — validação/distinção de erro transitório no hardening
+
+- [x] tests/unit/story-11-7/documentacao-operacional.test.mjs - Story 11.7 (dev) contratos estruturais do runbook `docs/deployment/production-cicd.md`: existência + H1, arquitetura da pipeline (trigger `prod`, cadeia `tests → deploy-supabase → deploy-amplify → smoke-test`, `needs`, estrutura distribuída composite), descrição dos 4 jobs (Node 22/`npm ci`/`npm test`; link+`db push --dry-run`+`db push`; AssumeRole+merge env+start-job RELEASE+polling; `GET /api/health` HTTP 200 `{status:ok}`), IAM least-privilege (≥2 blocos JSON parseáveis por `JSON.parse`, policy bootstrap só `sts:AssumeRole`, deploy role só `amplify:*` no ARN — negativo: sem `AdministratorAccess`/`"Action":"*"`/`"Resource":"*"` inclusive em forma de array), bootstrap vs release, custom domain/DNS/SSL, migrations expand→contract, rollback, troubleshooting consolidando os 7 itens de hardening deferidos das Stories 11.1–11.6, cross-links (`amplify-deploy.md`, `app/api/health/route.ts`, workflow/composites)
+- [x] tests/unit/story-11-7/production-cicd-contract.test.mjs - Story 11.7 (QA) contratos complementares: doc-drift guard (todo caminho de arquivo referenciado no runbook existe no repo + links markdown relativos resolvem), ≥2 diagramas mermaid, IAM invariantes ESTRITAS (bootstrap com exatamente 1 statement e Resource = ARN de role ≠ `*`; deploy role com o conjunto EXATO das 5 ações amplify e todo Resource com o `<app-id>`; trust policy com `Principal.AWS` escopado ≠ `*`; todas as statements `Allow` escopadas), e consistência com a pipeline real (os 4 jobs + cadeia; os timeouts 15 min/5 min do runbook batem com `max_attempts`/`sleep_seconds` reais dos composites deploy-amplify/smoke-test)
+
+#### Story 11.7 — Documentação Operacional (Runbook end-to-end + IAM)
+- Acceptance criteria: 12/12 cobertos
+  - AC#1 (runbook existe, não vazio, H1): coberto
+  - AC#2 (arquitetura: trigger `prod`, cadeia dos 4 jobs, `needs`, estrutura distribuída): coberto
+  - AC#3 (descrição dos 4 jobs com inputs/secrets): coberto
+  - AC#4 (≥2 policies JSON válidas: bootstrap `sts:AssumeRole` + deploy role `amplify:*` no ARN): coberto (dev + QA com conjunto EXATO de ações)
+  - AC#5 (least-privilege negativo: sem `AdministratorAccess`/wildcards): coberto (string + parse de array)
+  - AC#6 (bootstrap one-time vs release automático): coberto
+  - AC#7 (custom domain + DNS + SSL): coberto
+  - AC#8 (migrations expand→contract + dry-run antes do apply): coberto
+  - AC#9 (rollback app Amplify + implicação de banco): coberto
+  - AC#10 (troubleshooting consolidando hardening 11.1–11.6): coberto (7 itens verificados individualmente)
+  - AC#11 (cross-links sem duplicar): coberto (+ doc-drift guard no QA)
+  - AC#12 (suíte estrutural verde, 0 regressões): coberto
+- Caminhos críticos: 55/55 testes passando na story (38 dev + 17 QA)
+  - IAM: os 3 blocos JSON parseiam e são least-privilege; deploy role tem EXATAMENTE `amplify:GetBranch/GetJob/ListJobs/StartJob/UpdateBranch` escopadas ao `<app-id>`; bootstrap só `sts:AssumeRole`; trust policy com Principal escopado
+  - Doc-drift guard: nenhum cross-link do runbook aponta para arquivo inexistente; timeouts do runbook batem com os composites reais
+  - Consolidação: os 7 itens de hardening deferidos das Stories 11.1–11.6 estão documentados como known-issues/checks (§9), resolvendo os defers anteriores
+  - Story de documentação — GitHub Actions e AWS não rodam no sandbox; testes estruturais/de contrato sobre o markdown (padrão da Story 7.1)
+
+#### Validation
+- `npm run test:story:11.7`: **passed** — 55/55 (38 dev + 17 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 869 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de documentação (runbook markdown + testes de contrato + 1 script em `package.json`) — nenhum arquivo em `src/`/`app/`/`.github/`/`amplify.yml` tocado
+- Sem novas dependências — o teste parseia JSON via `JSON.parse` nativo (não precisa de `js-yaml`)
+- Code review limpo (0 decision-needed, 0 patch, 0 defer novo, 1 dismiss); os itens de hardening deferidos das Stories 11.1–11.6 são RESOLVIDOS por esta story ao serem documentados no runbook
+- Última story do Epic 11 — com ela `done`, todas as 7 stories do épico ficam `done`
