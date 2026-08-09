@@ -116,3 +116,11 @@ Após desabilitar, confirme o novo estado com o mesmo `get-branch` acima (deve r
 então valide que um `git push` na branch `prod` **não** dispara mais um build automático no
 Amplify Console. O próximo deploy só deve ocorrer quando o job da Story 11.5 (GitHub Actions)
 disparar explicitamente um build via API/CLI do Amplify.
+
+## Sync de env vars no branch (Story 11.8)
+
+Este documento cobre apenas o **Auto Build**. O sync das **env vars server-side** do branch `prod`
+(quais existem, como são classificadas entre GitHub Variables/Secrets, e como adicionar uma nova) é
+autoritativo a partir do `.env.local.example` e está documentado em
+[`docs/deployment/production-cicd.md` §6.2](../deployment/production-cicd.md#62-sync-de-env-vars-no-amplify--modelo-autoritativo-story-118)
+— referenciado aqui em vez de duplicado.

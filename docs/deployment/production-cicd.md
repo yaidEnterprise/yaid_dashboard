@@ -81,7 +81,7 @@ flowchart TD
     C2 --> C3[db push]
     C3 --> D[Job deploy-amplify]
     D --> D1[configure-aws-credentials + AssumeRole]
-    D1 --> D2[sync env vars GitHub -> Amplify por merge]
+    D1 --> D2[sync env vars GitHub -> Amplify: replace autoritativo]
     D2 --> D3[amplify start-job RELEASE]
     D3 --> D4[polling até estado terminal - timeout]
     D4 --> E[Job smoke-test]
@@ -128,19 +128,22 @@ Publica o app Next.js SSR no AWS Amplify (`needs: deploy-supabase`):
 
 1. `aws-actions/configure-aws-credentials@v4` — credenciais **bootstrap** (só `sts:AssumeRole`) usadas
    para **assumir** o deploy role via `role-to-assume` (OIDC indisponível; ver §5).
-2. **Sync de env vars por MERGE** (§5.4): lê o mapa atual (`aws amplify get-branch`), mescla com o novo
-   (`jq '$current * $incoming'`), reenvia o mapa mesclado (`aws amplify update-branch --cli-input-json`).
-   **Nunca** um overwrite cego — `update-branch --environment-variables` substituiria o mapa inteiro e
-   apagaria secrets server-side (ex.: `ISSUER_PRIVATE_KEY`) exigidos no boot por `environments.ts`
-   quando `STAGE=PROD`.
+2. **Sync de env vars AUTORITATIVO** (Story 11.8 — reverte o modelo de merge da §5.4 da proposta
+   2026-08-08): deriva os **nomes** do `.env.local.example` (ignora comentários/linhas vazias);
+   resolve o **valor** de cada nome por colocação no GitHub — **Secrets primeiro, senão Variables**
+   (`github-secrets-json`/`github-variables-json`, via `toJSON(secrets)`/`toJSON(vars)`); nomes sem
+   valor em nenhum dos dois são **omitidos**; envia o mapa resolvido via
+   `aws amplify update-branch --cli-input-json` como **replace total** do branch — **sem**
+   `get-branch`/merge. Ver §6.2 para a tabela de classificação Variable vs Secret e o procedimento de
+   adicionar uma variável nova.
 3. `aws amplify start-job --job-type RELEASE` — dispara o deploy (auto-build desabilitado, Story 11.2).
 4. **Polling finito** (§5.8): espera até estado terminal (60×15s = 15 min). `SUCCEED` → sucesso;
    `FAILED`/`CANCELLED`/inesperado/timeout → `exit 1`. Nunca um loop infinito.
 
 **Inputs (secrets, via `with:`):** `aws-access-key-id`, `aws-secret-access-key`, `aws-region`,
 `aws-role-to-assume` (`AWS_DEPLOY_ROLE_ARN`), `amplify-app-id`, `amplify-branch-name`,
-`amplify-environment-variables` (payload JSON). Nenhum secret server-side vira `NEXT_PUBLIC_*`; nada
-ecoado nos logs.
+`github-variables-json` (`${{ toJSON(vars) }}`), `github-secrets-json` (`${{ toJSON(secrets) }}`).
+Nenhum secret server-side vira `NEXT_PUBLIC_*`; nada ecoado nos logs.
 
 ### 3.4 `smoke-test` (gate final) — [`.github/jobs/smoke-test/action.yml`](../../.github/jobs/smoke-test/action.yml)
 
@@ -311,16 +314,79 @@ passados aos composites via `with:`:
 | `AWS_DEPLOY_ROLE_ARN` | deploy-amplify | ARN do deploy role a assumir |
 | `AMPLIFY_APP_ID` | deploy-amplify | ID do app Amplify |
 | `AMPLIFY_BRANCH_NAME` | deploy-amplify | Branch a publicar (ex.: `prod`) |
-| `AMPLIFY_ENVIRONMENT_VARIABLES` | deploy-amplify | Payload JSON `{chave:valor}` das env vars server-side |
+| todas as **Variables** e **Secrets** listadas em §6.2 | deploy-amplify | Env vars server-side da app, sincronizadas de forma autoritativa (§3.3 e §6.2) |
 | `PRODUCTION_URL` | smoke-test | URL base de produção (ex.: `https://app.exemplo.com`) |
 
 > **Env obrigatórias com `STAGE=PROD` (§5.3 da proposta):** `environments.ts` valida no boot
 > `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY`, `BLOCKCHAIN_WALLET_PRIVATE_KEY`,
-> `BLOCKCHAIN_CONTRACT_ADDRESS` quando `STAGE=PROD`. Todas devem estar no payload
-> `AMPLIFY_ENVIRONMENT_VARIABLES` (ou já presentes no branch Amplify), senão a app quebra no boot.
-> Secrets server-side **nunca** viram `NEXT_PUBLIC_*`.
+> `BLOCKCHAIN_CONTRACT_ADDRESS` quando `STAGE=PROD`. Todas devem existir como Secret/Variable do GitHub
+> (§6.2), senão a app quebra no boot. Secrets server-side **nunca** viram `NEXT_PUBLIC_*`.
 
-### 6.1 Custom domain + DNS + SSL
+### 6.2 Sync de env vars no Amplify — modelo autoritativo (Story 11.8)
+
+> **Reverte o modelo de MERGE da §5.4 da proposta 2026-08-08.** O merge dependia de um único secret
+> manual (`AMPLIFY_ENVIRONMENT_VARIABLES`) desacoplado do `.env.local.example`/`environments.ts` —
+> variáveis novas nunca chegavam ao Amplify sem edição manual desse payload. O modelo autoritativo
+> resolve isso: a lista de **nomes** vem do `.env.local.example` (fonte única de verdade de **quais**
+> variáveis existem); os **valores** vêm do GitHub (Secrets/Variables) pela colocação.
+
+**Como funciona:**
+
+1. O step de sync lê o `.env.local.example` do repo checado e extrai os **nomes** (ignora comentários
+   `#` e linhas vazias).
+2. Para cada nome, resolve o **valor**: primeiro em `github-secrets-json` (`${{ toJSON(secrets) }}`),
+   senão em `github-variables-json` (`${{ toJSON(vars) }}`). Um nome sem valor em nenhum dos dois é
+   **omitido** do payload — não vira `""` nem quebra o step.
+3. O mapa resolvido é enviado via `aws amplify update-branch --cli-input-json` como **replace total**
+   do branch — **sem** `get-branch` nem merge. Isso é seguro porque, neste modelo, toda env var usada
+   pela app tem origem no GitHub (Variables/Secrets); nenhuma variável server-side vive apenas no
+   console do Amplify.
+
+**Regra de colocação (Secret vs Variable):** nome contém `KEY`, `PASSWORD`, `PRIVATE`, `SECRET` ou
+`TOKEN` → **Secret**; senão → **Variable**. Duas exceções documentadas:
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` → **Variable** (é pública, embutida no bundle client-side
+mesmo); `BLOCKCHAIN_RPC_URL` → **Secret** (embute a API key do provedor de RPC na URL).
+
+**Classificação atual (13 nomes, derivados do `.env.local.example`):**
+
+| GitHub Variables (6) | GitHub Secrets (7) |
+|---|---|
+| `STAGE` (= `PROD`) | `SUPABASE_SECRET_KEY` |
+| `NEXT_PUBLIC_APP_URL` | `SUPABASE_DB_PASSWORD` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `BLOCKCHAIN_RPC_URL` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `BLOCKCHAIN_WALLET_PRIVATE_KEY` |
+| `BLOCKCHAIN_CONTRACT_ADDRESS` | `ISSUER_PRIVATE_KEY` |
+| `OCR_API_URL` | `WEBHOOK_SIGNING_PRIVATE_KEY` |
+| | `OCR_API_KEY` |
+
+> `YAID_VERIFICATION_BASE_URL` **não** consta nessa lista: desde a Story 11.8 ela é **derivada** em
+> `environments.ts` como `${NEXT_PUBLIC_APP_URL}/v` (getter), não é mais lida de `process.env` nem
+> precisa de Secret/Variable próprio.
+
+**Como criar uma Variable ou um Secret no GitHub** (Settings do repo, ou do Environment de produção se
+usar Environments):
+
+- **Variable:** `Settings → Secrets and variables → Actions → Variables tab → New repository variable`
+  (ou *New environment variable*, dentro do Environment). Nome e valor em texto plano — aparece nos
+  logs se ecoado (mas o composite nunca ecoa).
+- **Secret:** `Settings → Secrets and variables → Actions → Secrets tab → New repository secret` (ou
+  *New environment secret*). Valor mascarado nos logs pelo próprio GitHub; não pode ser lido de volta
+  pela UI depois de salvo.
+
+**Procedimento para adicionar uma env var nova:**
+
+1. Adicione o nome ao `.env.local.example` (com um placeholder de valor, ex.:
+   `NOVA_VAR=YOUR_NOVA_VAR`) — isso a torna elegível para o sync automaticamente, sem tocar no
+   composite/workflow.
+2. Classifique conforme a regra de colocação acima e crie o **Secret** ou a **Variable**
+   correspondente no GitHub com o mesmo nome exato.
+3. No próximo release em `prod`, o step de sync já a inclui no payload do `update-branch` — nenhuma
+   mudança de código é necessária em `.github/jobs/deploy-amplify/action.yml`.
+4. Se a variável for obrigatória no boot com `STAGE=PROD` (ex.: um novo secret exigido por
+   `environments.ts`), garanta que o Secret/Variable existe **antes** do release — a app falha
+   fail-fast no boot se faltar.
+
+### 6.3 Custom domain + DNS + SSL
 
 Setup one-time do domínio customizado no Amplify:
 
@@ -433,12 +499,14 @@ não puderam ser exercitados no sandbox — trate-os como itens de verificação
 
 ### 9.6 Sync de env vars — validação do payload JSON
 
-- **Known-issue:** o step de sync faz `jq --argjson incoming "$NEW_ENVIRONMENT_VARIABLES"`; se
-  `AMPLIFY_ENVIRONMENT_VARIABLES` não for JSON válido, o step aborta **sem mensagem dedicada**.
-- **Recomendação:** validar o payload (ex.: `jq empty <<<"$NEW_ENVIRONMENT_VARIABLES"`) com uma
-  mensagem explícita ("payload de env vars inválido") antes do merge. Fail-fast é aceitável, mas a
-  mensagem facilita o diagnóstico. Lembre: o merge preserva as vars atuais — nunca sobrescreve o mapa
-  inteiro (§5.4).
+- **Known-issue:** o step de sync consulta `$SECRETS_JSON`/`$VARS_JSON` via `jq -r --arg n "$name"`;
+  se `github-secrets-json`/`github-variables-json` não forem JSON válido, o step aborta **sem mensagem
+  dedicada**.
+- **Recomendação:** validar os dois payloads (ex.: `jq empty <<<"$SECRETS_JSON"` /
+  `jq empty <<<"$VARS_JSON"`) com uma mensagem explícita ("payload de Secrets/Variables inválido")
+  antes de resolver os valores. Fail-fast é aceitável, mas a mensagem facilita o diagnóstico. Lembre:
+  o modelo é **replace autoritativo** (Story 11.8) — não há mais `current`/merge a preservar; um nome
+  que não existir no `.env.local.example` simplesmente não entra no payload.
 
 ### 9.7 Tolerância a erros transitórios (polling do Amplify / retries do smoke-test)
 
@@ -463,7 +531,7 @@ não puderam ser exercitados no sandbox — trate-os como itens de verificação
 | `db push` trava/pede confirmação | deploy-supabase | CI não-TTY (§9.3) — flag não-interativa |
 | `db push` aplica algo inesperado | deploy-supabase | revisar o `--dry-run` antes; migration destrutiva fora de ordem (§7) |
 | `AccessDenied` na AWS | deploy-amplify | policy/trust do role incompletas (§5) ou ARN errado |
-| Env vars server-side sumiram | deploy-amplify | overwrite cego em vez de merge (§5.4) |
+| Env vars server-side sumiram/erradas | deploy-amplify | nome ausente do `.env.local.example`, ou Secret/Variable correspondente não cadastrada no GitHub (§6.2) |
 | Deploy nunca termina | deploy-amplify | polling atinge timeout (15 min) → `exit 1`; checar o job no Console |
 | 404 em rotas SSR após deploy | deploy-amplify | App não é Web Compute (§9.4) |
 | smoke-test falha após 5 min | smoke-test | app fora do ar, `PRODUCTION_URL` errada, ou cold start > 5 min (§9.7) |
