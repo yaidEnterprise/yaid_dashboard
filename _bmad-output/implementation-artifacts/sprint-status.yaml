@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-03
+last_updated: 2026-08-08
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -127,3 +127,14 @@ development_status:
   10-1-centralizacao-de-chaves-de-teste-no-environments: backlog
   10-2-validacao-de-formato-de-chaves-no-boot: backlog
   epic-10-retrospective: optional
+
+  # Epic 11: Pipeline de CI/CD de Produção (Sprint Change 2026-08-08)
+  epic-11: in-progress
+  11-1-health-check-endpoint: done
+  11-2-amplify-yml-e-desabilitar-auto-build: backlog
+  11-3-workflow-job-tests: backlog
+  11-4-workflow-job-deploy-supabase: backlog
+  11-5-workflow-job-deploy-amplify: backlog
+  11-6-workflow-job-smoke-test: backlog
+  11-7-documentacao-operacional: backlog
+  epic-11-retrospective: optional
