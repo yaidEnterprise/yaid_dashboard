@@ -3,13 +3,14 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-05-11'
-revisedAt: '2026-07-28'
+revisedAt: '2026-08-08'
 inputDocuments:
   - docs/prd.md
   - CONTEXT.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-27.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-28.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-08.md
 workflowType: 'architecture'
 project_name: 'yaid_dashboard'
 user_name: 'Victordegasperi'
@@ -21,12 +22,24 @@ editHistory:
     changes: 'Correct Course — edição direcionada na seção Credenciais & Formato da VC: claims consolidadas (personhood + ageOver18 na mesma emissão); ageOver18 pode ser false e menoridade deixa de retornar 422; correspondência obrigatória claim ↔ proof_type na verificação da VP; proofType removido do contrato de POST /api/credentials/issue; enum ProofType compartilhado. Sem impacto em schema, blockchain ou camadas.'
   - date: '2026-07-28'
     changes: 'Correct Course (adendo §7) — Regras Obrigatórias: environments.ts entrega valores prontos (proibido remendar configuração no ponto de uso); formato de chave validado no boot e não em runtime; placeholders de TEST_ENV recusados fora do stage TEST. Origem: quatro consumidores substituindo chaves de teste localmente. Epic 10 criado.'
+  - date: '2026-08-08'
+    changes: 'Correct Course (Sprint Change 2026-08-08) — edição direcionada na seção Infraestrutura & Deploy: CI/CD de produção passa a modelo orquestrado pelo GitHub Actions na branch prod (gates sequenciais tests → deploy-supabase → deploy-amplify → smoke-test), com auto-build do Amplify desabilitado na branch prod; migrations via supabase db push (com --dry-run) antes do deploy do app (expand→deploy→contract); autenticação AWS via IAM sts:AssumeRole least-privilege; health check público GET /api/health com whitelisting em middleware.ts. Epic 11 introduzido. Sem impacto em schema, camadas, blockchain ou stack.'
 ---
 
 # Architecture Decision Document
 
 _Este documento é construído colaborativamente através de descoberta passo a passo. Seções são adicionadas conforme avançamos em cada decisão arquitetural juntos._
 
+> **Revisão 2026-08-08 (Correct Course — Sprint Change Proposal 2026-08-08):** edição
+> direcionada na seção *Infraestrutura & Deploy*. O release de produção passa a ser **orquestrado pelo
+> GitHub Actions** na branch `prod`, com gates sequenciais `tests → deploy-supabase → deploy-amplify →
+> smoke-test`; o **auto-build do Amplify é desabilitado** na branch `prod` (evita deploy duplicado);
+> migrations aplicadas via `supabase db push` (com `--dry-run`) antes do deploy do app
+> (expand→deploy→contract); autenticação AWS via IAM `sts:AssumeRole` least-privilege; health check
+> público `GET /api/health` (whitelisting em `middleware.ts`). Introdução do **Epic 11** (pipeline de
+> CI/CD de produção). Infraestrutura de entrega, aditiva — núcleo e MVP do produto permanecem intactos;
+> sem impacto em schema, camadas, blockchain ou stack.
+>
 > **Revisão 2026-07-28 (Correct Course — Sprint Change Proposal 2026-07-28):** edição
 > direcionada na seção *Credenciais & Formato da VC*. Claims consolidadas em uma única emissão,
 > `ageOver18` podendo ser `false` (menoridade deixa de ser 422), correspondência obrigatória entre
@@ -150,7 +163,7 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 **Decisões Importantes (moldam a arquitetura):**
 - SHA-256 para hash de API key
 - Fetch wrapper customizado com 401-redirect
-- GitHub Actions + Amplify para CI/CD
+- GitHub Actions orquestra o release em `prod` (gates sequenciais); Amplify com auto-build desabilitado
 
 **Decisões Deferidas (pós-MVP):**
 - Monitoramento externo (Sentry, Datadog etc.) — implementar somente se houver tempo
@@ -233,8 +246,21 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 
 ### Infraestrutura & Deploy
 
-- **Hospedagem:** AWS Amplify.
-- **CI/CD:** GitHub Actions (lint + typecheck) + Amplify (build + deploy automático).
+- **Hospedagem:** AWS Amplify (app **SSR / Web Compute** — `baseDirectory: .next`, não static export).
+- **CI/CD (produção):** o **GitHub Actions é o ORQUESTRADOR** do release na branch `prod`, com gates
+  sequenciais (`needs`): `tests → deploy-supabase → deploy-amplify → smoke-test`. O **auto-build do
+  Amplify na branch `prod` é DESABILITADO** (`enableAutoBuild=false`) para evitar deploy duplicado; a
+  integração GitHub↔Amplify é preservada (o Amplify continua buscando o código). Migrations são
+  aplicadas via Supabase CLI (`db push`, precedido de `--dry-run`) **antes** do deploy do app,
+  seguindo **expand→deploy→contract**. A autenticação AWS usa IAM bootstrap → `sts:AssumeRole` → IAM
+  Role de deploy **least-privilege** (OIDC indisponível). Lint/typecheck permanecem como validação (o
+  build Next.js no Amplify executa o typecheck). Sync de env vars é feito por **merge** (ler, mesclar
+  e reenviar — nunca sobrescrever o mapa inteiro); secrets server-side nunca viram `NEXT_PUBLIC_*` nem
+  aparecem em logs. Estrutura distribuída: cada job vive em `.github/jobs/<nome>/action.yml`
+  (composite action), orquestrado por `.github/workflows/production.yml`.
+- **Health check:** `app/api/health/route.ts` — endpoint público e leve (`force-dynamic`, sem
+  DB/secrets, retorna `{ status: "ok" }`), liberado em `src/shared/middleware.ts` (`isPublicApiRoute`).
+  Usado como validação pós-deploy (`GET /api/health` com retries no gate `smoke-test`).
 - **Monitoramento:** ⚠️ TBD pós-MVP — serviço externo (Sentry, Datadog etc.) somente se houver tempo. CloudWatch/Amplify logs como fallback mínimo.
 
 ## Schema do Banco de Dados

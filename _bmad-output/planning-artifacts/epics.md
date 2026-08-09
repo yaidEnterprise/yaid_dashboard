@@ -101,6 +101,7 @@ FR32 (#7 Allowlist): O sistema deve adicionar a coluna `company.can_create_apps 
 FR33 (#8 VC-JWT): O backend deve emitir a Verifiable Credential como VC-JWT compacto assinado (JWS EdDSA) — header `{alg:"EdDSA", typ:"JWT", kid:"<issuerDid>#key-1"}`, payload `{iss, sub:<holderDid>, jti, iat, nbf, vc:{...claims booleanos}}`, assinado com `ISSUER_PRIVATE_KEY` — em vez de JSON-LD com `proof.Ed25519Signature2020` embutido. `POST /api/credentials/issue` retorna a string JWT; `POST /api/presentations/verify` decodifica e valida a VC no formato JWT. Invariante preservado: a VC continua carregando apenas claims booleanos — muda o formato de serialização/assinatura, não o conteúdo.
 
 FR34 (#9 Migrations): O sistema deve versionar o schema via Supabase Migrations — diretório `supabase/` versionado (`config.toml`, `migrations/`, `seed.sql`), CLI linkada ao project-ref `lygkwhcwsrxfozswhxyo`. Baseline (`supabase db pull`) captura o schema hoje deployado (encerra o drift); forward migrations timestampadas para `add_updated_at_to_proof_requests`, `add_can_create_apps_to_company` (+ backfill) e ajuste de `environment`/default em `company_apps`. `.gitignore` cobre `supabase/.branches` e `supabase/.temp`; CI opcional roda `supabase db diff --check` no PR.
+> Nota (Sprint Change 2026-08-08): além do `db diff --check` opcional no PR, o release em `prod` aplica migrations pendentes via `supabase db push` (precedido de `--dry-run`) como primeiro passo de infra da pipeline, antes do deploy do app (ver Epic 11 / NFR11).
 
 ### NonFunctional Requirements
 
@@ -124,7 +125,7 @@ NFR9: Shape de erro uniforme `{ error: string }` com HTTP status code adequado e
 
 NFR10: PT-BR fixo, sem i18n no MVP. Desktop-first; mobile funcional não otimizado.
 
-NFR11: Deploy em AWS Amplify; CI/CD via GitHub Actions (lint + typecheck).
+NFR11: Deploy em AWS Amplify (app SSR/Web Compute). O release de produção é orquestrado pelo GitHub Actions na branch `prod` com gates sequenciais `tests → deploy-supabase → deploy-amplify → smoke-test`; auto-build do Amplify desabilitado na branch `prod` (evita deploy duplicado). Lint/typecheck permanecem como validação (o build Next.js no Amplify executa o typecheck).
 
 NFR12: Demonstrabilidade acadêmica (TCC) — fluxo ponta a ponta funcional e defensável sob exame de banca.
 
@@ -280,6 +281,12 @@ O app mobile passa a receber a VC como JWT assinado (EdDSA) — formato compacto
 `environments.ts` volta a ser a fonte única de configuração: as chaves de teste deixam de ser remendadas dentro dos use cases e o formato das chaves passa a ser validado no boot, não na primeira requisição. Elimina o risco de uma chave privada publicamente conhecida ser aceita em produção.
 
 **FRs cobertos:** nenhum (dívida técnica / hardening) — decorre da decisão de arquitetura *"`process.env` somente em `src/shared/environments.ts`"* e da exigência de validação de chaves no boot em `PROD`/`HOMOLOG`.
+
+### Epic 11: Pipeline de CI/CD de Produção
+
+Todo merge/push em `prod` dispara um release determinístico e auditável orquestrado pelo GitHub Actions: roda os testes unitários como gate, aplica migrations pendentes no Supabase Cloud (dry-run antes do push), publica o app no Amplify via `start-job RELEASE` (com auto-build desabilitado), aguarda o deployment em estado terminal e valida a aplicação por health check (`GET /api/health`). Inclui autenticação AWS por `sts:AssumeRole` (least-privilege), sincronização segura de env vars (merge, sem sobrescrever; secrets nunca em `NEXT_PUBLIC_*` nem em logs) e documentação operacional (IAM, custom domain, bootstrap vs release, rollback). Estrutura distribuída: cada job em `.github/jobs/<nome>/action.yml` (composite action), orquestrado por `.github/workflows/production.yml`.
+
+**FRs cobertos:** nenhum (infraestrutura de entrega / operação) — decorre de NFR11.
 
 ---
 
