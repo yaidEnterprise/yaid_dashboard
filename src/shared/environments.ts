@@ -30,10 +30,6 @@ const envSchema = z
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
     SUPABASE_SECRET_KEY: z.string().min(1),
-    YAID_VERIFICATION_BASE_URL: z
-      .string()
-      .url()
-      .default("http://localhost:3000/v"),
 
     ISSUER_PRIVATE_KEY: z.string().min(1).optional(),
     WEBHOOK_SIGNING_PRIVATE_KEY: z.string().min(1).optional(),
@@ -67,7 +63,6 @@ const TEST_ENV: EnvValues = {
   NEXT_PUBLIC_SUPABASE_URL: "http://localhost:54321",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",
   SUPABASE_SECRET_KEY: "test-secret-key",
-  YAID_VERIFICATION_BASE_URL: "http://localhost:3000/v",
   ISSUER_PRIVATE_KEY: "test-issuer-private-key",
   WEBHOOK_SIGNING_PRIVATE_KEY: "test-webhook-signing-private-key",
   BLOCKCHAIN_WALLET_PRIVATE_KEY: "test-blockchain-wallet-private-key",
@@ -91,7 +86,6 @@ function readProcessEnv() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_SECRET_KEY:
       process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY,
-    YAID_VERIFICATION_BASE_URL: process.env.YAID_VERIFICATION_BASE_URL,
     ISSUER_PRIVATE_KEY: process.env.ISSUER_PRIVATE_KEY,
     WEBHOOK_SIGNING_PRIVATE_KEY: process.env.WEBHOOK_SIGNING_PRIVATE_KEY,
     BLOCKCHAIN_WALLET_PRIVATE_KEY: process.env.BLOCKCHAIN_WALLET_PRIVATE_KEY,
@@ -156,7 +150,12 @@ export class Environments {
   }
 
   get YAID_VERIFICATION_BASE_URL() {
-    return this.values.YAID_VERIFICATION_BASE_URL;
+    // Derivada de NEXT_PUBLIC_APP_URL (Story 11.8) — não é mais lida de
+    // `process.env` nem consta no conjunto de env vars sincronizado com o
+    // Amplify (`.env.local.example`). Remove a barra final antes de anexar
+    // `/v` para evitar `//v` quando NEXT_PUBLIC_APP_URL termina em `/`
+    // (review finding — Story 11.8).
+    return `${this.values.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/v`;
   }
 
   get ISSUER_PRIVATE_KEY() {
@@ -311,6 +310,7 @@ export const publicEnv = {
 
 type RuntimeEnv = Omit<EnvValues, "STAGE"> & {
   stage: Stage;
+  YAID_VERIFICATION_BASE_URL: string;
 };
 
 export const env = new Proxy({} as RuntimeEnv, {
