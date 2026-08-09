@@ -5,26 +5,33 @@ description: >-
   (deploy-supabase, Story 11.4) e ANTES do smoke-test (Story 11.6). Autentica na
   AWS via `aws-actions/configure-aws-credentials` com assunção de role
   (`sts:AssumeRole`, pois OIDC está indisponível), sincroniza as env vars para o
-  branch Amplify por MERGE (lê as atuais e reenvia sem sobrescrever), dispara o
-  deploy via `aws amplify start-job --job-type RELEASE` e faz polling finito
-  (com timeout) até um estado terminal, falhando em qualquer estado ≠ SUCCEED.
+  branch Amplify de forma AUTORITATIVA (nomes derivados do `.env.local.example`,
+  valores resolvidos por colocação em Secrets/Variables do GitHub, replace total
+  via `update-branch`), dispara o deploy via `aws amplify start-job --job-type
+  RELEASE` e faz polling finito (com timeout) até um estado terminal, falhando em
+  qualquer estado ≠ SUCCEED.
 
-# SEGURANÇA (§4-D, §5.4 e §5.7 da sprint change proposal 2026-08-08):
+# SEGURANÇA (§4-D e §5.7 da sprint change proposal 2026-08-08; Story 11.8):
 # Este composite consome SECRETS (credenciais bootstrap AWS, ARN do role de
-# deploy, app-id, branch e o payload de env vars server-side). Eles entram
-# EXCLUSIVAMENTE via `inputs` (passados pelo orquestrador `production.yml` a
-# partir de `${{ secrets.* }}`) — NUNCA hardcoded neste arquivo — e são expostos
-# aos comandos apenas via `env:` ou pelas entradas da action, NUNCA ecoados nos
-# logs (nada de `echo`/`cat`/`printenv` de credenciais ou env vars sensíveis).
-# Nenhum secret server-side é transformado em `NEXT_PUBLIC_*`.
+# deploy, app-id, branch e os payloads JSON de Variables/Secrets do GitHub). Eles
+# entram EXCLUSIVAMENTE via `inputs` (passados pelo orquestrador `production.yml`
+# a partir de `${{ secrets.* }}` / `${{ toJSON(vars) }}` / `${{ toJSON(secrets) }}`)
+# — NUNCA hardcoded neste arquivo — e são expostos aos comandos apenas via `env:`
+# ou pelas entradas da action, NUNCA ecoados nos logs (nada de
+# `echo`/`cat`/`printenv` de credenciais ou env vars sensíveis). Nenhum secret
+# server-side é transformado em `NEXT_PUBLIC_*`.
 #
-# §5.4 CRÍTICO (sync de env por MERGE): `aws amplify update-branch
-# --environment-variables` SUBSTITUI o mapa inteiro de env vars do branch. Enviar
-# só as vars novas apagaria as demais (inclusive secrets server-side como
-# ISSUER_PRIVATE_KEY etc., exigidos no boot por `environments.ts` quando
-# STAGE=PROD). Por isso o passo de sync: (1) LÊ o mapa atual (`get-branch`),
-# (2) MESCLA com as novas (valores novos vencem em chaves coincidentes),
-# (3) REENVIA o mapa mesclado — nunca um overwrite cego.
+# SYNC AUTORITATIVO DE ENV VARS (Story 11.8 — reverte o modelo de MERGE da §5.4
+# da proposta 2026-08-08): a lista de NOMES vem do `.env.local.example` (fonte
+# única de verdade de QUAIS variáveis existem — ignora comentários/linhas
+# vazias). Para cada nome, o VALOR é resolvido primeiro em Secrets do GitHub,
+# senão em Variables (a colocação no GitHub decide Secret vs Variable — sem
+# classificação hardcoded aqui). Um nome sem valor em nenhum dos dois é omitido
+# do payload. O mapa resolvido é enviado via `aws amplify update-branch
+# --cli-input-json` como REPLACE total do branch — sem `get-branch`/merge. Isso é
+# seguro porque, neste modelo, toda env var usada pela app tem origem no GitHub
+# (Variables/Secrets); nenhuma variável server-side vive apenas no console do
+# Amplify — logo nada é apagado sem ser reprovisionado no mesmo passo.
 #
 # §5.7 (IAM least-privilege): as credenciais bootstrap só têm `sts:AssumeRole`;
 # o deploy role assumido só tem `amplify:StartJob/GetJob/GetBranch/UpdateBranch/
@@ -68,12 +75,19 @@ inputs:
       Nome do branch do Amplify a publicar (ex.: prod). Passado via
       `${{ secrets.AMPLIFY_BRANCH_NAME }}`. Nunca hardcoded.
     required: true
-  amplify-environment-variables:
+  github-variables-json:
     description: >-
-      Payload JSON (objeto {chave:valor}) com as env vars server-side a
-      sincronizar no branch Amplify. Passado via
-      `${{ secrets.AMPLIFY_ENVIRONMENT_VARIABLES }}`. É MESCLADO com as vars
-      atuais (nunca sobrescreve o mapa inteiro). Nunca hardcoded, nunca ecoado.
+      Payload JSON (objeto {chave:valor}) com TODAS as GitHub Variables do
+      repositório/environment. Passado via `${{ toJSON(vars) }}`. Usado como
+      fonte de valor (segunda prioridade, depois de Secrets) para os nomes
+      derivados do `.env.local.example`. Nunca hardcoded, nunca ecoado.
+    required: true
+  github-secrets-json:
+    description: >-
+      Payload JSON (objeto {chave:valor}) com TODOS os GitHub Secrets do
+      repositório/environment. Passado via `${{ toJSON(secrets) }}`. Usado como
+      fonte de valor (primeira prioridade) para os nomes derivados do
+      `.env.local.example`. Nunca hardcoded, nunca ecoado.
     required: true
 
 runs:
@@ -91,40 +105,77 @@ runs:
         role-to-assume: ${{ inputs.aws-role-to-assume }}
         role-session-name: yaid-deploy-amplify
 
-    # SYNC DE ENV VARS POR MERGE (§5.4 — propriedade de segurança-chave):
-    # (1) lê o mapa atual, (2) mescla com o novo, (3) reenvia o mapa mesclado.
-    # Sem echo/cat das env vars sensíveis (o GitHub também mascara secrets).
-    - name: Sincroniza env vars no Amplify (merge, sem sobrescrever)
+    # SYNC AUTORITATIVO DE ENV VARS (Story 11.8 — replace, sem get-branch/merge):
+    # (1) deriva os NOMES do `.env.local.example` (ignora comentários/linhas
+    #     vazias), (2) resolve o VALOR de cada nome por colocação — primeiro em
+    #     Secrets, senão em Variables — omitindo nomes sem valor em nenhum dos
+    #     dois, (3) envia o mapa resolvido via `update-branch` como REPLACE total
+    #     do branch. Sem echo/cat das env vars sensíveis (o GitHub também
+    #     mascara secrets).
+    - name: Sincroniza env vars no Amplify (replace autoritativo)
       shell: bash
       env:
         AWS_REGION: ${{ inputs.aws-region }}
         AMPLIFY_APP_ID: ${{ inputs.amplify-app-id }}
         AMPLIFY_BRANCH_NAME: ${{ inputs.amplify-branch-name }}
-        NEW_ENVIRONMENT_VARIABLES: ${{ inputs.amplify-environment-variables }}
+        VARS_JSON: ${{ inputs.github-variables-json }}
+        SECRETS_JSON: ${{ inputs.github-secrets-json }}
       run: |
         set -euo pipefail
-        # (1) LÊ as env vars atuais do branch (o que já está no Amplify).
-        current="$(aws amplify get-branch \
-          --app-id "$AMPLIFY_APP_ID" \
-          --branch-name "$AMPLIFY_BRANCH_NAME" \
-          --query 'branch.environmentVariables' \
-          --output json)"
-        # get-branch pode retornar 'null' se não houver env vars ainda.
-        if [ -z "$current" ] || [ "$current" = "null" ]; then
-          current='{}'
+        # (0) PRÉ-CONDIÇÃO: o .env.local.example precisa existir e não estar
+        #     vazio — sem ele não há lista de nomes a sincronizar. Falha com
+        #     mensagem explícita em vez de deixar o `grep` do passo (1) abortar
+        #     com stderr cru sob `pipefail` (review finding — Story 11.8).
+        env_example="${GITHUB_WORKSPACE}/.env.local.example"
+        if [ ! -s "$env_example" ]; then
+          echo "::error::.env.local.example ausente ou vazio em $env_example — sync abortado."
+          exit 1
         fi
-        # (2) MESCLA: chaves atuais preservadas; valores novos vencem em coincidências.
-        #     `.[0] * .[1]` = merge de objetos com o segundo tendo precedência.
-        merged="$(jq -n \
-          --argjson current "$current" \
-          --argjson incoming "$NEW_ENVIRONMENT_VARIABLES" \
-          '$current * $incoming')"
-        # (3) REENVIA o mapa MESCLADO (nunca só o subconjunto novo). Payload via
-        #     --cli-input-json evita escrever secrets em disco ou nos logs.
+        # (1) NOMES: derivados do .env.local.example (na raiz do repo checado
+        #     pelo orquestrador), ignorando comentários e linhas vazias. O
+        #     `|| true` evita que `grep` sem nenhum match (ex.: arquivo só com
+        #     comentários) aborte o step sob `pipefail` (review finding).
+        names="$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$env_example" || true)"
+        names="$(sed -E 's/=.*//; s/[[:space:]]//g' <<<"$names")"
+        if [ -z "$names" ]; then
+          echo "::error::Nenhum nome de env var derivado de .env.local.example — sync abortado."
+          exit 1
+        fi
+        # (2) VALORES: por nome, Secrets tem prioridade sobre Variables; nomes
+        #     sem valor em nenhum dos dois são omitidos do payload. Defesa em
+        #     profundidade (review finding — AC5): nomes de secrets de infra
+        #     nunca devem estar no .env.local.example; se algum dia estiverem
+        #     por engano, o step falha em vez de sincronizá-los ao Amplify.
+        payload='{}'
+        while IFS= read -r name; do
+          [ -z "$name" ] && continue
+          if [[ "$name" =~ ^(AWS_|AMPLIFY_)|^(SUPABASE_ACCESS_TOKEN|GITHUB_TOKEN)$ ]]; then
+            echo "::error::'$name' parece um secret de infra e não deve estar em .env.local.example — sync abortado."
+            exit 1
+          fi
+          value="$(jq -r --arg n "$name" '.[$n] // empty' <<<"$SECRETS_JSON")"
+          if [ -z "$value" ]; then
+            value="$(jq -r --arg n "$name" '.[$n] // empty' <<<"$VARS_JSON")"
+          fi
+          [ -z "$value" ] && continue
+          payload="$(jq --arg n "$name" --arg v "$value" '. + {($n): $v}' <<<"$payload")"
+        done <<<"$names"
+        # (3) GUARDA: um payload vazio indicaria checkout incorreto, JSON de
+        #     Secrets/Variables vazio, ou nenhum nome resolvido — recusa o
+        #     REPLACE em vez de apagar silenciosamente todas as env vars do
+        #     branch (review finding — Story 11.8).
+        if [ "$(jq 'length' <<<"$payload")" -eq 0 ]; then
+          echo "::error::Nenhuma env var resolvida — recusando o replace autoritativo (evita apagar o branch)."
+          exit 1
+        fi
+        # (4) REPLACE autoritativo: envia SOMENTE o mapa resolvido a partir do
+        #     .env.local.example — sem ler/mesclar o estado atual do branch.
+        #     Payload via --cli-input-json evita escrever secrets em disco ou
+        #     nos logs.
         aws amplify update-branch --cli-input-json "$(jq -n \
           --arg app "$AMPLIFY_APP_ID" \
           --arg branch "$AMPLIFY_BRANCH_NAME" \
-          --argjson env "$merged" \
+          --argjson env "$payload" \
           '{appId: $app, branchName: $branch, environmentVariables: $env}')"
 
     # DEPLOY (§4-B): dispara o job de RELEASE. O auto-build do Amplify na branch
