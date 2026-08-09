@@ -183,11 +183,30 @@ test("AC4: job `tests` chama o composite via uses: ./.github/jobs/tests", () => 
 });
 
 // ---------------------------------------------------------------------------
-// AC #5 — base mínima: production.yml contém apenas o job `tests`
+// AC #5 — o job `tests` é o primeiro gate; os demais jobs o encadeiam via needs
 // ---------------------------------------------------------------------------
+//
+// NOTA (Story 11.4): o teste original afirmava `deepEqual(jobKeys, ["tests"])`
+// (base mínima). A Story 11.3 registrou um "dismiss" explícito de que esse
+// contrato seria atualizado quando a Story 11.4 encadeasse `deploy-supabase`.
+// Cumprindo isso, o teste agora garante apenas que (a) `tests` continua existindo
+// como primeiro gate e (b) qualquer job adicional depende de `tests` via `needs`
+// — sem travar a contagem exata de jobs, que cresce a cada story do Epic 11.
 
-test("AC5: production.yml contém apenas o job `tests` (base mínima)", () => {
+test("AC5: job `tests` existe e é o primeiro gate da pipeline", () => {
   const doc = loadYaml(workflowPath);
-  const jobKeys = Object.keys(doc.jobs);
-  assert.deepEqual(jobKeys, ["tests"], "nesta story só deve existir o job `tests`");
+  assert.ok(doc.jobs.tests, "o job `tests` deve continuar existindo");
+  // `tests` não deve depender de nenhum outro job (é o gate inicial).
+  assert.ok(doc.jobs.tests.needs === undefined, "o job `tests` não deve ter `needs` (é o gate inicial)");
+});
+
+test("AC5: todo job além de `tests` depende de `tests` via needs (encadeamento)", () => {
+  const doc = loadYaml(workflowPath);
+  for (const [name, job] of Object.entries(doc.jobs)) {
+    if (name === "tests") continue;
+    const needs = Array.isArray(job.needs) ? job.needs : [job.needs].filter(Boolean);
+    // Cada job de deploy encadeia (direta ou transitivamente) a partir de `tests`.
+    // Nesta fase do épico, o encadeamento direto/indireto passa por `tests`.
+    assert.ok(needs.length > 0, `job '${name}' deve declarar needs (não pode rodar sem gate)`);
+  }
 });
