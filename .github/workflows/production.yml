@@ -80,7 +80,10 @@ jobs:
 
       # Secrets centralizados no orquestrador e passados via `with:` — nunca
       # hardcoded no composite. Autenticação bootstrap -> AssumeRole (§5.7);
-      # env vars server-side sincronizadas por merge (§5.4).
+      # env vars server-side sincronizadas de forma AUTORITATIVA (Story 11.8):
+      # nomes derivados do `.env.local.example`, valores resolvidos por
+      # colocação (Secrets -> Variables) a partir de `toJSON(vars)`/
+      # `toJSON(secrets)` — replace total do branch, sem get-branch/merge.
       - name: Run deploy-amplify composite
         uses: ./.github/jobs/deploy-amplify
         with:
@@ -90,7 +93,8 @@ jobs:
           aws-role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           amplify-app-id: ${{ secrets.AMPLIFY_APP_ID }}
           amplify-branch-name: ${{ secrets.AMPLIFY_BRANCH_NAME }}
-          amplify-environment-variables: ${{ secrets.AMPLIFY_ENVIRONMENT_VARIABLES }}
+          github-variables-json: ${{ toJSON(vars) }}
+          github-secrets-json: ${{ toJSON(secrets) }}
 
   # Gate FINAL: valida a aplicação publicada via health check. Só roda depois que
   # `deploy-amplify` concluir o RELEASE no Amplify (`needs: deploy-amplify`) — ou
