@@ -368,12 +368,13 @@ test("AC8: jobs `tests` e `deploy-supabase` permanecem intactos e encadeados", (
   assert.ok(supNeedsList.includes("tests"), "deploy-supabase continua com needs: tests");
 });
 
-test("AC8: production.yml contém APENAS os jobs tests, deploy-supabase e deploy-amplify", () => {
+test("AC8: production.yml contém os jobs tests, deploy-supabase, deploy-amplify (+ smoke-test na 11.6)", () => {
   const doc = loadYaml(workflowPath);
   const jobKeys = Object.keys(doc.jobs).sort();
-  assert.deepEqual(
-    jobKeys,
-    ["deploy-amplify", "deploy-supabase", "tests"],
-    "nesta story só devem existir tests, deploy-supabase e deploy-amplify (sem smoke-test 11.6)",
-  );
+  // A Story 11.6 adicionou o job final `smoke-test` à cadeia (mesmo precedente da
+  // 11.5 sobre a 11.4). Este teste afirma que os jobs desta story permanecem
+  // presentes; o conjunto EXATO é validado pelo teste da Story 11.6.
+  for (const key of ["deploy-amplify", "deploy-supabase", "tests"]) {
+    assert.ok(jobKeys.includes(key), `job '${key}' deve continuar existindo em production.yml`);
+  }
 });

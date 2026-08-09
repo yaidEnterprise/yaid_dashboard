@@ -275,19 +275,17 @@ test("AC7: job `tests` (Story 11.3) permanece intacto", () => {
   );
 });
 
-test("AC7: production.yml contém os jobs `tests` e `deploy-supabase` (e o `deploy-amplify` da 11.5)", () => {
-  // NOTA (Story 11.5): o teste original travava a contagem exata em
-  // `["deploy-supabase", "tests"]`. A Story 11.5 adicionou o job `deploy-amplify`
-  // (`needs: deploy-supabase`), então este contrato foi atualizado para
-  // `["deploy-amplify", "deploy-supabase", "tests"]` — análogo ao ajuste que a
-  // 11.4 fez no teste AC5 da 11.3. A intenção da 11.4 permanece: `tests` e
-  // `deploy-supabase` continuam existentes e encadeados (verificado abaixo e nos
-  // testes AC6/AC7 dedicados). O job `smoke-test` (11.6) ainda não existe.
+test("AC7: production.yml contém os jobs `tests` e `deploy-supabase` (e os jobs das stories seguintes)", () => {
+  // NOTA (Story 11.6): o teste original travava a contagem exata dos jobs. A cada
+  // story do Epic 11 a cadeia cresce (11.5 -> `deploy-amplify`, 11.6 ->
+  // `smoke-test`), então este contrato de contagem exata foi relaxado para uma
+  // verificação de presença. A intenção da 11.4 permanece: `tests` e
+  // `deploy-supabase` continuam existentes e encadeados (verificado nos testes
+  // AC6/AC7 dedicados). O conjunto EXATO de jobs é validado pelo teste da story
+  // mais recente (11.6).
   const doc = loadYaml(workflowPath);
   const jobKeys = Object.keys(doc.jobs).sort();
-  assert.deepEqual(
-    jobKeys,
-    ["deploy-amplify", "deploy-supabase", "tests"],
-    "devem existir tests, deploy-supabase e deploy-amplify (sem smoke-test 11.6)",
-  );
+  for (const key of ["deploy-supabase", "tests"]) {
+    assert.ok(jobKeys.includes(key), `job '${key}' deve continuar existindo em production.yml`);
+  }
 });

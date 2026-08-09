@@ -33,6 +33,7 @@
     "test:story:11.3": "node --test \"tests/unit/story-11-3/*.test.mjs\"",
     "test:story:11.4": "node --test \"tests/unit/story-11-4/*.test.mjs\"",
     "test:story:11.5": "node --test \"tests/unit/story-11-5/*.test.mjs\"",
+    "test:story:11.6": "node --test \"tests/unit/story-11-6/*.test.mjs\"",
     "start": "next start",
     "lint": "eslint"
   },
