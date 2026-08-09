@@ -130,7 +130,7 @@ development_status:
   epic-10-retrospective: optional
 
   # Epic 11: Pipeline de CI/CD de Produção (Sprint Change 2026-08-08)
-  epic-11: in-progress
+  epic-11: done
   11-1-health-check-endpoint: done
   11-2-amplify-yml-e-desabilitar-auto-build: done
   11-3-workflow-job-tests: done
