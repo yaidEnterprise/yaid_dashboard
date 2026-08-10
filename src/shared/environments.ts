@@ -149,15 +149,6 @@ export class Environments {
     return this.values.SUPABASE_SECRET_KEY;
   }
 
-  get YAID_VERIFICATION_BASE_URL() {
-    // Derivada de NEXT_PUBLIC_APP_URL (Story 11.8) — não é mais lida de
-    // `process.env` nem consta no conjunto de env vars sincronizado com o
-    // Amplify (`.env.local.example`). Remove a barra final antes de anexar
-    // `/v` para evitar `//v` quando NEXT_PUBLIC_APP_URL termina em `/`
-    // (review finding — Story 11.8).
-    return `${this.values.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/v`;
-  }
-
   get ISSUER_PRIVATE_KEY() {
     return requireConfiguredValue(
       this.values.ISSUER_PRIVATE_KEY,
@@ -310,7 +301,6 @@ export const publicEnv = {
 
 type RuntimeEnv = Omit<EnvValues, "STAGE"> & {
   stage: Stage;
-  YAID_VERIFICATION_BASE_URL: string;
 };
 
 export const env = new Proxy({} as RuntimeEnv, {
