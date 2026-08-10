@@ -1,48 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ChevronRight,
-  ChevronLeft,
-  ShieldCheck,
-  Loader2,
-  CheckCircle2,
-  Clock,
-  QrCode,
-  Smartphone,
-  ArrowRight,
-} from "lucide-react";
+import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { listApps, type YaidApp } from "@/lib/apps-store";
-import { EnvBadge } from "@/components/feedback/environment-badge";
-import { StatusBadge } from "@/components/feedback/status-badge";
+import { CopyButton } from "@/components/shared/copy-button";
 import { InlineCode } from "@/components/api/code-block";
+import { EnvBadge } from "@/components/feedback/environment-badge";
+import { listApps, type YaidApp } from "@/utils/apps-store";
+import { fetchWithAuth } from "@/utils/fetch-with-auth";
 
-type SimStep = "select-app" | "configure" | "waiting" | "result";
+type ProofType = "personhood" | "age_over_18";
+
+type CreatedProofRequest = {
+  id: string;
+  verificationUrl: string;
+  session: { verificationUrl: string };
+};
 
 export default function NewProofRequestPage() {
   const [apps, setApps] = useState<YaidApp[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [appsError, setAppsError] = useState<string | null>(null);
-
-  const [selectedApp, setSelectedApp] = useState<YaidApp | null>(null);
-  const [proofType] = useState("personhood");
-  const [externalRef, setExternalRef] = useState("");
-  const [step, setStep] = useState<SimStep>("select-app");
-
-  // Simulation result
-  const [requestId, setRequestId] = useState("");
-  const [sessionUrl, setSessionUrl] = useState("");
-  const [countdown, setCountdown] = useState(10);
-  const [resultStatus, setResultStatus] = useState<"approved" | "rejected">("approved");
+  const [selectedAppId, setSelectedAppId] = useState<string>("");
+  const [proofType, setProofType] = useState<ProofType>("personhood");
+  const [externalReference, setExternalReference] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createdRequest, setCreatedRequest] = useState<CreatedProofRequest | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
     listApps()
       .then((items) => {
         if (cancelled) return;
-        setApps(items.filter((a) => a.status === "enabled"));
+        setApps(items.filter((app) => app.status === "enabled"));
         setAppsError(null);
       })
       .catch((e: Error) => {
@@ -50,328 +43,198 @@ export default function NewProofRequestPage() {
         setAppsError(e.message);
       })
       .finally(() => !cancelled && setHydrated(true));
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  function handleSelectApp(app: YaidApp) {
-    setSelectedApp(app);
-    setStep("configure");
-  }
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedAppId) {
+      setError("Selecione um app ativo para continuar.");
+      return;
+    }
 
-  function handleCreateRequest() {
-    if (!selectedApp) return;
+    setIsSubmitting(true);
+    setError(null);
 
-    // Simulate creating a proof request
-    const id = `prq_${Date.now().toString(36)}${Math.random().toString(36).substring(2, 8)}`;
-    const token = `sess_${Math.random().toString(36).substring(2, 14)}`;
-    setRequestId(id);
-    setSessionUrl(`${window.location.origin}/v/${token}`);
-    setStep("waiting");
-    setCountdown(10);
-
-    toast.success("Proof request criada com sucesso!");
-  }
-
-  // Countdown timer for "waiting" step
-  useEffect(() => {
-    if (step !== "waiting") return;
-    const timer = setTimeout(() => {
-      setCountdown((current) => {
-        if (current <= 1) {
-          setResultStatus(Math.random() > 0.2 ? "approved" : "rejected");
-          setStep("result");
-          return 0;
-        }
-        return current - 1;
+    try {
+      const response = await fetchWithAuth("/api/proof-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appId: selectedAppId,
+          proofType: proofType,
+          externalReference: externalReference.trim() || null,
+        }),
       });
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [step, countdown]);
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error?.message || "Não foi possível criar a proof request.");
+      }
+
+      setCreatedRequest({
+        id: payload.id,
+        verificationUrl: payload.session?.verificationUrl || payload.verificationUrl || "",
+        session: payload.session,
+      });
+      toast.success("Proof request criada com sucesso!");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não foi possível criar a proof request.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <>
-      {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-text-secondary">
-        <Link href="/proof-requests" className="hover:text-text-primary">Proof Requests</Link>
-        <ChevronRight className="h-3.5 w-3.5 text-text-tertiary" />
+        <Link href="/proof-requests" className="hover:text-text-primary">
+          Proof Requests
+        </Link>
+        <span className="text-text-tertiary">/</span>
         <span className="text-text-primary">Nova solicitação</span>
       </nav>
 
-      {/* Header */}
       <div className="flex flex-col gap-4 border-b border-border pb-6">
         <Link
           href="/proof-requests"
           className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary"
         >
-          <ChevronLeft className="h-3.5 w-3.5" /> Voltar para lista
+          ← Voltar para lista
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight text-text-primary">
-          Criar solicitação
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight text-text-primary">Criar solicitação</h1>
         <p className="max-w-2xl text-sm text-text-secondary">
-          Simule o fluxo completo de uma verificação de identidade. Selecione um app, configure os parâmetros e acompanhe o resultado em tempo real.
+          Crie uma proof request diretamente pelo dashboard e copie a URL gerada para validar a integração.
         </p>
       </div>
 
-      {/* Step 1: Select App */}
-      {step === "select-app" && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-text-primary">1. Selecione o app</h2>
-            <p className="text-sm text-text-secondary">Escolha qual app emitirá a solicitação de prova.</p>
-          </div>
-
-          {!hydrated ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-trust" />
-            </div>
-          ) : appsError ? (
-            <div className="rounded-lg border border-border bg-surface p-8 text-center">
-              <p className="text-sm text-error-text">{appsError}</p>
-            </div>
-          ) : apps.length === 0 ? (
-            <div className="rounded-lg border border-border bg-surface p-8 text-center">
-              <p className="text-sm text-text-secondary">Nenhum app ativo encontrado.</p>
-              <Link
-                href="/apps/new"
-                className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-trust hover:underline"
-              >
-                Criar um app primeiro <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {apps.map((app) => (
-                <button
-                  key={app.id}
-                  type="button"
-                  onClick={() => handleSelectApp(app)}
-                  className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-left transition-all hover:border-trust hover:shadow-md"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-text-primary">{app.name}</span>
-                    <EnvBadge env={app.environment} />
-                  </div>
-                  <span className="text-[11px] text-text-tertiary">ID: {app.id}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Step 2: Configure */}
-      {step === "configure" && selectedApp && (
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
+      {!hydrated ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-5 w-5 animate-spin text-trust" />
+        </div>
+      ) : appsError ? (
+        <div className="rounded-lg border border-border bg-surface p-8 text-center text-sm text-error-text">
+          {appsError}
+        </div>
+      ) : apps.length === 0 ? (
+        <div className="rounded-lg border border-border bg-surface p-8 text-center">
+          <p className="text-sm text-text-secondary">Nenhum app ativo encontrado.</p>
+          <Link
+            href="/apps/new"
+            className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-trust hover:underline"
+          >
+            Criar um app primeiro <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      ) : (
+        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <form onSubmit={handleSubmit} className="space-y-5 rounded-lg border border-border bg-surface p-6 shadow-card">
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">2. Configurar solicitação</h2>
+              <h2 className="text-lg font-semibold text-text-primary">Dados da solicitação</h2>
               <p className="text-sm text-text-secondary">
-                Defina os parâmetros da proof request para o app <strong>{selectedApp.name}</strong>.
+                Escolha um app ativo, defina o tipo de prova e envie a solicitação para o fluxo de verificação.
               </p>
             </div>
 
-            <div className="rounded-lg border border-border bg-surface shadow-card">
-              <div className="border-b border-border px-6 py-4">
-                <h3 className="text-base font-semibold text-text-primary">Parâmetros</h3>
-              </div>
-              <div className="space-y-5 px-6 py-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-text-secondary">App selecionado</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-text-primary">{selectedApp.name}</span>
-                    <EnvBadge env={selectedApp.environment} />
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <label htmlFor="app" className="text-sm font-medium text-text-secondary">
+                App
+              </label>
+              <select
+                id="app"
+                value={selectedAppId}
+                onChange={(event) => setSelectedAppId(event.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
+              >
+                <option value="">Selecione um app</option>
+                {apps.map((app) => (
+                  <option key={app.id} value={app.id}>
+                    {app.name} ({app.environment})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text-secondary">Tipo de prova</label>
-                  <div className="flex items-center gap-3 rounded-md border border-trust/50 bg-trust/5 p-3">
-                    <ShieldCheck className="h-5 w-5 text-trust" />
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">Personhood</p>
-                      <p className="text-xs text-text-secondary">Confirma que o usuário é uma pessoa real.</p>
+            <div className="space-y-2">
+              <label htmlFor="proofType" className="text-sm font-medium text-text-secondary">
+                Tipo de prova
+              </label>
+              <select
+                id="proofType"
+                value={proofType}
+                onChange={(event) => setProofType(event.target.value as ProofType)}
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
+              >
+                <option value="personhood">Personhood</option>
+                <option value="age_over_18">Maior de 18 anos</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="externalReference" className="text-sm font-medium text-text-secondary">
+                Referência externa (opcional)
+              </label>
+              <input
+                id="externalReference"
+                type="text"
+                value={externalReference}
+                onChange={(event) => setExternalReference(event.target.value)}
+                placeholder="Ex.: order_123"
+                className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
+              />
+            </div>
+
+            {error ? (
+              <div className="rounded-md border border-error-border bg-error-bg px-3 py-2 text-sm text-error-text">
+                {error}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+              {isSubmitting ? "Criando..." : "Criar proof request"}
+            </button>
+          </form>
+
+          <aside className="space-y-4">
+            <div className="rounded-lg border border-border bg-surface p-5 shadow-card">
+              <div className="flex items-center gap-2 text-trust">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Fluxo</span>
+              </div>
+              <p className="mt-3 text-sm text-text-secondary">
+                A criação usa o endpoint interno autenticado por sessão do dashboard e gera uma URL de verificação para o usuário final.
+              </p>
+            </div>
+
+            {createdRequest ? (
+              <div className="rounded-lg border border-trust/30 bg-trust/5 p-5 shadow-card">
+                <p className="text-sm font-semibold text-text-primary">Solicitação criada</p>
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-text-tertiary">Request ID</p>
+                    <InlineCode copyable>{createdRequest.id}</InlineCode>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-text-tertiary">Verification URL</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <InlineCode copyable className="max-w-[240px]">
+                        {createdRequest.verificationUrl}
+                      </InlineCode>
+                      <CopyButton value={createdRequest.verificationUrl} label="Copiar" variant="inline" />
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text-secondary">Referência externa (opcional)</label>
-                  <input
-                    type="text"
-                    value={externalRef}
-                    onChange={(e) => setExternalRef(e.target.value)}
-                    placeholder="Ex.: user_12345 ou order_abc"
-                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-trust focus:outline-none focus:ring-2 focus:ring-trust/20"
-                  />
-                  <p className="text-[11px] text-text-tertiary">ID interno do seu sistema para rastrear esta solicitação.</p>
-                </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedApp(null);
-                  setStep("select-app");
-                }}
-                className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
-              >
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateRequest}
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Criar proof request
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Aside */}
-          <aside className="space-y-4">
-            <div className="rounded-lg border border-privacy/30 bg-privacy/5 p-5">
-              <div className="flex items-center gap-2 text-privacy">
-                <ShieldCheck className="h-4 w-4" />
-                <p className="text-[11px] font-semibold uppercase tracking-wider">Simulação</p>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-text-secondary">
-                Esta é uma simulação local. Em produção, proof requests são criadas via API com a chave secreta do app.
-              </p>
-            </div>
+            ) : null}
           </aside>
-        </section>
-      )}
-
-      {/* Step 3: Waiting for user */}
-      {step === "waiting" && (
-        <section className="flex flex-col items-center justify-center gap-6 py-8">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-trust/10">
-            <Smartphone className="h-10 w-10 text-trust animate-pulse" />
-          </div>
-
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-text-primary">Aguardando resposta do usuário</h2>
-            <p className="mt-2 max-w-md text-sm text-text-secondary">
-              Em um cenário real, o usuário abriria o link no app YaID e aprovaria o compartilhamento dos dados.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-6 py-4 shadow-card">
-            <QrCode className="h-12 w-12 text-text-tertiary" />
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-text-secondary">URL da verificação</p>
-              <InlineCode copyable>{sessionUrl}</InlineCode>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-warning-text" />
-              <StatusBadge status="pending" />
-            </div>
-            <p className="text-sm text-text-tertiary">
-              Simulando resposta em <span className="font-semibold text-text-primary">{countdown}s</span>…
-            </p>
-            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-surface-muted">
-              <div
-                className="h-full rounded-full bg-trust transition-all duration-1000"
-                style={{ width: `${((10 - countdown) / 10) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <p className="text-xs font-medium text-text-secondary">Request ID</p>
-            <InlineCode copyable>{requestId}</InlineCode>
-          </div>
-        </section>
-      )}
-
-      {/* Step 4: Result */}
-      {step === "result" && (
-        <section className="flex flex-col items-center justify-center gap-6 py-8">
-          <div className={`flex h-20 w-20 items-center justify-center rounded-full ${
-            resultStatus === "approved" ? "bg-verified/10" : "bg-error-bg"
-          }`}>
-            {resultStatus === "approved" ? (
-              <CheckCircle2 className="h-10 w-10 text-verified" />
-            ) : (
-              <ShieldCheck className="h-10 w-10 text-error-text" />
-            )}
-          </div>
-
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-text-primary">
-              {resultStatus === "approved" ? "Verificação concluída" : "Verificação rejeitada"}
-            </h2>
-            <p className="mt-2 max-w-md text-sm text-text-secondary">
-              {resultStatus === "approved"
-                ? "O usuário confirmou sua identidade com sucesso. O webhook do app receberia o resultado automaticamente."
-                : "O usuário rejeitou a solicitação ou ocorreu um erro na verificação."}
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-border bg-surface shadow-card">
-            <div className="divide-y divide-border">
-              <div className="flex items-center justify-between px-6 py-3.5">
-                <span className="text-xs font-medium text-text-secondary">Request ID</span>
-                <InlineCode copyable>{requestId}</InlineCode>
-              </div>
-              <div className="flex items-center justify-between px-6 py-3.5">
-                <span className="text-xs font-medium text-text-secondary">App</span>
-                <span className="text-sm text-text-primary">{selectedApp?.name}</span>
-              </div>
-              <div className="flex items-center justify-between px-6 py-3.5">
-                <span className="text-xs font-medium text-text-secondary">Tipo de prova</span>
-                <span className="text-sm capitalize text-text-primary">{proofType}</span>
-              </div>
-              <div className="flex items-center justify-between px-6 py-3.5">
-                <span className="text-xs font-medium text-text-secondary">Status</span>
-                <StatusBadge status={resultStatus} />
-              </div>
-              <div className="flex items-center justify-between px-6 py-3.5">
-                <span className="text-xs font-medium text-text-secondary">Resultado</span>
-                <span className={`text-sm font-medium ${resultStatus === "approved" ? "text-verified" : "text-error-text"}`}>
-                  {resultStatus === "approved" ? "true" : "false"}
-                </span>
-              </div>
-              {externalRef && (
-                <div className="flex items-center justify-between px-6 py-3.5">
-                  <span className="text-xs font-medium text-text-secondary">Ref. externa</span>
-                  <span className="text-sm text-text-primary">{externalRef}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/proof-requests"
-              className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
-            >
-              Voltar para lista
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedApp(null);
-                setStep("select-app");
-                setRequestId("");
-                setSessionUrl("");
-                setExternalRef("");
-                setCountdown(10);
-              }}
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Criar nova solicitação
-            </button>
-          </div>
         </section>
       )}
     </>

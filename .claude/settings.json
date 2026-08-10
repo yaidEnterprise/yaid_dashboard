@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --input-type=module)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-correct-course --key workflow)",
+      "Bash(supabase --version)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-edit-prd --key workflow)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-create-ux-design --key workflow)",
+      "Bash(python3 /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad/scripts/resolve_customization.py --skill /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/.claude/skills/bmad-create-architecture --key workflow)",
+      "Bash(grep -nE '^#{2,3} ' /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard/_bmad-output/planning-artifacts/architecture.md)",
+      "Bash(python3 _bmad/scripts/resolve_customization.py --skill .claude/skills/bmad-create-epics-and-stories --key workflow)",
+      "Bash(python3 _bmad/scripts/resolve_customization.py --skill .claude/skills/bmad-dev-story --key workflow)",
+      "Bash(node --test tests/unit/story-5-7/claim-consolidation.test.mjs)",
+      "Bash(node --test tests/unit/story-5-7/claim-consolidation.test.mjs tests/unit/story-5-4/credential-issuance.test.mjs tests/unit/story-5-5/*.test.mjs)",
+      "Bash(npx eslint *)",
+      "Bash(wc -c /tmp/story-5-7-review.diff)",
+      "Read(//private/tmp/**)",
+      "Read(//tmp/**)",
+      "Bash(node -e \"const ed = require\\('@noble/ed25519'\\); console.log\\(Object.keys\\(ed\\)\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node --test tests/unit/story-5-8/claim-proof-type-correspondence.test.mjs)",
+      "Bash(node --test tests/unit/story-5-5/ tests/unit/story-5-7/)",
+      "Bash(node --test tests/unit/story-5-5/presentation-verification.test.mjs)",
+      "Bash(git diff *)",
+      "Bash(npm install *)",
+      "Bash(cat)",
+      "Bash(npx tsx *)",
+      "Bash(cp src/modules/presentation/app/verify_presentation_usecase.ts /tmp/verify_presentation_usecase.ts.bak)",
+      "Bash(python3 -c ' *)",
+      "Bash(cd /Users/victordegasperi/Documents/repositorios-git/yaid_dashboard *)"
+    ],
+    "additionalDirectories": [
+      "/private/tmp"
+    ]
+  }
+}

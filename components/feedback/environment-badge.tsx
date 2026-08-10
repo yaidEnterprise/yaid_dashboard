@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 import { Beaker, FlaskConical, ShieldCheck } from "lucide-react";
 
 export type AppEnvironment = "dev" | "homol" | "prod";
