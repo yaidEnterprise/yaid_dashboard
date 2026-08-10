@@ -1,0 +1,170 @@
+# generated: 2026-05-12
+# last_updated: 2026-08-09
+# project: yaid_dashboard
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+#
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - test: The story is ready for unit test implementation
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-05-12
+last_updated: 2026-08-09
+project: yaid_dashboard
+# 2026-08-09: Story 11.4 criada (ready-for-dev)
+# 2026-08-09: Story 11.8 criada (ready-for-dev) — Sprint Change 2026-08-09: sync autoritativo de env vars
+# 2026-08-09: Sprint Change Complementar (simplificação de env vars) aprovado — sem nova story (escopo minor)
+
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Fundação Técnica e Acesso Empresarial
+  epic-1: done
+  1-1-reestruturacao-de-codigo-e-ambiente: done
+  1-2-middleware-de-autenticacao: done
+  1-3-migration-sql-e-dependencias-de-formulario: done
+  1-4-fetchwithauth-e-infraestrutura-de-auth-client: done
+  1-5-signup-atomico-de-empresa: done
+  1-6-login-e-protecao-de-rotas: done
+  1-7-configuracoes-da-empresa: done
+  epic-1-retrospective: optional
+
+  # Epic 2: Gestão de Aplicações e API Keys
+  epic-2: in-progress
+
+  2-1-listagem-de-aplicacoes: done
+  2-2-criacao-de-app-com-api-key-one-shot: done
+  2-3-detalhe-e-edicao-de-app: done
+  epic-2-retrospective: optional
+
+  # Epic 3: Proof Requests e Dashboard de Validações
+  epic-3: in-progress
+  3-1-endpoint-b2b-criacao-de-proof-request: done
+  3-2-listagem-de-proof-requests-no-dashboard: done
+  3-3-detalhe-de-proof-request: done
+  3-4-helper-de-criacao-de-proof-request-dashboard: done
+  3-5-overview-do-dashboard: done
+  epic-3-retrospective: optional
+
+  # Epic 4: Tela Coringa e Sessão de Verificação
+  epic-4: in-progress
+  4-1-endpoint-publico-de-status-da-sessao: done
+  4-2-tela-coringa-com-polling-e-6-estados-visuais: done
+  epic-4-retrospective: optional
+
+  # Epic 5: Emissão, Verificação e Gestão de Credenciais
+  epic-5: in-progress
+  5-1-middleware-de-auth-por-did-withdidauth: done
+  5-2-wrapper-blockchainclient: done
+  5-3-challenge-e-abertura-de-sessao: done
+  5-4-emissao-de-verifiable-credential: done
+  5-5-verificacao-de-verifiable-presentation: done
+  5-6-cancel-de-sessao-e-revogacao-de-credencial: done
+  # Sprint Change 2026-07-28 — entrega ACOPLADA: 5-7 e 5-8 não podem ser liberadas separadamente
+  # (5-7 sem 5-8 faz a credencial de um menor de idade aprovar um pedido de age_over_18)
+  5-7-consolidacao-de-claims-na-emissao: done
+  5-8-correspondencia-entre-claim-e-proof-type: done
+  epic-5-retrospective: optional
+
+  # Epic 6: Webhooks e Conclusão do Fluxo B2B
+  epic-6: in-progress
+  6-1-webhooksigner-e-entrega-de-webhook: done
+  6-2-endpoint-publico-da-chave-de-webhook: done
+  epic-6-retrospective: optional
+
+  # Epic 7: Ambientes por App, Governança de Criação e Review em Homologação
+  epic-7: in-progress
+  7-1-fundacao-de-versionamento-de-schema: done
+  7-2-coluna-updated-at-e-gravacao-em-toda-transicao: backlog
+  7-3-allowlist-de-criacao-de-apps: backlog
+  7-4-seletor-de-ambiente-na-criacao-de-app: backlog
+  7-5-review-manual-em-apps-homologacao: backlog
+  7-6-remocao-secao-resposta-da-api: done
+  epic-7-retrospective: optional
+
+  # Epic 8: Marca Oficial e Topbar Integrada
+  epic-8: in-progress
+  8-1-icone-oficial-yaid-nas-4-superficies-de-marca: done
+  8-2-topbar-dinamica-integrada-a-company-logada: done
+  epic-8-retrospective: optional
+
+  # Epic 9: Verifiable Credential como VC-JWT
+  epic-9: in-progress
+  9-1-emissao-da-vc-como-vc-jwt-eddsa: done
+  9-2-verificacao-da-vc-jwt-em-presentations-verify: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: Higiene de Configuração e Chaves (Sprint Change 2026-07-28, adendo §7)
+  # Ordem obrigatória: 10-1 antes de 10-2 (validar formato antes de 10-1 quebra o stage TEST).
+  # Independente das stories 5-7/5-8 — pode correr em paralelo.
+  epic-10: backlog
+  10-1-centralizacao-de-chaves-de-teste-no-environments: backlog
+  10-2-validacao-de-formato-de-chaves-no-boot: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11: Pipeline de CI/CD de Produção (Sprint Change 2026-08-08)
+  # 2026-08-09: reaberto (Sprint Change 2026-08-09) — Story 11.8 revisou o sync de env vars
+  # para o modelo autoritativo derivado do .env.local.example (substitui o merge da 11.5).
+  # 2026-08-09: Story 11.8 done — epic fechado novamente.
+  # 2026-08-09: Sprint Change Complementar (simplificação de env vars) aprovado — escopo minor,
+  # ajuste dentro do Epic 11 sem nova story. Artefatos de planejamento (epics.md, architecture.md)
+  # já atualizados; implementação de código/docs pendente. Ver a chave sprint-changes abaixo.
+  epic-11: done
+  11-1-health-check-endpoint: done
+  11-2-amplify-yml-e-desabilitar-auto-build: done
+  11-3-workflow-job-tests: done
+  11-4-workflow-job-deploy-supabase: done
+  11-5-workflow-job-deploy-amplify: done
+  11-6-workflow-job-smoke-test: done
+  11-7-documentacao-operacional: done
+  11-8-sync-autoritativo-de-env-vars-no-amplify: done
+  epic-11-retrospective: optional
+
+# Registro de sprint changes que NÃO geraram story própria (escopo minor).
+# Não fazem parte de development_status — são rastreados aqui apenas para auditoria.
+sprint_changes:
+  - id: sprint-change-2026-08-09-simplificacao-env-vars
+    date: '2026-08-09'
+    epic: epic-11
+    scope: minor
+    status: done # implementado em 2026-08-09 — código, docs e testes concluídos
+    proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-09.md
+    summary: >-
+      Simplificação de env vars sobre o resultado da Story 11.8:
+      (1) smoke-test passa a usar vars.NEXT_PUBLIC_APP_URL e o secret PRODUCTION_URL é eliminado;
+      (2) getter derivado YAID_VERIFICATION_BASE_URL removido de environments.ts e de RuntimeEnv —
+      URL de verificação derivada inline em create_proof_request_usecase.ts como
+      ${env.NEXT_PUBLIC_APP_URL}/v/${token}.
+    artifacts_updated:
+      - _bmad-output/planning-artifacts/epics.md
+      - _bmad-output/planning-artifacts/architecture.md
+ 
