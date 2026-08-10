@@ -153,13 +153,20 @@ test("contract: o orquestrador só passa valores ${{ secrets.* }} ou ${{ toJSON(
     (s) => typeof s.uses === "string" && s.uses === "./.github/jobs/deploy-amplify",
   );
   // Os inputs github-variables-json/github-secrets-json (Story 11.8) usam
-  // toJSON(vars)/toJSON(secrets); os demais continuam secrets.* diretos.
+  // toJSON(vars)/toJSON(secrets); amplify-branch-name usa github.ref_name (não
+  // é secret — é sempre igual ao branch que disparou o workflow); os demais
+  // continuam secrets.* diretos.
   const toJsonKeys = new Set(["github-variables-json", "github-secrets-json"]);
   for (const [key, val] of Object.entries(compositeStep.with ?? {})) {
     if (toJsonKeys.has(key)) {
       assert.ok(
         /^\$\{\{\s*toJSON\((vars|secrets)\)\s*\}\}$/.test(String(val)),
         `with.${key} deve ser exatamente uma referência a toJSON(vars)/toJSON(secrets) (foi: ${val})`,
+      );
+    } else if (key === "amplify-branch-name") {
+      assert.ok(
+        /^\$\{\{\s*github\.ref_name\s*\}\}$/.test(String(val)),
+        `with.${key} deve ser exatamente uma referência a github.ref_name (foi: ${val})`,
       );
     } else {
       assert.ok(

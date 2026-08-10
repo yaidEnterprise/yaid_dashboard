@@ -260,7 +260,10 @@ describe("Patch #4 (real bash): denylist AWS_*/AMPLIFY_*/SUPABASE_ACCESS_TOKEN/G
 
 describe("Patch #2 (real bash): guard de payload vazio antes do update-branch autoritativo", () => {
   test("todos os nomes SEM valor em Secrets/Variables: payload {} -> exit 1, aws NUNCA chamado", () => {
-    const workspace = makeWorkspace("STAGE=PROD\nNEXT_PUBLIC_APP_URL=https://a.example\n");
+    // STAGE é excluído deste fixture de propósito: desde o auto-derive por
+    // branch, STAGE sempre resolve um valor, então incluí-lo aqui não testaria
+    // o guard de payload vazio de verdade.
+    const workspace = makeWorkspace("NEXT_PUBLIC_APP_URL=https://a.example\n");
     const result = runSyncStep({
       workspace,
       secretsJson: JSON.stringify({}),
@@ -275,7 +278,8 @@ describe("Patch #2 (real bash): guard de payload vazio antes do update-branch au
   });
 
   test("VARS_JSON/SECRETS_JSON vazios ({}) simulando checkout/payload incorreto: mesmo guard dispara", () => {
-    const workspace = makeWorkspace("STAGE=PROD\n");
+    // Idem: sem STAGE no fixture, para que o payload realmente fique vazio.
+    const workspace = makeWorkspace("NEXT_PUBLIC_APP_URL=https://a.example\n");
     const result = runSyncStep({ workspace, secretsJson: "{}", varsJson: "{}" });
     assert.equal(result.code, 1);
     assert.equal(result.awsCalls.length, 0);
@@ -320,6 +324,42 @@ describe("Patch #2 (real bash): guard de payload vazio antes do update-branch au
     const cliInputMatch = calls[0].match(/--cli-input-json\s+(\{[\s\S]*\})$/);
     const cliInput = JSON.parse(cliInputMatch[1]);
     assert.deepEqual(cliInput.environmentVariables, { STAGE: "PROD" }, "OCR_API_URL vazio não deve entrar no payload");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// STAGE — derivado automaticamente do branch publicado, nunca de Secrets/Vars
+// ---------------------------------------------------------------------------
+
+describe("STAGE (real bash): derivado de AMPLIFY_BRANCH_NAME, nunca de Secrets/Variables", () => {
+  test("branch 'prod' -> STAGE=PROD no payload, mesmo sem STAGE em Secrets/Variables", () => {
+    const workspace = makeWorkspace("STAGE=DOTENV\n");
+    const result = runSyncStep({
+      workspace,
+      secretsJson: JSON.stringify({}),
+      varsJson: JSON.stringify({}), // STAGE nunca cadastrado no GitHub
+    });
+    assert.equal(result.code, 0, `esperado sucesso; stderr: ${result.stderr}`);
+    const cliInputMatch = result.awsCalls[0].match(/--cli-input-json\s+(\{[\s\S]*\})$/);
+    const cliInput = JSON.parse(cliInputMatch[1]);
+    assert.deepEqual(cliInput.environmentVariables, { STAGE: "PROD" });
+  });
+
+  test("um Secret/Variable chamado STAGE é IGNORADO — o valor sempre vem do branch", () => {
+    const workspace = makeWorkspace("STAGE=DOTENV\n");
+    const result = runSyncStep({
+      workspace,
+      secretsJson: JSON.stringify({ STAGE: "HOMOLOG" }), // deve ser ignorado
+      varsJson: JSON.stringify({}),
+    });
+    assert.equal(result.code, 0, `esperado sucesso; stderr: ${result.stderr}`);
+    const cliInputMatch = result.awsCalls[0].match(/--cli-input-json\s+(\{[\s\S]*\})$/);
+    const cliInput = JSON.parse(cliInputMatch[1]);
+    assert.deepEqual(
+      cliInput.environmentVariables,
+      { STAGE: "PROD" },
+      "o Secret STAGE cadastrado por engano não deve vazar para o payload",
+    );
   });
 });
 

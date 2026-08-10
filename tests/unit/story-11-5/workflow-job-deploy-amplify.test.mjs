@@ -349,7 +349,8 @@ test("AC7: job passa secrets ao composite via with: referenciando ${{ secrets.* 
   assert.ok(compositeStep, "deve haver o step do composite");
   assert.ok(compositeStep.with, "o step do composite deve ter bloco with:");
   // Os dois inputs de Story 11.8 (github-variables-json/github-secrets-json)
-  // usam toJSON(vars)/toJSON(secrets) — os demais continuam secrets.* diretos.
+  // usam toJSON(vars)/toJSON(secrets); amplify-branch-name usa github.ref_name
+  // (não é secret) — os demais continuam secrets.* diretos.
   const toJsonInputs = new Set(["github-variables-json", "github-secrets-json"]);
   for (const key of REQUIRED_INPUTS) {
     assert.ok(compositeStep.with[key] !== undefined, `with deve passar '${key}'`);
@@ -358,6 +359,11 @@ test("AC7: job passa secrets ao composite via with: referenciando ${{ secrets.* 
       assert.ok(
         /\$\{\{\s*toJSON\((vars|secrets)\)\s*\}\}/.test(value),
         `with.${key} deve referenciar toJSON(vars)/toJSON(secrets) (nunca literal)`,
+      );
+    } else if (key === "amplify-branch-name") {
+      assert.ok(
+        /\$\{\{\s*github\.ref_name\s*\}\}/.test(value),
+        `with.${key} deve referenciar github.ref_name (nunca literal)`,
       );
     } else {
       assert.ok(
