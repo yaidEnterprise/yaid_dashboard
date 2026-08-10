@@ -23,17 +23,17 @@ inputs:
   supabase-access-token:
     description: >-
       Personal access token da Supabase (auth da CLI). Passado pelo orquestrador
-      via `${{ secrets.SUPABASE_ACCESS_TOKEN }}`. Nunca hardcoded, nunca ecoado.
+      via o secret `secrets.SUPABASE_ACCESS_TOKEN`. Nunca hardcoded, nunca ecoado.
     required: true
   supabase-project-ref:
     description: >-
       Project ref do projeto Supabase Cloud (ex.: o ref do projeto de produção).
-      Passado via `${{ secrets.SUPABASE_PROJECT_REF }}`. Nunca hardcoded.
+      Passado via o secret `secrets.SUPABASE_PROJECT_REF`. Nunca hardcoded.
     required: true
   supabase-db-password:
     description: >-
       Senha do banco de dados Postgres do projeto Supabase (necessária para
-      `link`/`db push`). Passada via `${{ secrets.SUPABASE_DB_PASSWORD }}`.
+      `link`/`db push`). Passada via o secret `secrets.SUPABASE_DB_PASSWORD`.
       Nunca hardcoded, nunca ecoada.
     required: true
 
