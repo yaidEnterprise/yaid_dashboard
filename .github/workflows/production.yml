@@ -5,7 +5,7 @@ name: Production Release
 #   tests (11.3) -> deploy-supabase (11.4) -> deploy-amplify (11.5) -> smoke-test (11.6).
 # Esta story (11.6) adiciona o job FINAL `smoke-test`, encadeado após
 # `deploy-amplify` (`needs: deploy-amplify`): a validação pós-deploy (GET
-# $PRODUCTION_URL/api/health com retries finitos) só roda depois que o app for
+# $NEXT_PUBLIC_APP_URL/api/health com retries finitos) só roda depois que o app for
 # publicado no Amplify com sucesso. Com isso a cadeia completa fica
 # tests -> deploy-supabase -> deploy-amplify -> smoke-test.
 #
@@ -84,6 +84,9 @@ jobs:
       # nomes derivados do `.env.local.example`, valores resolvidos por
       # colocação (Secrets -> Variables) a partir de `toJSON(vars)`/
       # `toJSON(secrets)` — replace total do branch, sem get-branch/merge.
+      # `amplify-branch-name` vem de `github.ref_name` (branch que disparou o
+      # workflow via `on.push.branches: [prod]`) — não é um secret, pois é
+      # sempre igual ao branch da pipeline, nunca configurado à parte.
       - name: Run deploy-amplify composite
         uses: ./.github/jobs/deploy-amplify
         with:
@@ -92,14 +95,14 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           amplify-app-id: ${{ secrets.AMPLIFY_APP_ID }}
-          amplify-branch-name: ${{ secrets.AMPLIFY_BRANCH_NAME }}
+          amplify-branch-name: ${{ github.ref_name }}
           github-variables-json: ${{ toJSON(vars) }}
           github-secrets-json: ${{ toJSON(secrets) }}
 
   # Gate FINAL: valida a aplicação publicada via health check. Só roda depois que
   # `deploy-amplify` concluir o RELEASE no Amplify (`needs: deploy-amplify`) — ou
   # seja, o Amplify já atingiu SUCCEED (Story 11.5) antes de qualquer requisição.
-  # Faz GET $PRODUCTION_URL/api/health (endpoint da Story 11.1) com retries finitos
+  # Faz GET $NEXT_PUBLIC_APP_URL/api/health (endpoint da Story 11.1) com retries finitos
   # e falha explicitamente se nunca retornar 200 (§5.8/§6). Fecha a cadeia
   # tests -> deploy-supabase -> deploy-amplify -> smoke-test.
   smoke-test:
@@ -116,4 +119,4 @@ jobs:
       - name: Run smoke-test composite
         uses: ./.github/jobs/smoke-test
         with:
-          production-url: ${{ secrets.PRODUCTION_URL }}
+          production-url: ${{ vars.NEXT_PUBLIC_APP_URL }}

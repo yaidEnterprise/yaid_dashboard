@@ -2,7 +2,7 @@ name: "Smoke Test"
 description: >-
   Composite action que valida a aplicação recém-publicada como GATE FINAL do
   release de produção (Epic 11), DEPOIS do deploy do app (deploy-amplify, Story
-  11.5). Faz `GET $PRODUCTION_URL/api/health` (endpoint público entregue pela
+  11.5). Faz `GET $NEXT_PUBLIC_APP_URL/api/health` (endpoint público entregue pela
   Story 11.1) com RETRIES FINITOS (timeout / número máximo de tentativas),
   considera sucesso apenas em HTTP 200 (e valida o corpo `{status:"ok"}`) e falha
   explicitamente (exit não-zero) ao esgotar as tentativas — nunca um loop infinito.
@@ -12,7 +12,7 @@ description: >-
 # deploy-supabase (11.4) e deploy-amplify (11.5), NÃO consome credenciais
 # sensíveis — mas a URL de produção NUNCA é hardcoded: entra via `input`
 # (`production-url`) passado pelo orquestrador `production.yml` a partir de
-# `${{ secrets.PRODUCTION_URL }}` (ou `${{ vars.PRODUCTION_URL }}`).
+# `${{ vars.NEXT_PUBLIC_APP_URL }}` (Variable do GitHub).
 #
 # §5.8 CRÍTICO (retries finitos): o smoke-test tem timeout / número máximo de
 # tentativas (loop finito) e falha explicitamente (exit 1) ao esgotar os retries
@@ -20,7 +20,7 @@ description: >-
 # a responder logo após o deploy (cold start / propagação), daí os retries com
 # `sleep` entre tentativas — mas o limite é finito.
 #
-# §6 (critério de sucesso): `GET $PRODUCTION_URL/api/health` retorna HTTP 200
+# §6 (critério de sucesso): `GET $NEXT_PUBLIC_APP_URL/api/health` retorna HTTP 200
 # `{status:"ok"}`. O smoke-test só roda após o Amplify `SUCCEED` (garantido por
 # `needs: deploy-amplify` no orquestrador), então o app já deve estar publicado.
 
@@ -29,14 +29,14 @@ inputs:
     description: >-
       URL base da aplicação em produção (ex.: https://app.exemplo.com). O smoke
       test faz `GET <production-url>/api/health`. Passada via
-      `${{ secrets.PRODUCTION_URL }}` ou `${{ vars.PRODUCTION_URL }}` a partir do
+      `${{ vars.NEXT_PUBLIC_APP_URL }}` (Variable do GitHub) a partir do
       orquestrador. NUNCA hardcoded neste arquivo.
     required: true
 
 runs:
   using: "composite"
   steps:
-    # SMOKE TEST COM RETRIES FINITOS (§5.8 + §6): faz `GET $PRODUCTION_URL/api/health`
+    # SMOKE TEST COM RETRIES FINITOS (§5.8 + §6): faz `GET $NEXT_PUBLIC_APP_URL/api/health`
     # até obter HTTP 200 (e corpo `{status:"ok"}`), com timeout/max tentativas
     # (30 x 10s = 5 min). Sucesso -> exit 0; esgotar as tentativas -> exit 1.
     # Nunca um loop infinito. A URL vem do input via `env:` (nunca hardcoded).

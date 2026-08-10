@@ -13,7 +13,9 @@ description: >-
 
 # SEGURANÇA (§4-D e §5.7 da sprint change proposal 2026-08-08; Story 11.8):
 # Este composite consome SECRETS (credenciais bootstrap AWS, ARN do role de
-# deploy, app-id, branch e os payloads JSON de Variables/Secrets do GitHub). Eles
+# deploy, app-id e os payloads JSON de Variables/Secrets do GitHub) e o nome do
+# branch via `github.ref_name` (não é secret — sempre igual ao branch da
+# pipeline). Eles
 # entram EXCLUSIVAMENTE via `inputs` (passados pelo orquestrador `production.yml`
 # a partir de `${{ secrets.* }}` / `${{ toJSON(vars) }}` / `${{ toJSON(secrets) }}`)
 # — NUNCA hardcoded neste arquivo — e são expostos aos comandos apenas via `env:`
@@ -73,7 +75,8 @@ inputs:
   amplify-branch-name:
     description: >-
       Nome do branch do Amplify a publicar (ex.: prod). Passado via
-      `${{ secrets.AMPLIFY_BRANCH_NAME }}`. Nunca hardcoded.
+      `${{ github.ref_name }}` — o branch que disparou o workflow, não um
+      secret (é sempre igual ao branch da pipeline, nunca configurado à parte).
     required: true
   github-variables-json:
     description: >-
@@ -109,9 +112,11 @@ runs:
     # (1) deriva os NOMES do `.env.local.example` (ignora comentários/linhas
     #     vazias), (2) resolve o VALOR de cada nome por colocação — primeiro em
     #     Secrets, senão em Variables — omitindo nomes sem valor em nenhum dos
-    #     dois, (3) envia o mapa resolvido via `update-branch` como REPLACE total
-    #     do branch. Sem echo/cat das env vars sensíveis (o GitHub também
-    #     mascara secrets).
+    #     dois, exceto `STAGE`, que é derivado automaticamente do branch
+    #     publicado (upper-case de `AMPLIFY_BRANCH_NAME`) e NUNCA consultado em
+    #     Secrets/Variables — (3) envia o mapa resolvido via `update-branch`
+    #     como REPLACE total do branch. Sem echo/cat das env vars sensíveis (o
+    #     GitHub também mascara secrets).
     - name: Sincroniza env vars no Amplify (replace autoritativo)
       shell: bash
       env:
@@ -152,6 +157,15 @@ runs:
           if [[ "$name" =~ ^(AWS_|AMPLIFY_)|^(SUPABASE_ACCESS_TOKEN|GITHUB_TOKEN)$ ]]; then
             echo "::error::'$name' parece um secret de infra e não deve estar em .env.local.example — sync abortado."
             exit 1
+          fi
+          # STAGE é derivado do branch publicado, não de Secrets/Variables: o
+          # branch que dispara o release JÁ determina o stage (esta pipeline só
+          # roda em `prod`, então STAGE=PROD sempre) — não é algo configurável à
+          # parte, então nunca consulta SECRETS_JSON/VARS_JSON para este nome.
+          if [ "$name" = "STAGE" ]; then
+            value="$(tr '[:lower:]' '[:upper:]' <<<"$AMPLIFY_BRANCH_NAME")"
+            payload="$(jq --arg n "$name" --arg v "$value" '. + {($n): $v}' <<<"$payload")"
+            continue
           fi
           value="$(jq -r --arg n "$name" '.[$n] // empty' <<<"$SECRETS_JSON")"
           if [ -z "$value" ]; then
