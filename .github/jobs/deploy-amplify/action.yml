@@ -107,6 +107,12 @@ runs:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.aws-role-to-assume }}
         role-session-name: yaid-deploy-amplify
+        # O bootstrap user tem SÓ `sts:AssumeRole` (least-privilege, §5.7). Por
+        # padrão o action faz session tagging (`sts:TagSession`), permissão que o
+        # usuário não possui — desabilitamos para não exigir permissão extra e
+        # honrar o least-privilege. Não usamos ABAC nem as session tags no
+        # CloudTrail (o rastreio vem do log do Actions + role-session-name).
+        role-skip-session-tagging: true
 
     # SYNC AUTORITATIVO DE ENV VARS (Story 11.8 — replace, sem get-branch/merge):
     # (1) deriva os NOMES do `.env.local.example` (ignora comentários/linhas
