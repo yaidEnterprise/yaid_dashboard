@@ -29,7 +29,7 @@ inputs:
     description: >-
       URL base da aplicação em produção (ex.: https://app.exemplo.com). O smoke
       test faz `GET <production-url>/api/health`. Passada via
-      `${{ vars.NEXT_PUBLIC_APP_URL }}` (Variable do GitHub) a partir do
+      a variable `vars.NEXT_PUBLIC_APP_URL` (Variable do GitHub) a partir do
       orquestrador. NUNCA hardcoded neste arquivo.
     required: true
 
