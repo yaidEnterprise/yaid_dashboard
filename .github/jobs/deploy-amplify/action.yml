@@ -48,47 +48,47 @@ inputs:
   aws-access-key-id:
     description: >-
       Access key ID das credenciais bootstrap do IAM User (que só possui
-      `sts:AssumeRole`). Passado via `${{ secrets.AWS_ACCESS_KEY_ID }}`. Nunca
+      `sts:AssumeRole`). Passado via o secret `secrets.AWS_ACCESS_KEY_ID`. Nunca
       hardcoded, nunca ecoado.
     required: true
   aws-secret-access-key:
     description: >-
       Secret access key das credenciais bootstrap do IAM User. Passado via
-      `${{ secrets.AWS_SECRET_ACCESS_KEY }}`. Nunca hardcoded, nunca ecoado.
+      o secret `secrets.AWS_SECRET_ACCESS_KEY`. Nunca hardcoded, nunca ecoado.
     required: true
   aws-region:
     description: >-
       Região AWS do app Amplify (ex.: us-east-1). Passada via
-      `${{ secrets.AWS_REGION }}` (ou variable). Nunca hardcoded.
+      o secret `secrets.AWS_REGION` (ou variable). Nunca hardcoded.
     required: true
   aws-role-to-assume:
     description: >-
       ARN do IAM Role de deploy a ser assumido via `sts:AssumeRole` (least-
       privilege: apenas ações do Amplify no ARN do app). Passado via
-      `${{ secrets.AWS_DEPLOY_ROLE_ARN }}`. Nunca hardcoded.
+      o secret `secrets.AWS_DEPLOY_ROLE_ARN`. Nunca hardcoded.
     required: true
   amplify-app-id:
     description: >-
-      ID do app no AWS Amplify. Passado via `${{ secrets.AMPLIFY_APP_ID }}`.
+      ID do app no AWS Amplify. Passado via o secret `secrets.AMPLIFY_APP_ID`.
       Nunca hardcoded.
     required: true
   amplify-branch-name:
     description: >-
       Nome do branch do Amplify a publicar (ex.: prod). Passado via
-      `${{ github.ref_name }}` — o branch que disparou o workflow, não um
+      o contexto `github.ref_name` — o branch que disparou o workflow, não um
       secret (é sempre igual ao branch da pipeline, nunca configurado à parte).
     required: true
   github-variables-json:
     description: >-
       Payload JSON (objeto {chave:valor}) com TODAS as GitHub Variables do
-      repositório/environment. Passado via `${{ toJSON(vars) }}`. Usado como
+      repositório/environment. Passado via a expressão toJSON(vars). Usado como
       fonte de valor (segunda prioridade, depois de Secrets) para os nomes
       derivados do `.env.local.example`. Nunca hardcoded, nunca ecoado.
     required: true
   github-secrets-json:
     description: >-
       Payload JSON (objeto {chave:valor}) com TODOS os GitHub Secrets do
-      repositório/environment. Passado via `${{ toJSON(secrets) }}`. Usado como
+      repositório/environment. Passado via a expressão toJSON(secrets). Usado como
       fonte de valor (primeira prioridade) para os nomes derivados do
       `.env.local.example`. Nunca hardcoded, nunca ecoado.
     required: true
