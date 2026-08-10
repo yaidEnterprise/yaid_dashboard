@@ -51,10 +51,26 @@ describe("Story 11.2 (QA) — amplify.yml parses as real, well-formed YAML", () 
     assert.deepEqual(doc.frontend.phases.preBuild.commands, ["npm ci"]);
   });
 
-  test("frontend.phases.build.commands is an array containing exactly 'npm run build'", () => {
+  test("frontend.phases.build.commands materializes .env.production then runs 'npm run build' last", () => {
     const doc = loadAmplifyYml();
-    assert.ok(Array.isArray(doc.frontend?.phases?.build?.commands));
-    assert.deepEqual(doc.frontend.phases.build.commands, ["npm run build"]);
+    const commands = doc.frontend?.phases?.build?.commands;
+    assert.ok(Array.isArray(commands));
+
+    // `npm run build` (next build) must remain the final command of the build phase.
+    assert.equal(commands.at(-1), "npm run build");
+
+    // A preceding step materializes the Amplify branch env vars into .env.production so the
+    // Next.js SSR runtime can read them (added in commit 472995a). It must use an explicit
+    // whitelist appended (>>) to .env.production — never a raw `env` dump, which would leak
+    // AWS infra credentials into the artifacts.
+    const envStep = commands.find((c) => c.includes(">> .env.production"));
+    assert.ok(envStep, "expected a build command that appends env vars to .env.production");
+    assert.match(envStep, /^env \| grep\b/, "env-materialization step must filter `env` via grep whitelist");
+    assert.doesNotMatch(
+      envStep,
+      /SUPABASE_DB_PASSWORD/,
+      "SUPABASE_DB_PASSWORD is CLI-only and must not be materialized into .env.production",
+    );
   });
 
   test("frontend.artifacts.baseDirectory is exactly the string '.next'", () => {
