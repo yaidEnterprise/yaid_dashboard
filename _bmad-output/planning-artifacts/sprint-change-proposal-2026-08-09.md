@@ -246,3 +246,48 @@ não passada desaparece" (replace autoritativo), com classificação Secret/Vari
   2. Todas as 13 variáveis do `.env.local.example` presentes no branch Amplify após o release.
   3. Nenhuma variável fora dessa lista permanece no branch Amplify (replace confirmado).
   4. Nenhum valor de secret aparece nos logs da pipeline.
+
+---
+
+## Sprint Change Complementar — Simplificação de env vars (2026-08-09)
+
+- **Autor:** Victordegasperi (com apoio do agente Dev)
+- **Epic afetado:** Epic 11 — Pipeline de CI/CD de Produção
+- **Classificação de escopo:** **Minor** (sem novos testes de contrato; sem mudança de API pública; refactoring interno e ajuste de CI)
+
+### Problema
+
+Duas variáveis identificadas como redundantes/indevidas após a implementação do modelo autoritativo (seção acima):
+
+1. **`PRODUCTION_URL`** (GitHub Secret, consumido apenas pelo smoke-test) aponta para a mesma URL pública que `NEXT_PUBLIC_APP_URL` (GitHub Variable, já sincronizada ao Amplify e consumida pelo app). Manter as duas obriga o operador a cadastrar e manter o mesmo valor em dois lugares.
+2. **`YAID_VERIFICATION_BASE_URL`** tornou-se, na Story 11.8, um getter *derivado* em `src/shared/environments.ts` (`${NEXT_PUBLIC_APP_URL}/v`). Isso viola o princípio de que `environments.ts` só deve expor variáveis que correspondem a variáveis de ambiente reais — não valores computados.
+
+### Decisões
+
+- **`PRODUCTION_URL`:** reusar `vars.NEXT_PUBLIC_APP_URL` no smoke-test e eliminar o secret.
+- **`YAID_VERIFICATION_BASE_URL`:** remover o getter; derivar a URL de verificação inline no único consumidor (`create_proof_request_usecase.ts`).
+- **Normalização de barra final:** não usar `.replace(/\/+$/, "")` — a convenção é `NEXT_PUBLIC_APP_URL` sem barra final; o `.env.local.example` documenta isso.
+
+### Mudanças de código
+
+| Arquivo | Mudança |
+|---|---|
+| `.github/workflows/production.yml` | `production-url: ${{ secrets.PRODUCTION_URL }}` → `${{ vars.NEXT_PUBLIC_APP_URL }}`; comentários atualizados |
+| `.github/jobs/smoke-test/action.yml` | `description` e comentários: "vem de `vars.NEXT_PUBLIC_APP_URL`" em vez de `secrets.PRODUCTION_URL` |
+| `src/shared/environments.ts` | Remover getter `YAID_VERIFICATION_BASE_URL()` e membro do tipo `RuntimeEnv` |
+| `src/modules/proof-request/app/create_proof_request_usecase.ts` | `` `${env.YAID_VERIFICATION_BASE_URL}/${token}` `` → `` `${env.NEXT_PUBLIC_APP_URL}/v/${token}` `` |
+| `.env.local.example` | Comentário em `NEXT_PUBLIC_APP_URL` reforça convenção "sem barra final" |
+| `tests/unit/story-11-8/environments-yaid-verification-url.dynamic.test.ts` | **Deletar** (testava exclusivamente o getter removido) |
+| `docs/deployment/production-cicd.md` | Remover linha `PRODUCTION_URL` da tabela §6; atualizar menções narrativas; atualizar nota §6.2 sobre `YAID_VERIFICATION_BASE_URL` |
+| `docs/ops/amplify-deploy.md` | `GET $PRODUCTION_URL/api/health` → `GET $NEXT_PUBLIC_APP_URL/api/health` |
+
+### Contrato de testes
+
+- `tests/unit/story-11-6/**` (smoke-test): passam sem alteração — o assert aceita `vars.*`.
+- `tests/unit/story-11-8/env-var-sync-authoritative.test.mjs`: sem alteração.
+- `tests/unit/story-3-1/create-proof-request.test.mjs`: sem alteração (grep de `verificationUrl`, não do getter).
+- Teste de compilação tsc da story-9-1: valida remoção do membro `RuntimeEnv`.
+
+### Operacional
+
+Após o merge, **remover o secret `PRODUCTION_URL`** do GitHub — o smoke-test passa a usar a Variable `NEXT_PUBLIC_APP_URL` já existente.

@@ -25,21 +25,31 @@ editHistory:
   - date: '2026-08-08'
     changes: 'Correct Course (Sprint Change 2026-08-08) — edição direcionada na seção Infraestrutura & Deploy: CI/CD de produção passa a modelo orquestrado pelo GitHub Actions na branch prod (gates sequenciais tests → deploy-supabase → deploy-amplify → smoke-test), com auto-build do Amplify desabilitado na branch prod; migrations via supabase db push (com --dry-run) antes do deploy do app (expand→deploy→contract); autenticação AWS via IAM sts:AssumeRole least-privilege; health check público GET /api/health com whitelisting em middleware.ts. Epic 11 introduzido. Sem impacto em schema, camadas, blockchain ou stack.'
   - date: '2026-08-09'
-    changes: 'Correct Course (Sprint Change 2026-08-09) — Infraestrutura & Deploy: sync de env vars no Amplify passa de merge para AUTORITATIVO derivado do .env.local.example (replace via update-branch; nomes vêm do .env.local.example, valores resolvidos pela colocação Secrets→Variables; classificação KEY|PASSWORD|PRIVATE|SECRET|TOKEN com exceções NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY→Variable e BLOCKCHAIN_RPC_URL→Secret; secret AMPLIFY_ENVIRONMENT_VARIABLES removido). Regra nova: YAID_VERIFICATION_BASE_URL deixa de ser env var e é derivada como ${NEXT_PUBLIC_APP_URL}/v em environments.ts. Story 11.8 criada; Epic 11 reaberto. Sem impacto em schema, camadas, blockchain ou stack.'
+    changes: 'Correct Course (Sprint Change 2026-08-09) — Infraestrutura & Deploy: sync de env vars no Amplify passa de merge para AUTORITATIVO derivado do .env.local.example (replace via update-branch; nomes vêm do .env.local.example, valores resolvidos pela colocação Secrets→Variables; classificação KEY|PASSWORD|PRIVATE|SECRET|TOKEN com exceções NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY→Variable e BLOCKCHAIN_RPC_URL→Secret; secret AMPLIFY_ENVIRONMENT_VARIABLES removido). Regra nova: YAID_VERIFICATION_BASE_URL deixa de ser env var. Story 11.8 criada; Epic 11 reaberto. Sem impacto em schema, camadas, blockchain ou stack.'
+  - date: '2026-08-09'
+    changes: 'Correct Course (Sprint Change Complementar 2026-08-09) — simplificação de env vars, sem nova story: (1) o smoke-test passa a receber a URL de produção de vars.NEXT_PUBLIC_APP_URL e o secret PRODUCTION_URL é eliminado (era redundante com a Variable já sincronizada ao Amplify); (2) o getter derivado YAID_VERIFICATION_BASE_URL é REMOVIDO de environments.ts e do tipo RuntimeEnv — a URL de verificação passa a ser montada inline no único consumidor (create_proof_request_usecase.ts) como ${env.NEXT_PUBLIC_APP_URL}/v/${token}, sem normalização de barra final (convenção: NEXT_PUBLIC_APP_URL sem barra final). Regra reafirmada: environments.ts expõe somente env vars reais, nunca valores computados. Sem impacto em schema, camadas, blockchain ou stack.'
 ---
 
 # Architecture Decision Document
 
 _Este documento é construído colaborativamente através de descoberta passo a passo. Seções são adicionadas conforme avançamos em cada decisão arquitetural juntos._
 
+> **Revisão 2026-08-09b (Correct Course — Sprint Change Complementar 2026-08-09):** simplificação de
+> env vars sobre a revisão abaixo. (1) O job de smoke-test consome `vars.NEXT_PUBLIC_APP_URL` em vez do
+> secret `PRODUCTION_URL`, que é **eliminado** — a Variable já é a URL pública sincronizada ao Amplify.
+> (2) O getter derivado `YAID_VERIFICATION_BASE_URL` é **removido** de `environments.ts` e do tipo
+> `RuntimeEnv`: a URL de verificação é montada inline no único consumidor
+> (`create_proof_request_usecase.ts`) como `${env.NEXT_PUBLIC_APP_URL}/v/${token}`. Sem impacto em
+> schema, camadas, blockchain ou stack.
+>
 > **Revisão 2026-08-09 (Correct Course — Sprint Change Proposal 2026-08-09):** edição direcionada na
 > seção *Infraestrutura & Deploy* e nas *Regras Obrigatórias*. O sync de env vars no Amplify passa de
 > **merge** para **autoritativo derivado do `.env.local.example`** (replace via `update-branch`;
 > valores resolvidos pela colocação Secrets→Variables; classificação por
 > `KEY|PASSWORD|PRIVATE|SECRET|TOKEN` com exceções `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`→Variable e
-> `BLOCKCHAIN_RPC_URL`→Secret). `YAID_VERIFICATION_BASE_URL` deixa de ser env var e é derivada como
-> `${NEXT_PUBLIC_APP_URL}/v`. Story 11.8 criada; Epic 11 reaberto. Infraestrutura de entrega — sem
-> impacto em schema, camadas, blockchain ou stack.
+> `BLOCKCHAIN_RPC_URL`→Secret). `YAID_VERIFICATION_BASE_URL` deixa de ser env var (a forma de derivá-la
+> foi revista pela Revisão 2026-08-09b acima). Story 11.8 criada; Epic 11 reaberto. Infraestrutura de
+> entrega — sem impacto em schema, camadas, blockchain ou stack.
 >
 > **Revisão 2026-08-08 (Correct Course — Sprint Change Proposal 2026-08-08):** edição
 > direcionada na seção *Infraestrutura & Deploy*. O release de produção passa a ser **orquestrado pelo
@@ -530,9 +540,14 @@ Manter sempre distintos — nunca passar um onde o outro é esperado:
 - **`environments.ts` entrega valores prontos para uso.** Nenhum use case, provider ou client pode inspecionar, comparar contra placeholder ou substituir valor de configuração no ponto de uso. Se um valor precisa de tratamento para ser utilizável, o tratamento pertence ao `environments.ts` — não ao consumidor. (Sprint Change 2026-07-28: quatro consumidores remendavam chaves de teste localmente.)
 - **Formato de chave é validado no boot, não em runtime.** `z.string().min(1)` é insuficiente para chaves criptográficas; o schema valida o formato concreto (hex de 64 caracteres para chaves Ed25519, endereço válido para o contrato). Precedente: `EthersBlockchainClient` já valida `ethers.isAddress` no construtor para "gerar erro acionável no boot, não em tempo de requisição".
 - **Placeholders de `TEST_ENV` são recusados fora do stage `TEST`** — são valores publicamente conhecidos e versionados no repositório.
-- **`YAID_VERIFICATION_BASE_URL` é derivada, não configurada (revisão 2026-08-09).** Não é uma env
-  var própria: `environments.ts` a computa como `${NEXT_PUBLIC_APP_URL}/v`. Não é lida de
-  `process.env` nem sincronizada ao Amplify (evita uma variável só para acrescentar `/v`).
+- **`environments.ts` expõe somente env vars reais — nunca valores computados (revisão 2026-08-09b).**
+  Não existe getter derivado no `environments.ts`. `YAID_VERIFICATION_BASE_URL` não é env var nem
+  membro de `RuntimeEnv`: a URL de verificação é uma rota do próprio app, montada no consumidor a
+  partir de `NEXT_PUBLIC_APP_URL` — `${env.NEXT_PUBLIC_APP_URL}/v/${token}` em
+  `create_proof_request_usecase.ts`. Isso não conflita com a regra "entrega valores prontos" acima: o
+  que é proibido ao consumidor é **tratar ou substituir o valor** da configuração; compor um path
+  sobre um valor já pronto é responsabilidade do domínio. Convenção: `NEXT_PUBLIC_APP_URL` **sem**
+  barra final (documentada no `.env.local.example`), portanto sem normalização no código.
 - Campos camelCase em todas as respostas da API (ViewModel é responsável pela transformação)
 - Datas sempre ISO 8601 nas respostas
 - Shape de erro sempre `{ error: string }`

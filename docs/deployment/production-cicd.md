@@ -85,7 +85,7 @@ flowchart TD
     D2 --> D3[amplify start-job RELEASE]
     D3 --> D4[polling até estado terminal - timeout]
     D4 --> E[Job smoke-test]
-    E --> E1[GET PRODUCTION_URL/api/health com retries]
+    E --> E1[GET NEXT_PUBLIC_APP_URL/api/health com retries]
     E1 --> F[Release concluída]
 ```
 
@@ -149,12 +149,12 @@ Nenhum secret server-side vira `NEXT_PUBLIC_*`; nada ecoado nos logs.
 
 Valida a aplicação publicada (`needs: deploy-amplify`):
 
-- `curl -sS --max-time 15 -w '%{http_code}'` contra `$PRODUCTION_URL/api/health`, com **retries
+- `curl -sS --max-time 15 -w '%{http_code}'` contra `$NEXT_PUBLIC_APP_URL/api/health`, com **retries
   finitos** (30×10s = 5 min).
 - **Critério de sucesso (§6):** HTTP **200** e corpo casando `{"status":"ok"}` (reforço para não
   aprovar um health degradado). Ao esgotar as tentativas → `::error::` + `exit 1`.
 
-**Input (via `with:`):** `production-url` (`PRODUCTION_URL`) — a URL de produção **nunca** é hardcoded;
+**Input (via `with:`):** `production-url` (`NEXT_PUBLIC_APP_URL` — Variable do GitHub) — a URL de produção **nunca** é hardcoded;
 vem do orquestrador. Não consome credenciais sensíveis.
 
 ---
@@ -313,9 +313,13 @@ passados aos composites via `with:`:
 | `AWS_REGION` | deploy-amplify | Região do app Amplify (ex.: `us-east-1`) |
 | `AWS_DEPLOY_ROLE_ARN` | deploy-amplify | ARN do deploy role a assumir |
 | `AMPLIFY_APP_ID` | deploy-amplify | ID do app Amplify |
-| `AMPLIFY_BRANCH_NAME` | deploy-amplify | Branch a publicar (ex.: `prod`) |
 | todas as **Variables** e **Secrets** listadas em §6.2 | deploy-amplify | Env vars server-side da app, sincronizadas de forma autoritativa (§3.3 e §6.2) |
-| `PRODUCTION_URL` | smoke-test | URL base de produção (ex.: `https://app.exemplo.com`) |
+
+> **Nota:** o smoke-test reutiliza a Variable `NEXT_PUBLIC_APP_URL` (já listada em §6.2) — não há secret/variable separado `PRODUCTION_URL`.
+
+> **Não é secret:** `amplify-branch-name` (nome do branch a publicar) vem de `github.ref_name` — o
+> branch que disparou o workflow (`on.push.branches: [prod]`) — e não de um secret/variable
+> separado, já que é sempre igual ao branch da própria pipeline.
 
 > **Env obrigatórias com `STAGE=PROD` (§5.3 da proposta):** `environments.ts` valida no boot
 > `ISSUER_PRIVATE_KEY`, `WEBHOOK_SIGNING_PRIVATE_KEY`, `BLOCKCHAIN_WALLET_PRIVATE_KEY`,
@@ -345,23 +349,32 @@ passados aos composites via `with:`:
 **Regra de colocação (Secret vs Variable):** nome contém `KEY`, `PASSWORD`, `PRIVATE`, `SECRET` ou
 `TOKEN` → **Secret**; senão → **Variable**. Duas exceções documentadas:
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` → **Variable** (é pública, embutida no bundle client-side
-mesmo); `BLOCKCHAIN_RPC_URL` → **Secret** (embute a API key do provedor de RPC na URL).
+mesmo); `BLOCKCHAIN_RPC_URL` → **Secret** (embute a API key do provedor de RPC na URL — a URL inteira é
+sensível, não pode ficar em texto plano numa Variable).
 
-**Classificação atual (13 nomes, derivados do `.env.local.example`):**
+**`STAGE` não é cadastrado no GitHub (nem Secret nem Variable):** o sync deriva `STAGE` automaticamente
+do branch publicado (upper-case de `AMPLIFY_BRANCH_NAME`, que por sua vez vem de `github.ref_name`) —
+como esta pipeline só dispara em `prod` (`on.push.branches: [prod]`), `STAGE` é sempre `PROD`. O nome
+continua listado no `.env.local.example` (documenta que a app lê `STAGE`), mas o step de sync nunca
+consulta Secrets/Variables para ele.
 
-| GitHub Variables (6) | GitHub Secrets (7) |
+**Classificação atual (12 nomes cadastráveis, derivados do `.env.local.example`; `STAGE` é o 13º nome
+mas é automático — ver acima):**
+
+| GitHub Variables (5) | GitHub Secrets (7) |
 |---|---|
-| `STAGE` (= `PROD`) | `SUPABASE_SECRET_KEY` |
-| `NEXT_PUBLIC_APP_URL` | `SUPABASE_DB_PASSWORD` |
-| `NEXT_PUBLIC_SUPABASE_URL` | `BLOCKCHAIN_RPC_URL` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `BLOCKCHAIN_WALLET_PRIVATE_KEY` |
-| `BLOCKCHAIN_CONTRACT_ADDRESS` | `ISSUER_PRIVATE_KEY` |
-| `OCR_API_URL` | `WEBHOOK_SIGNING_PRIVATE_KEY` |
+| `NEXT_PUBLIC_APP_URL` | `SUPABASE_SECRET_KEY` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `SUPABASE_DB_PASSWORD` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `BLOCKCHAIN_RPC_URL` |
+| `BLOCKCHAIN_CONTRACT_ADDRESS` | `BLOCKCHAIN_WALLET_PRIVATE_KEY` |
+| `OCR_API_URL` | `ISSUER_PRIVATE_KEY` |
+| | `WEBHOOK_SIGNING_PRIVATE_KEY` |
 | | `OCR_API_KEY` |
 
-> `YAID_VERIFICATION_BASE_URL` **não** consta nessa lista: desde a Story 11.8 ela é **derivada** em
-> `environments.ts` como `${NEXT_PUBLIC_APP_URL}/v` (getter), não é mais lida de `process.env` nem
-> precisa de Secret/Variable próprio.
+> `YAID_VERIFICATION_BASE_URL` **não** consta nessa lista e **não existe mais** como getter em
+> `environments.ts`: a URL de verificação é derivada inline em
+> `create_proof_request_usecase.ts` como `` `${env.NEXT_PUBLIC_APP_URL}/v/${token}` ``
+> (Sprint Change 2026-08-09) — não é lida de `process.env` nem precisa de Secret/Variable próprio.
 
 **Como criar uma Variable ou um Secret no GitHub** (Settings do repo, ou do Environment de produção se
 usar Environments):
@@ -400,8 +413,8 @@ Setup one-time do domínio customizado no Amplify:
 3. **SSL/TLS:** o Amplify provisiona e renova automaticamente um certificado gerenciado (AWS
    Certificate Manager) após a validação DNS. O status fica *Available* quando o SSL está ativo.
 4. **Verificação:** aguardar a propagação DNS, confirmar o cadeado HTTPS e que
-   `https://<seu-dominio>/api/health` responde `200 {status:"ok"}`. Defina `PRODUCTION_URL` para essa
-   URL (o smoke-test a usa).
+   `https://<seu-dominio>/api/health` responde `200 {status:"ok"}`. Defina a Variable `NEXT_PUBLIC_APP_URL`
+   para essa URL — o smoke-test a reutiliza (não há secret/variable `PRODUCTION_URL` separado).
 
 ---
 
@@ -512,9 +525,9 @@ não puderam ser exercitados no sandbox — trate-os como itens de verificação
 
 - **Known-issue:** o polling do Amplify (`aws amplify get-job`) roda sob `set -euo pipefail`; uma única
   falha de rede aborta a espera inteira. O smoke-test retenta uniformemente qualquer falha e, se
-  `PRODUCTION_URL` vier vazio/malformado, só falha após esgotar as 30 tentativas sem mensagem dedicada.
+  `NEXT_PUBLIC_APP_URL` vier vazio/malformado, só falha após esgotar as 30 tentativas sem mensagem dedicada.
 - **Recomendação:** avaliar retry/backoff **tolerante a erros transitórios** no `get-job` (mantendo o
-  loop finito e o timeout total), e uma **validação explícita da `PRODUCTION_URL`** + distinção entre
+  loop finito e o timeout total), e uma **validação explícita da `NEXT_PUBLIC_APP_URL`** + distinção entre
   erro transitório e app genuinamente fora do ar no smoke-test. Não reproduzível no sandbox.
 
 ### 9.8 Health check e middleware
@@ -534,7 +547,7 @@ não puderam ser exercitados no sandbox — trate-os como itens de verificação
 | Env vars server-side sumiram/erradas | deploy-amplify | nome ausente do `.env.local.example`, ou Secret/Variable correspondente não cadastrada no GitHub (§6.2) |
 | Deploy nunca termina | deploy-amplify | polling atinge timeout (15 min) → `exit 1`; checar o job no Console |
 | 404 em rotas SSR após deploy | deploy-amplify | App não é Web Compute (§9.4) |
-| smoke-test falha após 5 min | smoke-test | app fora do ar, `PRODUCTION_URL` errada, ou cold start > 5 min (§9.7) |
+| smoke-test falha após 5 min | smoke-test | app fora do ar, `NEXT_PUBLIC_APP_URL` errada, ou cold start > 5 min (§9.7) |
 
 ---
 

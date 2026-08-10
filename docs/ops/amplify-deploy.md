@@ -49,7 +49,7 @@ O Epic 11 introduz um pipeline de CI/CD via GitHub Actions com jobs sequenciais:
 2. **Story 11.4** — job de deploy das migrations no Supabase Cloud
 3. **Story 11.5** — job de deploy no Amplify (dispara o build/deploy explicitamente, via API/CLI,
    *depois* que os jobs anteriores passarem)
-4. **Story 11.6** — job de smoke-test (`GET $PRODUCTION_URL/api/health`, ver Story 11.1)
+4. **Story 11.6** — job de smoke-test (`GET $NEXT_PUBLIC_APP_URL/api/health`, ver Story 11.1)
 
 Se o Auto Build do Amplify permanecer **habilitado**, o Amplify fará deploy de qualquer push à
 branch `prod` **independentemente** do resultado dos jobs de teste e migration do GitHub Actions —
