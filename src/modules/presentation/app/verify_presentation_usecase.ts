@@ -20,7 +20,16 @@ function hexToBytes(hex: string): Uint8Array {
   return arr;
 }
 
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function base64urlToBytes(b64: string): Uint8Array {
+  if (!/^[A-Za-z0-9_-]+$/.test(b64)) {
+    throw new Error("Invalid base64url");
+  }
   const padded = b64.replace(/-/g, "+").replace(/_/g, "/");
   const padLen = (4 - (padded.length % 4)) % 4;
   const base64 = padded + "=".repeat(padLen);
@@ -32,30 +41,22 @@ function sha256hex(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-// ─── Expected VP shape ───────────────────────────────────────────────────────
-
-interface VcProof {
-  type: string;
-  created: string;
-  verificationMethod: string;
-  proofPurpose: string;
-  signatureValue: string;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+// ─── Expected VP shape ───────────────────────────────────────────────────────
 
 interface VerifiableCredential {
   id: string;
-  type: string[];
-  issuer: string;
   holder: string;
-  issuedAt: string;
   claims: Record<string, unknown>;
-  proof: VcProof;
 }
 
 interface VerifiablePresentation {
   holder: string;
   challenge: string;
-  verifiableCredential: VerifiableCredential[];
+  verifiableCredential: string[];
   proof: {
     type: string;
     created: string;
@@ -186,7 +187,10 @@ export class VerifyPresentationUseCase {
       return reject();
     }
 
-    const vc = typedVp.verifiableCredential[0];
+    const vcJwt = typedVp.verifiableCredential[0];
+    if (typeof vcJwt !== "string") {
+      return reject();
+    }
 
     // ── Rule 4: VC issuer signature is valid ─────────────────────────────────
     // Derive issuer public key from ISSUER_PRIVATE_KEY
@@ -196,25 +200,53 @@ export class VerifyPresentationUseCase {
     }
     const issuerPrivKeyBytes = hexToBytes(issuerPrivKeyHex);
     const issuerPubKeyBytes = await ed.getPublicKeyAsync(issuerPrivKeyBytes);
+    const issuerDid = `did:yaid:issuer:${bytesToHex(issuerPubKeyBytes)}`;
 
-    // VC payload signed by issuer (without "proof"): { id, type, issuer, holder, issuedAt, claims }
-    const vcPayload = JSON.stringify({
-      id: vc.id,
-      type: vc.type,
-      issuer: vc.issuer,
-      holder: vc.holder,
-      issuedAt: vc.issuedAt,
-      claims: vc.claims,
-    });
-    const vcPayloadBytes = new TextEncoder().encode(vcPayload);
-
-    if (!vc.proof || typeof vc.proof.signatureValue !== "string") {
-      return reject();
-    }
-
+    let vc: VerifiableCredential;
     let vcSigBytes: Uint8Array;
+    let vcSigningInput: string;
     try {
-      vcSigBytes = base64urlToBytes(vc.proof.signatureValue);
+      const segments = vcJwt.split(".");
+      if (segments.length !== 3 || segments.some((segment) => segment.length === 0)) {
+        return reject();
+      }
+
+      const [headerSegment, payloadSegment, signatureSegment] = segments;
+      const decoder = new TextDecoder("utf-8", { fatal: true });
+      const header: unknown = JSON.parse(
+        decoder.decode(base64urlToBytes(headerSegment))
+      );
+      const payload: unknown = JSON.parse(
+        decoder.decode(base64urlToBytes(payloadSegment))
+      );
+
+      if (
+        !isRecord(header) ||
+        header.alg !== "EdDSA" ||
+        header.typ !== "JWT" ||
+        "crit" in header ||
+        "b64" in header ||
+        header.kid !== `${issuerDid}#key-1` ||
+        !isRecord(payload) ||
+        payload.iss !== issuerDid ||
+        typeof payload.sub !== "string" ||
+        payload.sub.length === 0 ||
+        typeof payload.jti !== "string" ||
+        payload.jti.length === 0 ||
+        !Number.isInteger(payload.iat) ||
+        !Number.isInteger(payload.nbf) ||
+        !isRecord(payload.vc)
+      ) {
+        return reject();
+      }
+
+      vc = {
+        id: payload.jti,
+        holder: payload.sub,
+        claims: payload.vc,
+      };
+      vcSigningInput = `${headerSegment}.${payloadSegment}`;
+      vcSigBytes = base64urlToBytes(signatureSegment);
     } catch {
       return reject();
     }
@@ -225,7 +257,11 @@ export class VerifyPresentationUseCase {
 
     let vcSigValid: boolean;
     try {
-      vcSigValid = await ed.verifyAsync(vcSigBytes, vcPayloadBytes, issuerPubKeyBytes);
+      vcSigValid = await ed.verifyAsync(
+        vcSigBytes,
+        new TextEncoder().encode(vcSigningInput),
+        issuerPubKeyBytes
+      );
     } catch {
       return reject();
     }

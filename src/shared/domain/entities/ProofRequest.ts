@@ -8,6 +8,7 @@ type ProofRequestProps = {
   result: boolean | null;
   externalRef: string | null;
   createdAt: Date;
+  updatedAt: Date;
   validatedAt: Date | null;
 };
 
@@ -34,6 +35,9 @@ export class ProofRequest {
   }
   get createdAt() {
     return this.props.createdAt;
+  }
+  get updatedAt() {
+    return this.props.updatedAt;
   }
   get validatedAt() {
     return this.props.validatedAt;

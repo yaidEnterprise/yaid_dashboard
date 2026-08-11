@@ -1,3 +1,38 @@
+## Deferred from: code review of story-7-3-allowlist-de-criacao-de-apps (2026-08-09)
+
+- **Migration sem transação explícita** — `ADD COLUMN ... NOT NULL DEFAULT false` + `UPDATE` não estão envolvidas em `BEGIN`/`COMMIT` explícito. Pré-existente como padrão do projeto (mesma observação já feita e deferida nas Stories 7.1/7.2). [`supabase/migrations/20260809165356_add_can_create_apps_to_company.sql`]
+
+- **`CompanyMapper.toDomain` confia em `raw.can_create_apps` sem guarda contra `undefined`/malformado** — se o valor vier nulo/corrompido do banco (linha lida antes do backfill terminar, réplica defasada), o campo booleano da entidade recebe um valor não-booleano silenciosamente. Mesmo padrão já aceito em outros mappers do projeto (ex.: `ProofRequestMapper.updated_at`, deferido desde a Story 7.2, que por sua vez cita o precedente da Story 1.3 em `ProofSessionMapper`). [`src/shared/infra/dto/CompanyMapper.ts`]
+
+- **`CreateCompanyAppUseCase.execute()` não envolve `companyRepository.findById()` em try/catch dedicado** — se a chamada lançar um erro cru do Supabase/Postgres (não um `AppError`), ele se propaga sem tradução até `handleHttpError` na borda da rota, que converte para 500 genérico. Mesmo padrão pré-existente em outros use cases do projeto (ex.: `verify_presentation_usecase.ts`, documentado desde a Story 5.8). [`src/modules/company-app/app/create_company_app_usecase.ts`]
+
+- **Lógica de fetch/guard de `canCreateApps` duplicada entre `/apps` e `/apps/new`** — ambas as páginas implementam independentemente o fetch de `GET /api/companies/me`, a validação de shape e o fallback fail-open. Nenhum hook compartilhado foi extraído (ex.: `useCanCreateApps()`). Risco baixo de drift; considerar extrair se um terceiro consumidor aparecer. [`app/(dashboard)/apps/page.tsx`, `app/(dashboard)/apps/new/page.tsx`]
+
+- **Nenhum log/auditoria quando o guard 403 rejeita uma tentativa de criação de app** — rota de rejeição relevante para segurança sem visibilidade operacional (quem tentou, quando). Fora do escopo dos ACs desta story; considerar ao evoluir observabilidade. [`src/modules/company-app/app/create_company_app_usecase.ts`]
+
+- **Migration `add_can_create_apps_to_company` não validada contra Postgres real** — ambiente de execução desta story não tinha Docker disponível (`docker info` falhou, sem daemon), então `supabase db reset`/`supabase db diff --schema public` não puderam ser rodados. Mesma limitação já registrada nas Stories 7.1/7.2. A migration foi validada apenas estruturalmente (teste lê o SQL e confere `ADD COLUMN ... NOT NULL DEFAULT false` + backfill `true`, sem `ALTER COLUMN` separado). Antes de `supabase db push`, alguém com Docker disponível deve rodar `supabase db reset` localmente e confirmar `supabase db diff --schema public` retornando "No schema changes found". [`supabase/migrations/20260809165356_add_can_create_apps_to_company.sql`]
+
+- **Client-side "fails open" em `/apps` e `/apps/new` para qualquer falha de fetch (não só rede/timeout)** — se `GET /api/companies/me` retornar erro de rede, resposta não-2xx, ou corpo com shape inesperado, ambas as páginas assumem `true`/`"yes"` (CTA habilitado / formulário renderizável) em vez de bloquear. Decisão deliberada: o guard real (403) vive no `CreateCompanyAppUseCase`, então o pior caso é o usuário ver o formulário e receber um toast de erro ao submeter — não uma falha de segurança. Se esse padrão gerar reclamações de UX, considerar "fail closed" com uma tela de erro dedicada. [`app/(dashboard)/apps/page.tsx`, `app/(dashboard)/apps/new/page.tsx`]
+
+- **Sem endpoint/UI para alternar `can_create_apps`** — a Story 7.3 só implementa o guard e o estado bloqueado; a liberação em si é manual via SQL/admin direto no banco, sem ferramenta de gestão nem trilha de auditoria de quem liberou/quando. Fora do escopo da AC atual; considerar uma story futura de "gestão de allowlist" se o volume de empresas crescer. [`src/shared/domain/entities/Company.ts`]
+
+- **Sem migration de rollback** — só a forward migration existe; reverter após deploy exige SQL manual. Padrão consistente com as Stories 7.1/7.2 (nenhuma delas tem rollback scriptado). [`supabase/migrations/20260809165356_add_can_create_apps_to_company.sql`]
+
+## Deferred from: code review of story-7-2-coluna-updated-at-e-gravacao-em-toda-transicao (2026-08-05)
+
+- **Migration sem transação explícita entre as 3 declarações** — `ADD COLUMN` → `UPDATE` backfill → `ALTER ... SET NOT NULL` não estão envolvidas em `BEGIN`/`COMMIT` explícito; se o runner não tratar o arquivo como uma transação implícita, uma falha no meio deixa a coluna nullable sem default. Pré-existente como padrão do projeto (o baseline da Story 7.1 também não usa transação explícita). [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
+
+- **`ADD COLUMN` sem guarda de idempotência** — replay parcial da migration falha em vez de fazer no-op. Risco baixo, migrations não costumam ser replayadas manualmente neste projeto. [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
+
+- **`ProofRequestMapper`/`GetProofRequestUseCase` confiam em `updated_at` sem guarda contra Invalid Date** — se o valor vier `null`/malformado do banco, `new Date(...)` e o posterior `.toISOString()` falham silenciosa ou ruidosamente. Mesmo padrão já aceito em outros mappers do projeto (ex.: `ProofSessionMapper.challenge_created_at`, deferido desde a Story 1.3). [`src/shared/infra/dto/ProofRequestMapper.ts`, `src/modules/proof-request/app/get_proof_request_usecase.ts`]
+
+- **`SupabaseProofRequestRepository.updateStatus()` não verifica se `id` correspondeu a alguma linha** — update silencioso vira no-op sem sinalizar erro ao chamador. Comportamento pré-existente, não introduzido por esta story (que só adicionou `updated_at` ao payload). [`src/shared/infra/repositories/SupabaseProofRequestRepository.ts:106-112`]
+
+- **Janela estreita de risco: escrita concorrente sem `updated_at` durante a aplicação da migration** — se uma linha for inserida entre o `ADD COLUMN` e o `SET NOT NULL`, este último falha. Risco baixo em deploy single-writer; mesmo perfil de risco de qualquer migration aditiva `NOT NULL`. [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
+
+## Deferred from: story-7-2-coluna-updated-at-e-gravacao-em-toda-transicao (2026-08-05)
+
+- **Migration `add_updated_at_to_proof_requests` não validada contra Postgres real** — ambiente de execução desta story não tinha Docker disponível (`docker info` falhou), então `supabase db reset`/`supabase db diff --schema public` não puderam ser rodados. A migration foi validada apenas estruturalmente (teste lê o SQL e confere a presença de `ADD COLUMN`/`UPDATE ... SET updated_at = created_at`/`SET NOT NULL`). Antes de `supabase db push`, alguém com Docker disponível deve rodar `supabase db reset` localmente e confirmar `supabase db diff --schema public` retornando "No schema changes found". [`supabase/migrations/20260805223534_add_updated_at_to_proof_requests.sql`]
 ## Deferred from: code review of story-11-8-sync-autoritativo-de-env-vars-no-amplify (2026-08-09)
 
 - **Valor vazio (`""`) e valor ausente são indistinguíveis na resolução do sync** — o passo usa `jq -r --arg n "$name" '.[$n] // empty'` contra `SECRETS_JSON`/`VARS_JSON`; uma GitHub Variable/Secret legitimamente configurada como string vazia é tratada exatamente como "ausente" e omitida do payload em vez de sincronizada como `""`. Baixa probabilidade prática (nenhuma das 13 vars do `.env.local.example` é esperada como string vazia legítima hoje). Corrigir exigiria trocar para `has($n)` e decidir a semântica correta para "existe mas é vazio" — decisão de produto, não puramente técnica. [`.github/jobs/deploy-amplify/action.yml`]
@@ -196,6 +231,13 @@
 
 - **Verificação EdDSA (allow-list de algoritmo, proteção contra confusão de tipo/alg) pertence à Story 9.2** (`backlog`, verificação) — a Story 9.1 só cobre emissão; nenhuma AC desta story exige código de verificação. [`src/modules/presentation/app/verify_presentation_usecase.ts`]
 
+## Deferred from: code review of story-9-2-verificacao-da-vc-jwt-em-presentations-verify (2026-08-11)
+
+- **Challenge com timestamp futuro pode contornar a janela de dez minutos** — a regra atual só rejeita timestamps antigos; corrigir junto à evolução transversal de validade de sessão. [`src/modules/presentation/app/verify_presentation_usecase.ts:299`]
+- **Chamadas blockchain não têm timeout explícito** — uma RPC que nunca resolve mantém a verificação pendente; tratar na infraestrutura blockchain compartilhada. [`src/modules/presentation/app/verify_presentation_usecase.ts:309`]
+- **Request terminal pode ser reaprovada se a sessão continuar `OPENED`** — validar/coordenar o estado da request quando o fluxo transacional for revisto. [`src/modules/presentation/app/verify_presentation_usecase.ts:107`]
+- **Submissões concorrentes podem emitir decisões ou webhooks contraditórios** — requer compare-and-set/controle de concorrência no repositório, fora do escopo da serialização JWT. [`src/modules/presentation/app/verify_presentation_usecase.ts:113`]
+- **Aprovação de sessão e request não é persistida atomicamente** — falha parcial entre os dois updates pode deixar estados inconsistentes; requer unidade transacional de repositório. [`src/modules/presentation/app/verify_presentation_usecase.ts:332`]
 ## Deferred from: code review of story-11.4-workflow-job-deploy-supabase (2026-08-09)
 
 - **`supabase/setup-cli@v1` usa `version: latest`** — a versão da Supabase CLI instalada no runner não é determinística entre releases; uma mudança de comportamento da CLI poderia alterar `db push` sem aviso. Pinar uma versão específica da CLR (e/ou SHA das actions) na Story 11.7 (hardening operacional), junto com o defer de SHA-pinning de `actions/checkout`/`actions/setup-node` registrado na Story 11.3. [`.github/jobs/deploy-supabase/action.yml`]

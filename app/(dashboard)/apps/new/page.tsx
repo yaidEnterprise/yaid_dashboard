@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -10,9 +10,11 @@ import { ChevronRight, ChevronLeft, Info, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { ApiKeyModal } from "@/components/apps/api-key-modal";
 import { createApp, type YaidAppWithKey } from "@/utils/apps-store";
+import { fetchWithAuth } from "@/utils/fetch-with-auth";
 
 const createAppSchema = z.object({
   name: z.string().min(1, "Informe o nome do app").max(50, "Máximo de 50 caracteres"),
+  environment: z.enum(["homol", "prod"]),
   webhookUrl: z
     .string()
     .optional()
@@ -26,6 +28,41 @@ type CreateAppFormValues = z.infer<typeof createAppSchema>;
 export default function CreateAppPage() {
   const router = useRouter();
   const [createdApp, setCreatedApp] = useState<YaidAppWithKey | null>(null);
+  const [allowed, setAllowed] = useState<"checking" | "yes" | "no">("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchWithAuth("/api/companies/me")
+      .then((res) => {
+        if (!res.ok) throw new Error("fetch failed");
+        return res.json();
+      })
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const canCreate =
+          data && typeof data === "object" && "canCreateApps" in data
+            ? (data as { canCreateApps: unknown }).canCreateApps
+            : undefined;
+        // Fails open on the client for any unexpected response shape — the
+        // CreateCompanyAppUseCase guard (403) is the source of truth
+        setAllowed(typeof canCreate === "boolean" ? (canCreate ? "yes" : "no") : "yes");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fails open on the client — the CreateCompanyAppUseCase guard (403) is the source of truth
+        setAllowed("yes");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (allowed === "no") {
+      toast.error("A criação de apps ainda não está liberada para sua empresa.");
+      router.replace("/apps");
+    }
+  }, [allowed, router]);
 
   const {
     register,
@@ -33,7 +70,7 @@ export default function CreateAppPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateAppFormValues>({
     resolver: zodResolver(createAppSchema),
-    defaultValues: { name: "", webhookUrl: "" },
+    defaultValues: { name: "", environment: "homol", webhookUrl: "" },
   });
 
   const onSubmit = async (values: CreateAppFormValues) => {
@@ -41,6 +78,7 @@ export default function CreateAppPage() {
       const webhookUrl = values.webhookUrl?.trim() ?? "";
       const app = await createApp({
         name: values.name.trim(),
+        environment: values.environment,
         ...(webhookUrl ? { webhookUrl } : {}),
       });
       setCreatedApp(app);
@@ -53,6 +91,14 @@ export default function CreateAppPage() {
     toast.success("App criado com sucesso");
     router.push("/apps");
   };
+
+  if (allowed !== "yes") {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-pulse rounded-full bg-surface-muted" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -88,6 +134,7 @@ export default function CreateAppPage() {
               <p className="text-xs text-text-secondary">Como esse app aparece para sua equipe.</p>
             </div>
             <div className="space-y-5 px-6 py-5">
+              {/* Nome do app */}
               <div className="space-y-1.5">
                 <label htmlFor="name" className="text-xs font-medium text-text-secondary">
                   Nome do app
@@ -106,6 +153,29 @@ export default function CreateAppPage() {
                   <p className="text-sm text-red-600">{errors.name.message}</p>
                 )}
                 <p className="text-[11px] text-text-tertiary">Visível apenas para sua equipe.</p>
+              </div>
+
+              {/* Ambiente */}
+              <div className="space-y-1.5">
+                <label htmlFor="environment" className="text-xs font-medium text-text-secondary">
+                  Ambiente
+                </label>
+                <select
+                  id="environment"
+                  className={`h-10 w-full rounded-md border bg-surface px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-trust/20 ${
+                    errors.environment ? "border-red-500 focus:border-red-500" : "border-border focus:border-trust"
+                  }`}
+                  {...register("environment")}
+                >
+                  <option value="homol">Homologação</option>
+                  <option value="prod">Produção</option>
+                </select>
+                {errors.environment && (
+                  <p className="text-sm text-red-600">{errors.environment.message}</p>
+                )}
+                <p className="text-[11px] text-text-tertiary">
+                  Apps de homologação permitem aprovar/reprovar verificações manualmente para teste. Produção não.
+                </p>
               </div>
             </div>
           </div>

@@ -91,7 +91,7 @@ test("Story 5.5 UseCase verifies VP holder signature with ed.verifyAsync", () =>
 test("Story 5.5 UseCase verifies VC issuer signature", () => {
   const src = readText("src/modules/presentation/app/verify_presentation_usecase.ts");
   assert.match(src, /issuerPubKeyBytes/, "Must derive issuer public key");
-  assert.match(src, /vcPayload/, "Must build VC payload for signature verification");
+  assert.match(src, /vcSigningInput/, "Must build the compact JWS signing input");
   assert.match(src, /vcSigValid/, "Must verify VC issuer signature validity");
 });
 

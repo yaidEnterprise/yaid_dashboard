@@ -9,6 +9,7 @@ export type ProofRequestPersistence = {
   result: boolean | null;
   external_ref: string | null;
   created_at: string;
+  updated_at: string;
   validated_at: string | null;
 };
 
@@ -22,6 +23,7 @@ export class ProofRequestMapper {
       result: raw.result,
       externalRef: raw.external_ref,
       createdAt: new Date(raw.created_at),
+      updatedAt: new Date(raw.updated_at),
       validatedAt: raw.validated_at ? new Date(raw.validated_at) : null,
     });
   }
@@ -35,6 +37,7 @@ export class ProofRequestMapper {
       result: request.result,
       external_ref: request.externalRef,
       created_at: request.createdAt.toISOString(),
+      updated_at: request.updatedAt.toISOString(),
       validated_at: request.validatedAt?.toISOString() ?? null,
     };
   }
