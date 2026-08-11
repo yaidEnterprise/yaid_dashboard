@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Search, X, LayoutGrid, RefreshCw, Lock } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/feedback/status-badge";
+import { EnvBadge } from "@/components/feedback/environment-badge";
 import { listApps, type AppStatus, type YaidApp } from "@/utils/apps-store";
 import { fetchWithAuth } from "@/utils/fetch-with-auth";
 
@@ -35,7 +36,10 @@ function SkeletonRow() {
         </div>
       </td>
       <td className="px-6 py-4">
-        <div className="h-5 w-20 animate-pulse rounded-full bg-surface-muted" />
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-24 animate-pulse rounded-full bg-surface-muted" />
+          <div className="h-5 w-20 animate-pulse rounded-full bg-surface-muted" />
+        </div>
       </td>
       <td className="px-6 py-4">
         <div className="h-4 w-24 animate-pulse rounded bg-surface-muted" />
@@ -298,14 +302,14 @@ export default function AppsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <colgroup>
-              <col className="w-[55%]" />
+              <col className="w-[50%]" />
+              <col className="w-[30%]" />
               <col className="w-[20%]" />
-              <col className="w-[25%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-border bg-surface-muted/50 text-left text-[11px] uppercase tracking-wider text-text-tertiary">
                 <th className="px-6 py-3 font-medium">Nome do app</th>
-                <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Status / Ambiente</th>
                 <th className="px-6 py-3 font-medium">Criado em</th>
               </tr>
             </thead>
@@ -368,7 +372,12 @@ export default function AppsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={app.status} />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status={app.status} />
+                        {app.environment && app.environment !== "dev" && (
+                          <EnvBadge env={app.environment} />
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-text-secondary">{formatDate(app.createdAt)}</td>
                   </tr>

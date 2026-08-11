@@ -101,6 +101,7 @@ FR32 (#7 Allowlist): O sistema deve adicionar a coluna `company.can_create_apps 
 FR33 (#8 VC-JWT): O backend deve emitir a Verifiable Credential como VC-JWT compacto assinado (JWS EdDSA) — header `{alg:"EdDSA", typ:"JWT", kid:"<issuerDid>#key-1"}`, payload `{iss, sub:<holderDid>, jti, iat, nbf, vc:{...claims booleanos}}`, assinado com `ISSUER_PRIVATE_KEY` — em vez de JSON-LD com `proof.Ed25519Signature2020` embutido. `POST /api/credentials/issue` retorna a string JWT; `POST /api/presentations/verify` decodifica e valida a VC no formato JWT. Invariante preservado: a VC continua carregando apenas claims booleanos — muda o formato de serialização/assinatura, não o conteúdo.
 
 FR34 (#9 Migrations): O sistema deve versionar o schema via Supabase Migrations — diretório `supabase/` versionado (`config.toml`, `migrations/`, `seed.sql`), CLI linkada ao project-ref `lygkwhcwsrxfozswhxyo`. Baseline (`supabase db pull`) captura o schema hoje deployado (encerra o drift); forward migrations timestampadas para `add_updated_at_to_proof_requests`, `add_can_create_apps_to_company` (+ backfill) e ajuste de `environment`/default em `company_apps`. `.gitignore` cobre `supabase/.branches` e `supabase/.temp`; CI opcional roda `supabase db diff --check` no PR.
+> Nota (Sprint Change 2026-08-08): além do `db diff --check` opcional no PR, o release em `prod` aplica migrations pendentes via `supabase db push` (precedido de `--dry-run`) como primeiro passo de infra da pipeline, antes do deploy do app (ver Epic 11 / NFR11).
 
 ### NonFunctional Requirements
 
@@ -124,7 +125,7 @@ NFR9: Shape de erro uniforme `{ error: string }` com HTTP status code adequado e
 
 NFR10: PT-BR fixo, sem i18n no MVP. Desktop-first; mobile funcional não otimizado.
 
-NFR11: Deploy em AWS Amplify; CI/CD via GitHub Actions (lint + typecheck).
+NFR11: Deploy em AWS Amplify (app SSR/Web Compute). O release de produção é orquestrado pelo GitHub Actions na branch `prod` com gates sequenciais `tests → deploy-supabase → deploy-amplify → smoke-test`; auto-build do Amplify desabilitado na branch `prod` (evita deploy duplicado). Lint/typecheck permanecem como validação (o build Next.js no Amplify executa o typecheck).
 
 NFR12: Demonstrabilidade acadêmica (TCC) — fluxo ponta a ponta funcional e defensável sob exame de banca.
 
@@ -280,6 +281,35 @@ O app mobile passa a receber a VC como JWT assinado (EdDSA) — formato compacto
 `environments.ts` volta a ser a fonte única de configuração: as chaves de teste deixam de ser remendadas dentro dos use cases e o formato das chaves passa a ser validado no boot, não na primeira requisição. Elimina o risco de uma chave privada publicamente conhecida ser aceita em produção.
 
 **FRs cobertos:** nenhum (dívida técnica / hardening) — decorre da decisão de arquitetura *"`process.env` somente em `src/shared/environments.ts`"* e da exigência de validação de chaves no boot em `PROD`/`HOMOLOG`.
+
+### Epic 11: Pipeline de CI/CD de Produção
+
+Todo merge/push em `prod` dispara um release determinístico e auditável orquestrado pelo GitHub Actions: roda os testes unitários como gate, aplica migrations pendentes no Supabase Cloud (dry-run antes do push), publica o app no Amplify via `start-job RELEASE` (com auto-build desabilitado), aguarda o deployment em estado terminal e valida a aplicação por health check (`GET /api/health`, com a URL de produção vinda da Variable `vars.NEXT_PUBLIC_APP_URL`). Inclui autenticação AWS por `sts:AssumeRole` (least-privilege), sincronização **autoritativa** de env vars derivada do `.env.local.example` (replace via `update-branch`; nomes vêm do `.env.local.example`, valores resolvidos pela colocação Secrets→Variables; secrets nunca em `NEXT_PUBLIC_*` nem em logs) e documentação operacional (IAM, custom domain, bootstrap vs release, rollback). Estrutura distribuída: cada job em `.github/jobs/<nome>/action.yml` (composite action), orquestrado por `.github/workflows/production.yml`.
+
+> **Nota (Sprint Change 2026-08-09):** a Story 11.8 revisa o sync de env vars para o modelo
+> **autoritativo derivado do `.env.local.example`** (substituindo o `merge` originalmente entregue na
+> Story 11.5): toda variável do `.env.local.example` passa a existir no Amplify e qualquer variável
+> fora dessa lista desaparece do branch. Classificação Secret/Variable por
+> `KEY|PASSWORD|PRIVATE|SECRET|TOKEN`, com exceções `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`→Variable e
+> `BLOCKCHAIN_RPC_URL`→Secret. `YAID_VERIFICATION_BASE_URL` deixa de ser env var. O secret
+> `AMPLIFY_ENVIRONMENT_VARIABLES` é removido.
+
+> **Nota complementar (Sprint Change 2026-08-09 — simplificação de env vars):** duas correções sobre o
+> resultado da Story 11.8, sem nova story (escopo *minor*: refactoring interno + ajuste de CI).
+>
+> 1. **Smoke-test sem `PRODUCTION_URL`.** O secret `PRODUCTION_URL` era redundante com a Variable
+>    `NEXT_PUBLIC_APP_URL` (já sincronizada ao Amplify e consumida pelo app), obrigando o operador a
+>    manter o mesmo valor em dois lugares. O job de smoke-test passa a receber a URL de produção de
+>    **`vars.NEXT_PUBLIC_APP_URL`** e o secret `PRODUCTION_URL` é **eliminado** do GitHub.
+> 2. **`YAID_VERIFICATION_BASE_URL` não é mais um getter.** O getter derivado introduzido pela Story
+>    11.8 em `environments.ts` (e o membro correspondente em `RuntimeEnv`) é **removido**: expor um
+>    valor computado viola a regra de que `environments.ts` só expõe env vars reais. A URL de
+>    verificação passa a ser derivada **inline no único consumidor**
+>    (`create_proof_request_usecase.ts`) como `` `${env.NEXT_PUBLIC_APP_URL}/v/${token}` ``. Sem
+>    normalização de barra final: a convenção documentada no `.env.local.example` é
+>    `NEXT_PUBLIC_APP_URL` **sem** barra final.
+
+**FRs cobertos:** nenhum (infraestrutura de entrega / operação) — decorre de NFR11.
 
 ---
 

@@ -3,13 +3,14 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-05-11'
-revisedAt: '2026-07-28'
+revisedAt: '2026-08-09'
 inputDocuments:
   - docs/prd.md
   - CONTEXT.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-27.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-28.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-08.md
 workflowType: 'architecture'
 project_name: 'yaid_dashboard'
 user_name: 'Victordegasperi'
@@ -21,12 +22,45 @@ editHistory:
     changes: 'Correct Course — edição direcionada na seção Credenciais & Formato da VC: claims consolidadas (personhood + ageOver18 na mesma emissão); ageOver18 pode ser false e menoridade deixa de retornar 422; correspondência obrigatória claim ↔ proof_type na verificação da VP; proofType removido do contrato de POST /api/credentials/issue; enum ProofType compartilhado. Sem impacto em schema, blockchain ou camadas.'
   - date: '2026-07-28'
     changes: 'Correct Course (adendo §7) — Regras Obrigatórias: environments.ts entrega valores prontos (proibido remendar configuração no ponto de uso); formato de chave validado no boot e não em runtime; placeholders de TEST_ENV recusados fora do stage TEST. Origem: quatro consumidores substituindo chaves de teste localmente. Epic 10 criado.'
+  - date: '2026-08-08'
+    changes: 'Correct Course (Sprint Change 2026-08-08) — edição direcionada na seção Infraestrutura & Deploy: CI/CD de produção passa a modelo orquestrado pelo GitHub Actions na branch prod (gates sequenciais tests → deploy-supabase → deploy-amplify → smoke-test), com auto-build do Amplify desabilitado na branch prod; migrations via supabase db push (com --dry-run) antes do deploy do app (expand→deploy→contract); autenticação AWS via IAM sts:AssumeRole least-privilege; health check público GET /api/health com whitelisting em middleware.ts. Epic 11 introduzido. Sem impacto em schema, camadas, blockchain ou stack.'
+  - date: '2026-08-09'
+    changes: 'Correct Course (Sprint Change 2026-08-09) — Infraestrutura & Deploy: sync de env vars no Amplify passa de merge para AUTORITATIVO derivado do .env.local.example (replace via update-branch; nomes vêm do .env.local.example, valores resolvidos pela colocação Secrets→Variables; classificação KEY|PASSWORD|PRIVATE|SECRET|TOKEN com exceções NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY→Variable e BLOCKCHAIN_RPC_URL→Secret; secret AMPLIFY_ENVIRONMENT_VARIABLES removido). Regra nova: YAID_VERIFICATION_BASE_URL deixa de ser env var. Story 11.8 criada; Epic 11 reaberto. Sem impacto em schema, camadas, blockchain ou stack.'
+  - date: '2026-08-09'
+    changes: 'Correct Course (Sprint Change Complementar 2026-08-09) — simplificação de env vars, sem nova story: (1) o smoke-test passa a receber a URL de produção de vars.NEXT_PUBLIC_APP_URL e o secret PRODUCTION_URL é eliminado (era redundante com a Variable já sincronizada ao Amplify); (2) o getter derivado YAID_VERIFICATION_BASE_URL é REMOVIDO de environments.ts e do tipo RuntimeEnv — a URL de verificação passa a ser montada inline no único consumidor (create_proof_request_usecase.ts) como ${env.NEXT_PUBLIC_APP_URL}/v/${token}, sem normalização de barra final (convenção: NEXT_PUBLIC_APP_URL sem barra final). Regra reafirmada: environments.ts expõe somente env vars reais, nunca valores computados. Sem impacto em schema, camadas, blockchain ou stack.'
 ---
 
 # Architecture Decision Document
 
 _Este documento é construído colaborativamente através de descoberta passo a passo. Seções são adicionadas conforme avançamos em cada decisão arquitetural juntos._
 
+> **Revisão 2026-08-09b (Correct Course — Sprint Change Complementar 2026-08-09):** simplificação de
+> env vars sobre a revisão abaixo. (1) O job de smoke-test consome `vars.NEXT_PUBLIC_APP_URL` em vez do
+> secret `PRODUCTION_URL`, que é **eliminado** — a Variable já é a URL pública sincronizada ao Amplify.
+> (2) O getter derivado `YAID_VERIFICATION_BASE_URL` é **removido** de `environments.ts` e do tipo
+> `RuntimeEnv`: a URL de verificação é montada inline no único consumidor
+> (`create_proof_request_usecase.ts`) como `${env.NEXT_PUBLIC_APP_URL}/v/${token}`. Sem impacto em
+> schema, camadas, blockchain ou stack.
+>
+> **Revisão 2026-08-09 (Correct Course — Sprint Change Proposal 2026-08-09):** edição direcionada na
+> seção *Infraestrutura & Deploy* e nas *Regras Obrigatórias*. O sync de env vars no Amplify passa de
+> **merge** para **autoritativo derivado do `.env.local.example`** (replace via `update-branch`;
+> valores resolvidos pela colocação Secrets→Variables; classificação por
+> `KEY|PASSWORD|PRIVATE|SECRET|TOKEN` com exceções `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`→Variable e
+> `BLOCKCHAIN_RPC_URL`→Secret). `YAID_VERIFICATION_BASE_URL` deixa de ser env var (a forma de derivá-la
+> foi revista pela Revisão 2026-08-09b acima). Story 11.8 criada; Epic 11 reaberto. Infraestrutura de
+> entrega — sem impacto em schema, camadas, blockchain ou stack.
+>
+> **Revisão 2026-08-08 (Correct Course — Sprint Change Proposal 2026-08-08):** edição
+> direcionada na seção *Infraestrutura & Deploy*. O release de produção passa a ser **orquestrado pelo
+> GitHub Actions** na branch `prod`, com gates sequenciais `tests → deploy-supabase → deploy-amplify →
+> smoke-test`; o **auto-build do Amplify é desabilitado** na branch `prod` (evita deploy duplicado);
+> migrations aplicadas via `supabase db push` (com `--dry-run`) antes do deploy do app
+> (expand→deploy→contract); autenticação AWS via IAM `sts:AssumeRole` least-privilege; health check
+> público `GET /api/health` (whitelisting em `middleware.ts`). Introdução do **Epic 11** (pipeline de
+> CI/CD de produção). Infraestrutura de entrega, aditiva — núcleo e MVP do produto permanecem intactos;
+> sem impacto em schema, camadas, blockchain ou stack.
+>
 > **Revisão 2026-07-28 (Correct Course — Sprint Change Proposal 2026-07-28):** edição
 > direcionada na seção *Credenciais & Formato da VC*. Claims consolidadas em uma única emissão,
 > `ageOver18` podendo ser `false` (menoridade deixa de ser 422), correspondência obrigatória entre
@@ -150,7 +184,7 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 **Decisões Importantes (moldam a arquitetura):**
 - SHA-256 para hash de API key
 - Fetch wrapper customizado com 401-redirect
-- GitHub Actions + Amplify para CI/CD
+- GitHub Actions orquestra o release em `prod` (gates sequenciais); Amplify com auto-build desabilitado
 
 **Decisões Deferidas (pós-MVP):**
 - Monitoramento externo (Sentry, Datadog etc.) — implementar somente se houver tempo
@@ -233,8 +267,29 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 
 ### Infraestrutura & Deploy
 
-- **Hospedagem:** AWS Amplify.
-- **CI/CD:** GitHub Actions (lint + typecheck) + Amplify (build + deploy automático).
+- **Hospedagem:** AWS Amplify (app **SSR / Web Compute** — `baseDirectory: .next`, não static export).
+- **CI/CD (produção):** o **GitHub Actions é o ORQUESTRADOR** do release na branch `prod`, com gates
+  sequenciais (`needs`): `tests → deploy-supabase → deploy-amplify → smoke-test`. O **auto-build do
+  Amplify na branch `prod` é DESABILITADO** (`enableAutoBuild=false`) para evitar deploy duplicado; a
+  integração GitHub↔Amplify é preservada (o Amplify continua buscando o código). Migrations são
+  aplicadas via Supabase CLI (`db push`, precedido de `--dry-run`) **antes** do deploy do app,
+  seguindo **expand→deploy→contract**. A autenticação AWS usa IAM bootstrap → `sts:AssumeRole` → IAM
+  Role de deploy **least-privilege** (OIDC indisponível). Lint/typecheck permanecem como validação (o
+  build Next.js no Amplify executa o typecheck). **Sync de env vars (revisão 2026-08-09):** é
+  **autoritativo e derivado do `.env.local.example`** — a pipeline extrai dele a lista canônica de
+  **nomes** e, para cada nome, resolve o valor pela **colocação no GitHub** (procura em Secrets →
+  senão em Variables), enviando o mapa completo via `aws amplify update-branch`, que **substitui o
+  mapa inteiro** (replace). Toda variável do `.env.local.example` passa a existir no Amplify; qualquer
+  variável **fora** dessa lista **desaparece** do branch. A regra `KEY|PASSWORD|PRIVATE|SECRET|TOKEN`
+  orienta a colocação (Secret vs Variable), com exceções: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` →
+  Variable (pública) e `BLOCKCHAIN_RPC_URL` → Secret (embute API key do RPC). Secrets server-side
+  nunca viram `NEXT_PUBLIC_*` nem aparecem em logs; secrets de infra (AWS_*, SUPABASE_ACCESS_TOKEN,
+  AMPLIFY_*) são filtrados fora por não constarem no `.env.local.example`. Estrutura distribuída:
+  cada job vive em `.github/jobs/<nome>/action.yml` (composite action), orquestrado por
+  `.github/workflows/production.yml`.
+- **Health check:** `app/api/health/route.ts` — endpoint público e leve (`force-dynamic`, sem
+  DB/secrets, retorna `{ status: "ok" }`), liberado em `src/shared/middleware.ts` (`isPublicApiRoute`).
+  Usado como validação pós-deploy (`GET /api/health` com retries no gate `smoke-test`).
 - **Monitoramento:** ⚠️ TBD pós-MVP — serviço externo (Sentry, Datadog etc.) somente se houver tempo. CloudWatch/Amplify logs como fallback mínimo.
 
 ## Schema do Banco de Dados
@@ -485,6 +540,14 @@ Manter sempre distintos — nunca passar um onde o outro é esperado:
 - **`environments.ts` entrega valores prontos para uso.** Nenhum use case, provider ou client pode inspecionar, comparar contra placeholder ou substituir valor de configuração no ponto de uso. Se um valor precisa de tratamento para ser utilizável, o tratamento pertence ao `environments.ts` — não ao consumidor. (Sprint Change 2026-07-28: quatro consumidores remendavam chaves de teste localmente.)
 - **Formato de chave é validado no boot, não em runtime.** `z.string().min(1)` é insuficiente para chaves criptográficas; o schema valida o formato concreto (hex de 64 caracteres para chaves Ed25519, endereço válido para o contrato). Precedente: `EthersBlockchainClient` já valida `ethers.isAddress` no construtor para "gerar erro acionável no boot, não em tempo de requisição".
 - **Placeholders de `TEST_ENV` são recusados fora do stage `TEST`** — são valores publicamente conhecidos e versionados no repositório.
+- **`environments.ts` expõe somente env vars reais — nunca valores computados (revisão 2026-08-09b).**
+  Não existe getter derivado no `environments.ts`. `YAID_VERIFICATION_BASE_URL` não é env var nem
+  membro de `RuntimeEnv`: a URL de verificação é uma rota do próprio app, montada no consumidor a
+  partir de `NEXT_PUBLIC_APP_URL` — `${env.NEXT_PUBLIC_APP_URL}/v/${token}` em
+  `create_proof_request_usecase.ts`. Isso não conflita com a regra "entrega valores prontos" acima: o
+  que é proibido ao consumidor é **tratar ou substituir o valor** da configuração; compor um path
+  sobre um valor já pronto é responsabilidade do domínio. Convenção: `NEXT_PUBLIC_APP_URL` **sem**
+  barra final (documentada no `.env.local.example`), portanto sem normalização no código.
 - Campos camelCase em todas as respostas da API (ViewModel é responsável pela transformação)
 - Datas sempre ISO 8601 nas respostas
 - Shape de erro sempre `{ error: string }`

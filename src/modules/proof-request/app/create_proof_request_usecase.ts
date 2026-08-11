@@ -82,7 +82,7 @@ export class CreateProofRequestUseCase {
     const token = generateSessionToken();
     const tokenHash = await this.hasher.hash(token);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
-    const verificationUrl = `${env.YAID_VERIFICATION_BASE_URL}/${token}`;
+    const verificationUrl = `${env.NEXT_PUBLIC_APP_URL}/v/${token}`;
     const deepLinkUrl = `yaid://verify?session=${token}`;
 
     const session = new ProofSession({

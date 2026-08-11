@@ -140,35 +140,43 @@ async function buildFixture(opts: {
   const holderDid = `did:yaid:user:${bytesToHex(holderPubBytes)}`;
 
   const issuerPrivBytes = hexToBytes(ISSUER_PRIVATE_KEY_HEX);
+  const issuerPubBytes = await ed.getPublicKeyAsync(issuerPrivBytes);
+  const issuerDid = `did:yaid:issuer:${bytesToHex(issuerPubBytes)}`;
 
   const nonce = "test-nonce-12345";
   const challengeNonceHash = sha256hex(nonce);
 
-  const vcUnsigned = {
-    id: "vc-1",
-    type: ["VerifiableCredential"],
-    issuer: "did:yaid:issuer:main",
-    holder: holderDid,
-    issuedAt: new Date().toISOString(),
-    claims: opts.claims,
+  const now = Math.floor(Date.now() / 1000);
+  const vcHeader = {
+    alg: "EdDSA",
+    typ: "JWT",
+    kid: `${issuerDid}#key-1`,
   };
-  const vcPayload = JSON.stringify(vcUnsigned);
-  const vcSig = await ed.signAsync(new TextEncoder().encode(vcPayload), issuerPrivBytes);
-  const vc = {
-    ...vcUnsigned,
-    proof: {
-      type: "Ed25519Signature2020",
-      created: new Date().toISOString(),
-      verificationMethod: "did:yaid:issuer:main#key-1",
-      proofPurpose: "assertionMethod",
-      signatureValue: base64url(vcSig),
-    },
+  const vcPayload = {
+    iss: issuerDid,
+    sub: holderDid,
+    jti: "vc-1",
+    iat: now,
+    nbf: now,
+    vc: opts.claims,
   };
+  const headerSegment = base64url(
+    new TextEncoder().encode(JSON.stringify(vcHeader))
+  );
+  const payloadSegment = base64url(
+    new TextEncoder().encode(JSON.stringify(vcPayload))
+  );
+  const vcSigningInput = `${headerSegment}.${payloadSegment}`;
+  const vcSig = await ed.signAsync(
+    new TextEncoder().encode(vcSigningInput),
+    issuerPrivBytes
+  );
+  const vcJwt = `${vcSigningInput}.${base64url(vcSig)}`;
 
   const vpUnsigned = {
     holder: holderDid,
     challenge: nonce,
-    verifiableCredential: [vc],
+    verifiableCredential: [vcJwt],
   };
   const vpPayload = JSON.stringify(vpUnsigned);
   const vpSig = await ed.signAsync(new TextEncoder().encode(vpPayload), holderPrivBytes);

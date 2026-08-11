@@ -4,16 +4,21 @@ workflow: 'edit'
 inputDocuments:
   - 'sprint-change-proposal-2026-07-27.md'
   - 'sprint-change-proposal-2026-07-28.md'
+  - 'sprint-change-proposal-2026-08-08.md'
 stepsCompleted:
   - 'step-e-01-discovery'
   - 'step-e-02-review'
   - 'step-e-03-edit'
-lastEdited: '2026-07-28'
+lastEdited: '2026-08-08'
 editHistory:
   - date: '2026-07-27'
     changes: 'Correct Course — ambientes por app (homol/prod), review manual em homologação, allowlist can_create_apps, VC entregue como VC-JWT (EdDSA), proof_requests.updated_at, remoção da Resposta da API na tela unitária, topbar dinâmica, versionamento de schema via Supabase Migrations; reversão parcial do Out of Scope de ambientes.'
   - date: '2026-07-28'
     changes: 'Correct Course — claims da VC consolidadas (personhood + ageOver18 na mesma emissão); menor de 18 emite com ageOver18:false em vez de 422; aprovação passa a exigir correspondência entre a claim apresentada e o proof_type solicitado; vocabulário canônico fixado (age_over_18 na API, ageOver18 na claim); proofType removido do body de POST /api/credentials/issue.'
+  - date: '2026-08-08'
+    changes: 'Nota de infraestrutura de entrega — Sprint Change 2026-08-08: introdução do Epic 11 (pipeline de CI/CD de produção orquestrada pelo GitHub Actions na branch prod, gates tests → deploy-supabase → deploy-amplify → smoke-test). Núcleo e MVP do produto inalterados.'
+  - date: '2026-08-09'
+    changes: 'Nota de infraestrutura de entrega — Sprint Change 2026-08-09 (Story 11.8): sync de env vars no Amplify passa de merge para autoritativo derivado do .env.local.example (replace; valores pela colocação Secrets→Variables; exceções NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY→Variable e BLOCKCHAIN_RPC_URL→Secret); YAID_VERIFICATION_BASE_URL passa a ser derivada de NEXT_PUBLIC_APP_URL + /v; secret AMPLIFY_ENVIRONMENT_VARIABLES removido. Núcleo e MVP inalterados.'
 ---
 
 # PRD — Dashboard Empresarial + Backend YaID
@@ -27,7 +32,14 @@ editHistory:
 > Para a linguagem do domínio (DID, VC, VP, Holder, Issuer, Verifier, Company,
 > Proof Request, Proof Session), ver [CONTEXT.md](../CONTEXT.md).
 >
-> **Última atualização:** 2026-07-28 (revisão via Correct Course — Sprint Change
+> **Última atualização:** 2026-08-09 (Sprint Change 2026-08-09 — Story 11.8: sync
+> autoritativo de env vars no Amplify derivado do `.env.local.example`. Infraestrutura de
+> entrega, aditiva; núcleo e MVP do produto permanecem intactos)
+>
+> Revisão anterior: 2026-08-08 (Sprint Change 2026-08-08 — Epic 11: pipeline de
+> CI/CD de produção orquestrada pelo GitHub Actions na branch `prod`)
+>
+> Revisão anterior: 2026-07-28 (revisão via Correct Course — Sprint Change
 > Proposal 2026-07-28: claims da VC consolidadas em uma emissão, menor de 18 sem 422,
 > correspondência obrigatória entre claim apresentada e proof_type solicitado)
 >
@@ -254,6 +266,10 @@ Hoje a codebase não tem testes automatizados estabelecidos. A introdução deve
 **Ajustes do Sprint Change 2026-07-27 (a implementar):** ícone oficial YaID (`public/yaid_icon.svg`) nas 4 telas de logo em vez do placeholder `ShieldHalf`/"YaID" hardcoded; topbar dinâmica consumindo a company logada (remover valores hardcoded e badge "Homologação"); coluna `proof_requests.updated_at` + `updateStatus()` gravando `now()` (corrige "Atualizada em" `null`); remoção da seção "Resposta da API" na tela unitária; seletor de `environment` na criação de app; allowlist `company.can_create_apps` com guard no `CreateCompanyAppUseCase` + backfill; endpoint/usecase de review manual em homologação; emissão de VC como VC-JWT (EdDSA) + verificação no `presentations/verify`; versionamento de schema via Supabase Migrations (baseline + forward migrations).
 
 **A implementar:** todos os fluxos do app mobile (issue, challenge, presentations/verify, cancel, revoke), módulo blockchain + smart contract + integração ethers, módulo webhook com assinatura Ed25519, `GET /api/webhook-public-key`, signup atômico unificado (com remoção da rota `/onboarding/company`), deploy Sepolia.
+
+**Ajustes do Sprint Change 2026-08-08 (a implementar) — Epic 11 · Pipeline de CI/CD de Produção:** release de produção orquestrado pelo GitHub Actions na branch `prod`, com gates sequenciais `tests → deploy-supabase → deploy-amplify → smoke-test`; auto-build do Amplify desabilitado na branch `prod` (evita deploy duplicado); migrations aplicadas via Supabase CLI (`db push`, precedido de `--dry-run`) antes do deploy do app (expand→deploy→contract); autenticação AWS via IAM assume-role least-privilege; health check público `GET /api/health` + whitelisting em `middleware.ts`; sync seguro de env vars (merge, sem sobrescrever; secrets nunca em `NEXT_PUBLIC_*` nem em logs); documentação operacional. Detalhamento normativo em `epics.md` (NFR11/FR34 + Epic 11) e `architecture.md` (Infra & Deploy). Núcleo e MVP do produto inalterados — infraestrutura de entrega, aditiva.
+
+**Ajuste do Sprint Change 2026-08-09 (implementado) — Story 11.8 · Sync autoritativo de env vars + simplificação de env vars:** o sync de env vars no Amplify passa de *merge* para **autoritativo derivado do `.env.local.example`** — a pipeline extrai dele os nomes e resolve os valores pela colocação no GitHub (Secrets→Variables), enviando o mapa completo via `update-branch` (replace: variável fora da lista desaparece do branch). Classificação Secret/Variable por `KEY|PASSWORD|PRIVATE|SECRET|TOKEN`, exceções `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`→Variable e `BLOCKCHAIN_RPC_URL`→Secret. Secret `AMPLIFY_ENVIRONMENT_VARIABLES` removido. Simplificação complementar (Sprint Change 2026-08-09): `YAID_VERIFICATION_BASE_URL` removida — o getter não existe mais em `environments.ts` nem como membro de `RuntimeEnv`; a URL de verificação é derivada inline em `create_proof_request_usecase.ts` como `` `${env.NEXT_PUBLIC_APP_URL}/v/${token}` ``; o smoke-test reutiliza a Variable `NEXT_PUBLIC_APP_URL` (sem secret `PRODUCTION_URL` separado). Detalhamento em `architecture.md` (Infra & Deploy / Regras Obrigatórias) e `epics.md` (Epic 11, nota 2026-08-09).
 
 ### Definição de pronto do MVP
 
