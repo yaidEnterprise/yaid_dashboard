@@ -45,11 +45,15 @@ export function AppSidebar() {
   const sidebarContent = (
     <div className={cn("flex h-full flex-col bg-sidebar border-r border-sidebar-border", collapsed ? "w-[60px]" : "w-[260px]")}>
       {/* Header */}
-      <div className="border-b border-sidebar-border px-4 py-4">
-        <div className="flex items-center">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center">
-            <Image src="/yaid_icon.svg" alt="YaID" width={32} height={32} className="h-8 w-8 object-contain invert" />
-          </div>
+      <div className={cn("flex h-14 shrink-0 items-center justify-start border-b border-sidebar-border", collapsed ? "px-1.5" : "px-3")}>
+        <div className={cn("flex shrink-0 items-center justify-center overflow-hidden", collapsed ? "h-10 w-10" : "h-12 w-12")}>
+          <Image
+            src="/yaid_icon.svg"
+            alt="YaID"
+            width={48}
+            height={48}
+            className="h-full w-full -translate-y-[13%] scale-[1.55] object-contain brightness-0 invert"
+          />
         </div>
       </div>
 
@@ -66,7 +70,10 @@ export function AppSidebar() {
     <>
       {/* Mobile toggle */}
       <button
-        onClick={() => setMobileOpen(true)}
+        onClick={() => {
+          setCollapsed(false);
+          setMobileOpen(true);
+        }}
         className="lg:hidden fixed top-3.5 left-3 z-50 p-1.5 rounded-md text-text-secondary hover:bg-surface-muted hover:text-text-primary"
         aria-label="Open menu"
       >
