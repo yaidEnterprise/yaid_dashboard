@@ -196,6 +196,13 @@
 
 - **Verificação EdDSA (allow-list de algoritmo, proteção contra confusão de tipo/alg) pertence à Story 9.2** (`backlog`, verificação) — a Story 9.1 só cobre emissão; nenhuma AC desta story exige código de verificação. [`src/modules/presentation/app/verify_presentation_usecase.ts`]
 
+## Deferred from: code review of story-9-2-verificacao-da-vc-jwt-em-presentations-verify (2026-08-11)
+
+- **Challenge com timestamp futuro pode contornar a janela de dez minutos** — a regra atual só rejeita timestamps antigos; corrigir junto à evolução transversal de validade de sessão. [`src/modules/presentation/app/verify_presentation_usecase.ts:299`]
+- **Chamadas blockchain não têm timeout explícito** — uma RPC que nunca resolve mantém a verificação pendente; tratar na infraestrutura blockchain compartilhada. [`src/modules/presentation/app/verify_presentation_usecase.ts:309`]
+- **Request terminal pode ser reaprovada se a sessão continuar `OPENED`** — validar/coordenar o estado da request quando o fluxo transacional for revisto. [`src/modules/presentation/app/verify_presentation_usecase.ts:107`]
+- **Submissões concorrentes podem emitir decisões ou webhooks contraditórios** — requer compare-and-set/controle de concorrência no repositório, fora do escopo da serialização JWT. [`src/modules/presentation/app/verify_presentation_usecase.ts:113`]
+- **Aprovação de sessão e request não é persistida atomicamente** — falha parcial entre os dois updates pode deixar estados inconsistentes; requer unidade transacional de repositório. [`src/modules/presentation/app/verify_presentation_usecase.ts:332`]
 ## Deferred from: code review of story-11.4-workflow-job-deploy-supabase (2026-08-09)
 
 - **`supabase/setup-cli@v1` usa `version: latest`** — a versão da Supabase CLI instalada no runner não é determinística entre releases; uma mudança de comportamento da CLI poderia alterar `db push` sem aviso. Pinar uma versão específica da CLR (e/ou SHA das actions) na Story 11.7 (hardening operacional), junto com o defer de SHA-pinning de `actions/checkout`/`actions/setup-node` registrado na Story 11.3. [`.github/jobs/deploy-supabase/action.yml`]
