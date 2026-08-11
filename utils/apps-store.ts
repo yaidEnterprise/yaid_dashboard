@@ -23,6 +23,7 @@ export interface YaidAppWithKey extends YaidApp {
 export type CreateAppInput = {
   name: string;
   webhookUrl?: string;
+  environment?: "homol" | "prod";
 };
 
 export type UpdateAppInput = {
