@@ -4,5 +4,6 @@ export type CompanyOutputDTO = {
   cnpj: string | null;
   status: "active" | "inactive";
   createdAt: string;
+  canCreateApps: boolean;
 };
 

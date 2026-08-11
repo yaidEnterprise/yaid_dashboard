@@ -8,6 +8,7 @@ export type CompanyPersistence = {
   email: string;
   status: string;
   created_at: string;
+  can_create_apps: boolean;
 };
 
 export class CompanyMapper {
@@ -19,6 +20,7 @@ export class CompanyMapper {
       email: raw.email,
       status: raw.status as CompanyStatus,
       createdAt: new Date(raw.created_at),
+      canCreateApps: raw.can_create_apps,
     });
   }
 
@@ -30,6 +32,7 @@ export class CompanyMapper {
       email: company.email,
       status: company.status,
       created_at: company.createdAt.toISOString(),
+      can_create_apps: company.canCreateApps,
     };
   }
 }

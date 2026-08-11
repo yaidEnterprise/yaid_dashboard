@@ -75,15 +75,15 @@
   --color-neutral-text: #475569;
   --color-neutral-border: #CBD5E1;
 
-  /* ── Environment — Sandbox ── */
-  --color-env-sandbox-bg: #EFF6FF;
-  --color-env-sandbox-text: #1D4ED8;
-  --color-env-sandbox-border: #BFDBFE;
+  /* ── Environment — Homologação (âmbar) ── */
+  --color-env-sandbox-bg: #FFFBEB;
+  --color-env-sandbox-text: #92400E;
+  --color-env-sandbox-border: #FCD34D;
 
-  /* ── Environment — Production ── */
-  --color-env-prod-bg: #ECFDF5;
-  --color-env-prod-text: #047857;
-  --color-env-prod-border: #A7F3D0;
+  /* ── Environment — Produção (azul) ── */
+  --color-env-prod-bg: #EFF6FF;
+  --color-env-prod-text: #1D4ED8;
+  --color-env-prod-border: #BFDBFE;
 
   /* ── Code surface ── */
   --color-code-bg: #0F172A;
