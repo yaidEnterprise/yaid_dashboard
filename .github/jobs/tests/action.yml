@@ -1,0 +1,28 @@
+name: "Tests"
+description: >-
+  Composite action que roda a suíte de testes do projeto como gate da pipeline
+  de produção. Configura Node 22 (LTS), instala dependências de forma
+  determinística com `npm ci` e executa `npm test`.
+
+# ATENÇÃO (risco crítico §5.1 da sprint change proposal 2026-08-08):
+# `npm test` executa `node --test "tests/unit/**/*.test.mjs"`. O padrão glob `**`
+# (globstar) só é expandido pelo próprio Node a partir do Node 21+. Em Node 18/20
+# o comando coletaria ZERO testes e passaria com um falso verde, tornando o gate
+# inútil. Por isso este composite FIXA Node 22 — nunca use 18 ou 20 aqui.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js 22 (LTS)
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: "npm"
+
+    - name: Install dependencies (deterministic)
+      run: npm ci
+      shell: bash
+
+    - name: Run test suite (gate)
+      run: npm test
+      shell: bash

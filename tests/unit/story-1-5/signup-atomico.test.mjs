@@ -284,12 +284,12 @@ test("Story 1.5 sign-up page calls signInWithPassword after successful signup", 
   );
 });
 
-test("Story 1.5 sign-up page redirects to / via window.location.href after sign-in", () => {
+test("Story 1.5 sign-up page redirects to / after sign-in", () => {
   const src = readText("app/sign-up/page.tsx");
   assert.match(
     src,
-    /window\.location\.href\s*=\s*["']\/["']/,
-    "must use window.location.href = '/' to force full reload for Supabase cookie revalidation"
+    /router\.push\(["']\/["']\)/,
+    "must redirect to '/' after establishing the session (router.push('/'))"
   );
 });
 

@@ -1,0 +1,26 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # Variáveis de branch do Amplify só existem na fase de BUILD; o runtime
+        # SSR do Next.js NÃO as recebe automaticamente. Materializamos as vars
+        # server-side em .env.production (embutido nos artefatos) para que o
+        # servidor as leia em runtime. Whitelist explícita — nunca `env` cru,
+        # para não vazar credenciais de infra da AWS. SUPABASE_DB_PASSWORD fica
+        # de fora de propósito (CLI-only, não lido pela app).
+        - env | grep -we STAGE -we NEXT_PUBLIC_APP_URL -we NEXT_PUBLIC_SUPABASE_URL -we NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY -we SUPABASE_SECRET_KEY -we ISSUER_PRIVATE_KEY -we WEBHOOK_SIGNING_PRIVATE_KEY -we BLOCKCHAIN_RPC_URL -we BLOCKCHAIN_WALLET_PRIVATE_KEY -we BLOCKCHAIN_CONTRACT_ADDRESS -we OCR_API_URL -we OCR_API_KEY >> .env.production || true
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+    excludeFiles:
+      - cache/**/*
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
