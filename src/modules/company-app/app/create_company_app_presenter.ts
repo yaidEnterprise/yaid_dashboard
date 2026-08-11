@@ -7,7 +7,8 @@ export async function makeCreateCompanyAppController() {
   return new CreateCompanyAppController(
     new CreateCompanyAppUseCase(
       await envs.getCompanyAppRepository(),
-      await envs.getApiKeyHasher()
+      await envs.getApiKeyHasher(),
+      await envs.getCompanyRepository()
     )
   );
 }

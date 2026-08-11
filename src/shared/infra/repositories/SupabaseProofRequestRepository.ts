@@ -106,7 +106,7 @@ export class SupabaseProofRequestRepository implements ProofRequestRepository {
   async updateStatus(id: string, status: ProofRequestStatus): Promise<void> {
     const { error } = await this.client
       .from(TABLE)
-      .update({ status })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq("id", id);
     if (error) throw error;
   }

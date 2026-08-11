@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, X, LayoutGrid, RefreshCw } from "lucide-react";
+import { Plus, Search, X, LayoutGrid, RefreshCw, Lock } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { EnvBadge } from "@/components/feedback/environment-badge";
 import { listApps, type AppStatus, type YaidApp } from "@/utils/apps-store";
+import { fetchWithAuth } from "@/utils/fetch-with-auth";
+
+type CanCreateAppsState = "loading" | boolean;
 
 function formatDate(iso: string) {
   try {
@@ -47,7 +50,7 @@ function SkeletonRow() {
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ canCreateApps }: { canCreateApps: CanCreateAppsState }) {
   return (
     <tr>
       <td colSpan={3} className="px-6 py-16 text-center">
@@ -61,16 +64,48 @@ function EmptyState() {
               Crie seu primeiro app para integrar com a YaID.
             </p>
           </div>
-          <Link
-            href="/apps/new"
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
-            Criar primeiro app
-          </Link>
+          {canCreateApps === "loading" ? (
+            <div className="h-9 w-40 animate-pulse rounded-md bg-surface-muted" />
+          ) : canCreateApps ? (
+            <Link
+              href="/apps/new"
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              Criar primeiro app
+            </Link>
+          ) : (
+            <span
+              aria-disabled="true"
+              aria-label="Criar primeiro app — bloqueado. Criação de apps ainda não liberada para sua empresa."
+              title="Criação de apps ainda não liberada para sua empresa"
+              className="inline-flex h-9 cursor-not-allowed items-center gap-2 rounded-md bg-surface-muted px-4 text-sm font-medium text-text-tertiary"
+            >
+              <Lock className="h-4 w-4" strokeWidth={2.5} />
+              Criar primeiro app
+            </span>
+          )}
         </div>
       </td>
     </tr>
+  );
+}
+
+// ─── Blocked banner ───────────────────────────────────────────────────────────
+
+function CreateAppsBlockedBanner() {
+  return (
+    <div
+      id="create-apps-blocked-banner"
+      className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3 text-warning-text"
+    >
+      <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+      <p className="text-xs leading-relaxed">
+        A criação de novos apps ainda não está liberada para sua empresa — funciona como uma
+        assinatura habilitada manualmente, sem cobrança automática. Entre em contato com o time
+        YaID para solicitar a liberação.
+      </p>
+    </div>
   );
 }
 
@@ -107,6 +142,34 @@ export default function AppsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
+  const [canCreateApps, setCanCreateApps] = useState<CanCreateAppsState>("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchWithAuth("/api/companies/me")
+      .then((res) => {
+        if (!res.ok) throw new Error("fetch failed");
+        return res.json();
+      })
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const canCreate =
+          data && typeof data === "object" && "canCreateApps" in data
+            ? (data as { canCreateApps: unknown }).canCreateApps
+            : undefined;
+        // Fails open on the client for any unexpected response shape — the
+        // CreateCompanyAppUseCase guard (403) is the source of truth
+        setCanCreateApps(typeof canCreate === "boolean" ? canCreate : true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fails open on the client — the CreateCompanyAppUseCase guard (403) is the source of truth
+        setCanCreateApps(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const reload = useCallback(() => {
     setLoading(true);
@@ -157,22 +220,41 @@ export default function AppsPage() {
     );
   }
 
+  const createAppsBlocked = canCreateApps === false;
+
   return (
     <>
       <PageHeader
         title="Apps"
         description="Cada app representa uma integração da sua empresa com a YaID. Configure ambiente, webhook e chaves separadamente para cada um."
         actions={
-          <Link
-            id="create-app-btn"
-            href="/apps/new"
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
-            Criar app
-          </Link>
+          canCreateApps === "loading" ? (
+            <div className="h-10 w-28 animate-pulse rounded-md bg-surface-muted" />
+          ) : createAppsBlocked ? (
+            <span
+              id="create-app-btn"
+              aria-disabled="true"
+              aria-label="Criar app — bloqueado. Criação de apps ainda não liberada para sua empresa."
+              title="Criação de apps ainda não liberada para sua empresa"
+              className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-md bg-surface-muted px-4 text-sm font-medium text-text-tertiary"
+            >
+              <Lock className="h-4 w-4" strokeWidth={2.5} />
+              Criar app
+            </span>
+          ) : (
+            <Link
+              id="create-app-btn"
+              href="/apps/new"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              Criar app
+            </Link>
+          )
         }
       />
+
+      {createAppsBlocked && <CreateAppsBlockedBanner />}
 
       {/* ── Toolbar ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -247,7 +329,9 @@ export default function AppsPage() {
               )}
 
               {/* Empty state — no apps at all */}
-              {!loading && !error && apps.length === 0 && <EmptyState />}
+              {!loading && !error && apps.length === 0 && (
+                <EmptyState canCreateApps={canCreateApps} />
+              )}
 
               {/* Filter empty — apps exist but filter yields 0 */}
               {!loading && !error && apps.length > 0 && filtered.length === 0 && (

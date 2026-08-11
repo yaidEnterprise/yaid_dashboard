@@ -104,8 +104,8 @@ development_status:
   # Epic 7: Ambientes por App, Governança de Criação e Review em Homologação
   epic-7: in-progress
   7-1-fundacao-de-versionamento-de-schema: done
-  7-2-coluna-updated-at-e-gravacao-em-toda-transicao: backlog
-  7-3-allowlist-de-criacao-de-apps: backlog
+  7-2-coluna-updated-at-e-gravacao-em-toda-transicao: done
+  7-3-allowlist-de-criacao-de-apps: done
   7-4-seletor-de-ambiente-na-criacao-de-app: done
   7-5-review-manual-em-apps-homologacao: backlog
   7-6-remocao-secao-resposta-da-api: done

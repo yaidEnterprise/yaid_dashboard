@@ -17,6 +17,7 @@ export class GetMyCompanyUseCase {
       cnpj: company.documentNumber,
       status: company.status,
       createdAt: company.createdAt.toISOString(),
+      canCreateApps: company.canCreateApps,
     };
   }
 }
