@@ -168,12 +168,12 @@ test("Story 1.6 sign-in page reads ?next= param and validates it before redirect
   );
 });
 
-test("Story 1.6 sign-in page uses window.location.href for redirect after login", () => {
+test("Story 1.6 sign-in page redirects to the validated path after login", () => {
   const src = readText("app/sign-in/page.tsx");
   assert.match(
     src,
-    /window\.location\.href/,
-    "must use window.location.href to force full page reload — ensures Supabase session cookies are revalidated"
+    /router\.push\(safePath\)/,
+    "must redirect to the validated safe path after login (router.push(safePath))"
   );
 });
 

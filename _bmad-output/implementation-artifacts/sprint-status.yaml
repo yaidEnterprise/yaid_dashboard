@@ -1,5 +1,5 @@
 # generated: 2026-05-12
-# last_updated: 2026-07-31
+# last_updated: 2026-08-09
 # project: yaid_dashboard
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,8 +36,11 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-09
+last_updated: 2026-08-11
 project: yaid_dashboard
+# 2026-08-09: Story 11.4 criada (ready-for-dev)
+# 2026-08-09: Story 11.8 criada (ready-for-dev) — Sprint Change 2026-08-09: sync autoritativo de env vars
+# 2026-08-09: Sprint Change Complementar (simplificação de env vars) aprovado — sem nova story (escopo minor)
 
 project_key: NOKEY
 tracking_system: file-system
@@ -117,7 +120,7 @@ development_status:
   # Epic 9: Verifiable Credential como VC-JWT
   epic-9: in-progress
   9-1-emissao-da-vc-como-vc-jwt-eddsa: done
-  9-2-verificacao-da-vc-jwt-em-presentations-verify: backlog
+  9-2-verificacao-da-vc-jwt-em-presentations-verify: done
   epic-9-retrospective: optional
 
   # Epic 10: Higiene de Configuração e Chaves (Sprint Change 2026-07-28, adendo §7)
@@ -127,3 +130,41 @@ development_status:
   10-1-centralizacao-de-chaves-de-teste-no-environments: backlog
   10-2-validacao-de-formato-de-chaves-no-boot: backlog
   epic-10-retrospective: optional
+
+  # Epic 11: Pipeline de CI/CD de Produção (Sprint Change 2026-08-08)
+  # 2026-08-09: reaberto (Sprint Change 2026-08-09) — Story 11.8 revisou o sync de env vars
+  # para o modelo autoritativo derivado do .env.local.example (substitui o merge da 11.5).
+  # 2026-08-09: Story 11.8 done — epic fechado novamente.
+  # 2026-08-09: Sprint Change Complementar (simplificação de env vars) aprovado — escopo minor,
+  # ajuste dentro do Epic 11 sem nova story. Artefatos de planejamento (epics.md, architecture.md)
+  # já atualizados; implementação de código/docs pendente. Ver a chave sprint-changes abaixo.
+  epic-11: done
+  11-1-health-check-endpoint: done
+  11-2-amplify-yml-e-desabilitar-auto-build: done
+  11-3-workflow-job-tests: done
+  11-4-workflow-job-deploy-supabase: done
+  11-5-workflow-job-deploy-amplify: done
+  11-6-workflow-job-smoke-test: done
+  11-7-documentacao-operacional: done
+  11-8-sync-autoritativo-de-env-vars-no-amplify: done
+  epic-11-retrospective: optional
+
+# Registro de sprint changes que NÃO geraram story própria (escopo minor).
+# Não fazem parte de development_status — são rastreados aqui apenas para auditoria.
+sprint_changes:
+  - id: sprint-change-2026-08-09-simplificacao-env-vars
+    date: '2026-08-09'
+    epic: epic-11
+    scope: minor
+    status: done # implementado em 2026-08-09 — código, docs e testes concluídos
+    proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-09.md
+    summary: >-
+      Simplificação de env vars sobre o resultado da Story 11.8:
+      (1) smoke-test passa a usar vars.NEXT_PUBLIC_APP_URL e o secret PRODUCTION_URL é eliminado;
+      (2) getter derivado YAID_VERIFICATION_BASE_URL removido de environments.ts e de RuntimeEnv —
+      URL de verificação derivada inline em create_proof_request_usecase.ts como
+      ${env.NEXT_PUBLIC_APP_URL}/v/${token}.
+    artifacts_updated:
+      - _bmad-output/planning-artifacts/epics.md
+      - _bmad-output/planning-artifacts/architecture.md
+ 

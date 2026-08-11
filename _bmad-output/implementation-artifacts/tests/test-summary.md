@@ -30,6 +30,15 @@
 - [x] tests/unit/story-5-8/verify-presentation-usecase.dynamic.test.ts - Story 5.8 (QA) **teste dinâmico/comportamental** — instancia `VerifyPresentationUseCase` real com repositórios/hasher/blockchain/webhook fake e VP/VC assinados de verdade com `@noble/ed25519`; verifica o `{ valid: boolean }` efetivamente retornado, a transição de status persistida (`updateStatus`) e o `proofType` real entregue ao webhook para: AC#2 (ageOver18:false → rejected), AC#3 (claim ausente → rejected), AC#4 (claim não solicitada irrelevante → approved), controle positivo (ageOver18:true → approved), AC#5 (claim não-booleana → rejected), e o caminho defensivo de `findById` retornando `null` (Task 1). Fecha a lacuna de "testes 100% estáticos" registrada em `deferred-work.md`; verificado por mutação (comentar a checagem nova faz os 2 testes de correspondência falharem, confirmando que o teste exercita o código real). Executado via `tsx --test` (nova devDependency, decisão do usuário) — não via `node --test` puro, pois importa os módulos TypeScript reais com aliases `@/...`
 - [x] tests/unit/story-9-1/vc-jwt-issuance.test.mjs - Story 9.1 (dev) contratos estruturais da migração VC-JWT: ausência do formato JSON-LD antigo (`Ed25519Signature2020`, `proofPurpose`, `type: ["VerifiableCredential"]`), presença do header (`alg: EdDSA`, `typ: JWT`, `kid`) e payload (`iss`, `sub`, `jti`, `iat`, `nbf`, `vc`) prescritos, assinatura via `ed.signAsync` sobre `base64url(header).base64url(payload)`, `execute()` retornando `Promise<string>`, preservação do fluxo OCR/claims/blockchain/erros 401-422-502, não-alteração do hardcode de teste do Epic 10, propagação do tipo `string` pelo controller/rota, compilação TypeScript limpa
 - [x] tests/unit/story-9-1/issue-credential-usecase.dynamic.test.ts - Story 9.1 (dev + QA) **teste dinâmico/comportamental** — instancia `IssueCredentialUseCase` real com `BlockchainClient`/`OcrProvider` fake e um par de chaves Ed25519 de teste; decodifica o JWT de 3 segmentos efetivamente retornado e verifica: header/payload exatamente no formato do AC#1, assinatura EdDSA válida via `ed.verifyAsync` contra a public key derivada de `ISSUER_PRIVATE_KEY`, `ageOver18: false` para holder menor de idade sem lançar exceção (semântica da Story 5.7 preservada), rejeição 401 sem registrar DID tanto para assinatura bem-formada porém inválida quanto para assinatura malformada (não-base64url) — item adicionado nesta etapa de QA para fechar o gap de cobertura registrado no code review
+- [x] tests/unit/story-9-2/vc-jwt-verification.test.mjs - Story 9.2 contratos estruturais: VC compacta única, allow-list `EdDSA`/`JWT`, binding de issuer/key, signing input original, normalização `jti`/`sub`/`vc`, ausência do proof JSON-LD legado e compilação TypeScript
+- [x] tests/unit/story-9-2/verify-presentation-vc-jwt.dynamic.test.ts - Story 9.2 testes comportamentais com Ed25519 real: happy path, segmentos originais não-canônicos, formato/assinatura/header/payload inválidos, JSON-LD legado e regressão das 11 regras
+- [x] tests/unit/story-11-1/health-check-endpoint.test.mjs - Story 11.1 (dev) contratos estruturais: `route.ts` exporta `dynamic = "force-dynamic"` e `GET()` sem params retornando `{status:"ok"}`/200/`Cache-Control: no-store`, ausência de imports de `environments`/Supabase/`src/modules/*` (só `next/server`), `isPublicApiRoute` em `middleware.ts` classifica `GET /api/health` como pública, e nenhum outro classificador de rota (`isDashboardPage`/`isPublicAuthPage`/`isSessionAuthApiRoute`/`isDIDAuthRoute`) foi ampliado para referenciar `/api/health`
+- [x] tests/unit/story-11-1/health-check-endpoint.dynamic.test.ts - Story 11.1 (QA) **teste dinâmico/comportamental** — importa e invoca `GET()` real (não regex sobre o source): confirma `status: 200` e corpo `{status:"ok"}` via `response.json()`, header `Cache-Control: no-store` no objeto `Response` de verdade, `dynamic` como binding real `"force-dynamic"`, e que `GET()` retorna um `Response` síncrono (não uma `Promise`) — prova em runtime o AC#5 ("nenhuma chamada de rede/IO bloqueante no caminho do handler"), item adicionado nesta etapa de QA para fechar a lacuna "suíte 100% estática" registrada no code review
+- [x] tests/unit/story-11-2/amplify-yml-e-desabilitar-auto-build.test.mjs - Story 11.2 (dev) contratos estruturais: `amplify.yml` existe com `version: 1`/seção `frontend`, `preBuild.commands` contém `npm ci`, `build.commands` contém `npm run build` (mapeado de `package.json`), sem tabs, `artifacts.baseDirectory` exatamente `.next` (nunca `out`), `next.config.ts` sem `output: "export"`, `cache.paths` inclui `node_modules/**/*` (âncora de linha, não comentário) e `.next/cache/**/*` (patch do code review), `artifacts.excludeFiles` exclui `cache/**/*` do artefato (patch do code review), `docs/ops/amplify-deploy.md` existe e cobre Auto Build/branch `prod`/comando CLI/checagem `get-branch` prévia/rollback/dependência com a Story 11.5
+- [x] tests/unit/story-11-2/amplify-yml-real-parse.test.mjs - Story 11.2 (QA) **teste comportamental** — faz parse real de `amplify.yml` via `js-yaml.load()` (nova devDependency, decisão deliberada desta etapa) em vez de regex sobre o texto bruto: valida o objeto JS resultante (tipo, `version` como número, arrays de comandos exatos, `baseDirectory`, `files`/`excludeFiles`, `cache.paths` por membership real, ausência de chaves extras no nível raiz), e inclui um teste de mutação que insere uma fase `postBuild` legítima entre `build` e `artifacts` para provar que o parser real não é enganado pela reordenação/inserção de chaves que poderia escapar da captura por regex dos testes estruturais do dev-story — fecha o gap "testes usam regex, não parser YAML real" registrado no code review (`deferred-work.md`)
+
+- [x] tests/unit/story-11-3/workflow-job-tests.test.mjs - Story 11.3 (dev) contratos da pipeline: parse real via `js-yaml` do composite `.github/jobs/tests/action.yml` (`runs.using: composite`, `setup-node` fixando Node 22 com asserção negativa contra 18/20 — §5.1, `npm ci`/`npm test`, `shell` obrigatório em todo step `run`) e do orquestrador `.github/workflows/production.yml` (trigger em push na branch `prod` tolerando coerção YAML 1.1 de `on`, `permissions: contents: read` least-privilege — patch do code review, job `tests` em `ubuntu-latest` com `checkout` ANTES de `uses: ./.github/jobs/tests`, base mínima com apenas o job `tests`)
+- [x] tests/unit/story-11-3/pipeline-node-version-contract.test.mjs - Story 11.3 (QA) contratos adicionais ligando a escolha de Node ao motivo real: prova que o script `npm test` do projeto usa o glob `tests/unit/**/*.test.mjs` (o `**` que exige Node 21+) e que a versão fixada no CI é numericamente `>= 21` (não só "começa com 22"), ordem de execução do composite (`setup-node` → `npm ci` → `npm test`), `npm ci` nunca `npm install`, actions pinadas por `@versão`, e que o `uses:` local aponta para o caminho exato do composite existente no repo
 
 ## Coverage
 
@@ -368,3 +377,230 @@
 - Reaproveitado o padrão dinâmico via `tsx` já estabelecido pela Story 5.8 — nenhuma infraestrutura de teste nova foi necessária, apenas `npm install` para materializar o `tsx` (já declarado como devDependency desde a 5.8, ausente fisicamente no ambiente desta sessão).
 - 6 itens deferidos do code review para `deferred-work.md`, todos fora do escopo desta story: ausência de claims `exp`/`aud` no JWT (formato exato já prescrito pelo AC#1, não deve ser reinventado), `ed.signAsync` na emissão sem try/catch dedicado (padrão pré-existente desde a Story 5.4), cobertura de `ISSUER_PRIVATE_KEY` malformado (Epic 10), e verificação EdDSA com allow-list de algoritmo (Story 9.2).
 - **Break de acoplamento com a Story 9.2 (documentado, não coberto por teste desta story deliberadamente)**: `verify_presentation_usecase.ts` não consegue fazer parse de uma VC-JWT nova — nenhum teste de integração entre emissão e verificação foi adicionado, pois cobri-lo exigiria implementar (ou mockar) a Story 9.2 antes do previsto. A Story 9.2 deve adicionar essa cobertura ao migrar a verificação.
+
+### Story 9.2 — Verificação da VC-JWT em `presentations/verify`
+
+- Acceptance criteria: 8/8 cobertos
+  - AC#1–#3: JWS compacto de três segmentos, base64url estrito, assinatura EdDSA sobre os segmentos originais, allow-list de header e shape/bindings do payload cobertos estrutural e dinamicamente.
+  - AC#4–#5: as 11 regras da Story 5.5 e o mapeamento `PROOF_TYPE_CLAIM_KEY` da 5.8 são exercitados com fakes e assinaturas reais.
+  - AC#6–#7: sucesso e falha validam retorno, sessão, request, webhook, DID e revogação pelo `jti`.
+  - AC#8: objeto JSON-LD legado e credencial `null` são rejeitados.
+- Caminhos críticos: 41/41 testes focados passando (6 estáticos + 35 dinâmicos).
+- QA adicionou o caso de JSON com whitespace e ordem de chaves não canônicos, provando que a assinatura é verificada sobre os segmentos codificados originais e não sobre objetos reserializados.
+
+#### Validation
+
+- `npm run test:story:9.2`: **passed** — 41/41
+- `npm run test:dynamic`: **passed** — 45/45
+- `npm test`: **failed** — 635/637 estáticos; as duas falhas são preexistentes e fora do escopo nas Stories 1.5/1.6, cujos testes exigem `window.location.href` enquanto as páginas atuais usam `router.push`. A execução para antes da etapa dinâmica, que passou separadamente.
+
+#### Notes
+
+- Nenhuma rede, Supabase real, browser ou blockchain real é usada; todos os efeitos externos são fakes determinísticos.
+- `exp`/`aud` e política temporal adicional para `iat`/`nbf` permanecem fora do formato fechado na Story 9.1; não foram adicionados por QA.
+### Story 11.1 — Health Check Endpoint
+- Acceptance criteria: 4/5 diretamente testáveis, 5/5 cobertos (AC#5 coberto indiretamente)
+  - AC#1 (200 + `{status:"ok"}` + `Cache-Control: no-store`): coberto estruturalmente (regex sobre `route.ts`) e dinamicamente (`response.status`, `response.json()`, `response.headers.get("Cache-Control")` no `Response` real)
+  - AC#2 (`dynamic = "force-dynamic"`): coberto estruturalmente e dinamicamente (import real do binding `dynamic`)
+  - AC#3 (sem DB/env/módulos de domínio no handler): coberto estruturalmente — ausência de imports de `@/shared/environments`, `@supabase/*`, `@/modules/*`/`src/modules/*`; whitelist de imports restrita a `next/server`
+  - AC#4 (whitelisting em `isPublicApiRoute`, sem alterar outros classificadores): coberto estruturalmente — presença da entrada dentro da função certa + varredura negativa nos outros 4 classificadores (`isDashboardPage`/`isPublicAuthPage`/`isSessionAuthApiRoute`/`isDIDAuthRoute`)
+  - AC#5 (nenhuma chamada de rede/IO bloqueante no caminho do `route.ts`): coberto indiretamente pela ausência de imports externos (AC#3) e diretamente pelo teste dinâmico "GET() é síncrono — não retorna Promise". **Não cobre** o caminho do `middleware.ts` (ver Notes) — isso é um achado deferido do code review, não um gap de teste desta story.
+- Caminhos críticos: 15/15 testes passando (11 estruturais + 4 dinâmicos)
+  - Primeiro teste dinâmico do projeto que importa e invoca um route handler real (`GET()`) em vez de instanciar um use case — `IssueCredentialUseCase`/`VerifyPresentationUseCase` (Stories 5.8/9.1) testam camada de aplicação; este testa a camada de entrada HTTP diretamente via `Response` real do Next.js.
+  - Nenhuma camada usecase/controller/presenter/viewmodel existe nesta story (decisão intencional documentada no Dev Notes) — os testes refletem isso: sem mocks de repositório, sem fakes de dependência, só o handler puro.
+
+#### Validation
+- `npm run test:story:11.1`: **passed** — 15/15 (11 estáticos + 4 dinâmicos)
+- `npm test` (suite completa): **passed** — 673/673 (659 estáticos + 14 dinâmicos)
+
+#### Notes
+- 2 itens deferidos do code review para `deferred-work.md`: (1) `updateSupabaseSession` roda para toda requisição a `/api/health` antes do check `isPublicApiRoute` — chamada de rede ao Supabase no caminho do middleware (não do `route.ts`), pré-existente e compartilhado com `/api/webhook-public-key`; corrigir exige reestruturar a ordem de early-return do `middleware()` para toda uma categoria de rotas públicas, fora do escopo desta story; (2) teste estrutural de `isPublicApiRoute` usa delimitação de função por `indexOf`, frágil a chaves aninhadas futuras (correto hoje, nenhuma das 4 funções de classificação tem esse padrão).
+- Script `test:story:11.1` segue a convenção `node --test ... && tsx --test ...` já usada pelas Stories 5.8/9.1.
+
+### Story 11.2 — amplify.yml e Desabilitar Auto-Build
+- Acceptance criteria: 5/5 cobertos
+  - AC#1 (`amplify.yml` versionado, YAML válido, fases `preBuild`/`build`): coberto estruturalmente (existência, `version: 1`, seção `frontend`, comandos `npm ci`/`npm run build`) e comportamentalmente — parse real via `js-yaml.load()` (QA) confirmando o objeto JS resultante, não apenas proximidade de texto
+  - AC#2 (`baseDirectory: .next`, nunca static export): coberto estruturalmente (regex ancorada + negativo contra `out`) e comportamentalmente (`doc.frontend.artifacts.baseDirectory === ".next"` no objeto parseado), reforçado por checar `next.config.ts` sem `output: "export"`
+  - AC#3 (`cache.paths` inclui `node_modules/**/*`): coberto estruturalmente (regex ancorada contra falso positivo em linha comentada — patch do code review) e comportamentalmente (`Array.includes` real no objeto parseado); estendido no code review para também cachear `.next/cache/**/*` e excluir esse mesmo caminho do artefato de deploy via `artifacts.excludeFiles`
+  - AC#4 (documentação explica por que/como desabilitar `enableAutoBuild` na branch `prod`): coberto por `docs/ops/amplify-deploy.md` — Console AWS passo a passo, comando AWS CLI, e (patches do code review) checagem `aws amplify get-branch` prévia ao comando mutador e comando de rollback (`--enable-auto-build`)
+  - AC#5 (documentação explicita a dependência com a Story 11.5): coberto pela referência textual a "11.5" no documento, testada estruturalmente
+- Caminhos críticos: 33/33 testes passando (22 estruturais do dev-story, já incluindo os 3 ajustes do code review, + 11 comportamentais de parse real do QA)
+  - `amplify.yml`: `version: 1`, `frontend.phases.preBuild.commands: [npm ci]`, `frontend.phases.build.commands: [npm run build]`, `artifacts.baseDirectory: .next`, `artifacts.files: ['**/*']`, `artifacts.excludeFiles: [cache/**/*]`, `cache.paths: [node_modules/**/*, .next/cache/**/*]`
+  - `docs/ops/amplify-deploy.md`: por que `.next` (SSR/Web Compute, não static export), por que desabilitar Auto Build (evita corrida com o pipeline GitHub Actions das Stories 11.3-11.6), Console + CLI + verificação de estado prévio + rollback, dependência explícita com a Story 11.5
+  - QA fechou o gap "testes usam regex, não parser YAML real" (registrado em `deferred-work.md` pelo code review) adicionando `js-yaml` como devDependency e um teste de mutação que insere uma fase `postBuild` legítima entre `build`/`artifacts` para provar que a validação sobrevive a reordenação de chaves — algo que a suíte regex-only do dev-story não conseguiria garantir
+  - TypeScript: `npx tsc --noEmit` sem erros; `npm run lint` sem novos erros/warnings (6 erros/12 warnings pré-existentes, nenhum nos arquivos desta story)
+
+#### Validation
+- `npm run test:story:11.2`: **passed** — 33/33 (22 estruturais + 11 comportamentais)
+- `npm test` (suite completa) ANTES desta story: **657/659** (2 falhas pré-existentes, Story 1.5/1.6, não relacionadas)
+- `npm test` (suite completa) DEPOIS desta story: **690/692** (as mesmas 2 falhas pré-existentes, 0 novas)
+
+#### Notes
+- Story de infraestrutura de build/deploy (config YAML + documentação operacional) — nenhum arquivo em `src/`/`app/` foi tocado, consistente com o Epic 11 (Story 11.1 seguiu o mesmo padrão de escopo puramente infraestrutural)
+- Sem AWS Amplify CLI/credenciais neste ambiente — a ação real de desabilitar o Auto Build no Amplify App de produção **não foi executada**, apenas documentada (escopo explícito da story). Os testes verificam a qualidade/completude da documentação (Console + CLI + verificação + rollback), não o estado real da conta AWS
+- `js-yaml` foi promovido de dependência transitiva (via eslint) para devDependency direta nesta etapa de QA — decisão deliberada para fechar um gap real de cobertura (testes regex-only podem ser enganados por reordenação de chaves YAML válida), mesmo padrão de decisão já usado para `tsx` na Story 5.8
+- 3 itens deferidos do code review para `deferred-work.md`: (1) suíte do dev-story é regex-only, não parser real — mitigado pelo teste comportamental desta etapa de QA, mas o padrão sistêmico (regex sobre source) permanece em todas as outras stories do projeto; (2) nada no repositório verifica automaticamente que a desabilitação do Auto Build foi executada na conta AWS real — limitação inerente ao escopo sem credenciais; (3) o Amplify App real também precisa estar configurado como "Web Compute" no nível do próprio App (não só via `amplify.yml`), documentado mas sem passo a passo Console/CLI dedicado como o dado à desabilitação do Auto Build
+
+### Story 11.3 — Composite `tests` + Orquestrador Base da Pipeline
+- Acceptance criteria: 5/5 cobertos
+  - AC#1 (composite `.github/jobs/tests/action.yml` existe, YAML válido, `runs.using: composite`): coberto por parse real via `js-yaml.load()` — existência, parse sem exceção, `runs.using === "composite"` e `runs.steps` não-vazio
+  - AC#2 (Node 22, `npm ci`, `npm test`, `shell` em todo step `run`): coberto estruturalmente (step `actions/setup-node` com `node-version` começando com `22` + asserção negativa explícita contra `18`/`20` — §5.1) e por contrato adicional (QA) que prova numericamente `major >= 21` e liga o requisito ao glob `**` real do script `npm test`; `npm ci`/`npm test` presentes e todo step `run` com `shell` declarado
+  - AC#3 (`production.yml` existe, YAML válido, dispara em push na branch `prod`): coberto — parse real tolerando a coerção YAML 1.1 da chave `on` (checa `doc.on ?? doc[true]`), `on.push.branches` inclui `prod`; inclui também o `permissions: contents: read` least-privilege adicionado no code review (§5.7)
+  - AC#4 (job `tests` em `ubuntu-latest`, `checkout` antes do composite local): coberto — job existe, `runs-on === "ubuntu-latest"`, índice do `actions/checkout` menor que o do `uses: ./.github/jobs/tests`, e o `uses:` local aponta para o caminho exato do composite criado
+  - AC#5 (base mínima: apenas o job `tests`): coberto por `deepEqual(Object.keys(jobs), ["tests"])`
+- Caminhos críticos: 23/23 testes passando na story (16 estruturais do dev-story, incluindo o patch de `permissions` do code review, + 7 de contrato adicional do QA)
+  - Foco no risco crítico §5.1: além de "node-version começa com 22", o QA prova o encadeamento causal — o comando `npm test` usa `tests/unit/**/*.test.mjs` e o `**` só expande no Node 21+, portanto fixar `>= 21` (ideal 22 LTS) é o que impede a coleta silenciosa de zero testes (falso verde)
+  - Sem execução real de GitHub Actions no sandbox — testes são de contrato/estruturais sobre o YAML parseado, alinhado ao padrão da Story 11.2
+
+#### Validation
+- `npm run test:story:11.3`: **passed** — 23/23 (16 dev + 7 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 715 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de infraestrutura de CI (dois YAMLs de GitHub Actions + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
+- `js-yaml` (devDependency desde a Story 11.2) reusado para parse semântico real dos dois YAMLs — sem novas dependências
+- 1 item deferido do code review para `deferred-work.md`: GitHub Actions pinadas por tag de major mutável (`@v4`) em vez de commit SHA — hardening de supply-chain deferido para a Story 11.7 (política de pinning para toda a pipeline). 1 dismiss: o teste AC5 (`jobKeys == ["tests"]`) quebrará em 11.4 por design (base mínima intencional)
+
+### Story 11.4 — Composite `deploy-supabase` + Job Encadeado (`needs: tests`)
+- Acceptance criteria: 7/7 cobertos
+  - AC#1 (composite `.github/jobs/deploy-supabase/action.yml` existe, YAML válido, `runs.using: composite`): coberto por parse real via `js-yaml.load()`
+  - AC#2 (inputs `supabase-access-token`/`supabase-project-ref`/`supabase-db-password`, todos `required: true`): coberto
+  - AC#3 (setup da Supabase CLI, `supabase link` via input, `db push --dry-run`, `db push`, `shell` em todo `run`): coberto
+  - AC#4 (§5.5 CRÍTICO — `db push --dry-run` ANTES de `db push` real): coberto por teste dedicado de ordenação de índices; reforçado no QA pela ordem completa setup-cli → link → dry-run → push e "exatamente um apply" (sem push duplicado)
+  - AC#5 (nenhum literal de secret — project-ref `lygkwhcwsrxfozswhxyo`/token/senha; sem echo de secrets): coberto no composite e no `with:` do job; QA reforça a fronteira de secrets (composite usa só `inputs.*`, nunca lê `secrets.*`)
+  - AC#6 (job `deploy-supabase` com `needs: tests`, `ubuntu-latest`, checkout antes do composite, `with:` referenciando `${{ secrets.* }}`): coberto; QA valida alinhamento exato entre as chaves do `with:` e os `inputs` do composite
+  - AC#7 (job `tests` intacto; apenas `tests` + `deploy-supabase`, sem 11.5/11.6): coberto
+- Caminhos críticos: 29/29 testes passando na story (21 dev + 8 QA de contrato)
+  - Propriedade de segurança-chave (§5.5): dry-run sempre precede o apply — teste dedicado no dev + ordem completa no QA
+  - Fronteira de secrets: secrets vivem no orquestrador como `${{ secrets.* }}` e no composite apenas como `${{ inputs.* }}`, expostos aos comandos só via `env:`, nunca ecoados
+  - Contrato orquestrador↔composite: as chaves do `with:` batem exatamente com os `inputs` declarados
+  - Sem execução real de GitHub Actions/Supabase Cloud no sandbox — testes de contrato/estruturais sobre o YAML parseado, alinhado às Stories 11.2/11.3
+
+#### Validation
+- `npm run test:story:11.4`: **passed** — 29/29 (21 dev + 8 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 745 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de infraestrutura de CI (um composite YAML novo + extensão do orquestrador + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
+- `js-yaml` reusado para parse semântico real — sem novas dependências
+- Teste AC5 da Story 11.3 atualizado (dismiss documentado na 11.3): em vez de travar a contagem exata de jobs, garante que `tests` é o gate inicial (sem `needs`) e que jobs adicionais dependem via `needs`
+- 2 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `supabase/setup-cli@v1` usa `version: latest` (CLI não determinística); (2) `supabase db push` pode exigir confirmação interativa em runner não-TTY — verificar no primeiro release real
+
+### Story 11.5 — Composite `deploy-amplify` + Job Encadeado (`needs: deploy-supabase`)
+- Acceptance criteria: 8/8 cobertos
+  - AC#1 (composite `.github/jobs/deploy-amplify/action.yml` existe, YAML válido, `runs.using: composite`): coberto por parse real via `js-yaml.load()`
+  - AC#2 (inputs creds AWS/região/role ARN/app-id/branch/env vars, todos `required: true`): coberto
+  - AC#3 (auth via `aws-actions/configure-aws-credentials` com `role-to-assume` = `sts:AssumeRole`; `shell` em todo `run`): coberto
+  - AC#4 (§5.4 CRÍTICO — sync de env por MERGE: `get-branch` lê as vars atuais ANTES do `update-branch`, merge via `jq '$current * $incoming'`, nunca overwrite cego): coberto por testes dedicados de ordem get→update e de evidência de merge
+  - AC#5 (§5.8 CRÍTICO — `start-job --job-type RELEASE` + polling FINITO com `max_attempts`/timeout, sem `while true`, falha explícita `exit 1` em terminal ≠ SUCCEED): coberto
+  - AC#6 (nenhum literal de credencial/ARN; sem echo de secrets; nenhum `NEXT_PUBLIC_*` recebe secret): coberto no composite e no `with:` do job
+  - AC#7 (job `deploy-amplify` com `needs: deploy-supabase`, `ubuntu-latest`, checkout antes do composite, `with:` referenciando `${{ secrets.* }}`): coberto; QA valida alinhamento exato `with:`↔`inputs`
+  - AC#8 (jobs `tests`+`deploy-supabase` intactos e encadeados; apenas `tests`/`deploy-supabase`/`deploy-amplify`, sem smoke-test 11.6): coberto
+- Caminhos críticos: 36/36 testes passando na story (26 dev + 10 QA de contrato)
+  - §5.4 (merge de env): `update-branch` reenvia o mapa mesclado (current ∪ incoming) — preserva secrets server-side exigidos no boot por `environments.ts` quando `STAGE=PROD`
+  - §5.7 (AssumeRole least-privilege): bootstrap creds → `role-to-assume` (deploy role); JSON das policies IAM é escopo da Story 11.7
+  - §5.8 (polling finito): loop 60×15s com falha explícita em FAILED/CANCELLED/inesperado/timeout; guardrail de teste garante ausência de `while true`
+  - Contrato: ordem completa auth→sync→start-job→polling; exatamente 1 start-job RELEASE; jobId via GITHUB_OUTPUT consumido pelo polling; `with:`↔`inputs` alinhados; fronteira de secrets (composite só usa `inputs.*`, nunca `secrets.*`); `needs` exatamente `[deploy-supabase]`
+  - Sem execução real de GitHub Actions/AWS no sandbox — testes de contrato/estruturais sobre o YAML parseado, alinhado às Stories 11.2/11.3/11.4
+
+#### Validation
+- `npm run test:story:11.5`: **passed** — 36/36 (26 dev + 10 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 781 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de infraestrutura de CI (um composite YAML novo + extensão do orquestrador + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
+- `js-yaml` reusado para parse semântico real — sem novas dependências
+- Teste AC7 da Story 11.4 atualizado (precedente da 11.4 sobre a 11.3): `jobKeys` agora `["deploy-amplify", "deploy-supabase", "tests"]`
+- 3 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `aws-actions/configure-aws-credentials@v4` pinada por tag de major (não SHA); (2) polling sem tolerância a erro transitório da API AWS sob `set -euo pipefail`; (3) sync assume payload JSON válido de env vars sem mensagem dedicada em caso de malformação
+
+### Story 11.6 — Composite `smoke-test` + Job Encadeado (`needs: deploy-amplify`) — Gate Final
+- Acceptance criteria: 8/8 cobertos
+  - AC#1 (composite `.github/jobs/smoke-test/action.yml` existe, YAML válido, `runs.using: composite`): coberto por parse real via `js-yaml.load()`
+  - AC#2 (input `production-url`, `required: true`): coberto
+  - AC#3 (`GET .../api/health` via `curl` com URL vinda do input; `shell` em todo `run`): coberto
+  - AC#4 (§5.8 CRÍTICO — retries FINITOS com `max_attempts`/timeout, sem `while true`, falha explícita `exit 1` ao esgotar): coberto por testes dedicados
+  - AC#5 (§6 — sucesso = HTTP 200, lido via `curl -w '%{http_code}'`; reforço opcional do corpo `{status:"ok"}`): coberto
+  - AC#6 (nenhuma URL de produção hardcoded; alvo vem de `${{ inputs.production-url }}`): coberto no composite e no `with:` do job
+  - AC#7 (job `smoke-test` com `needs: deploy-amplify`, `ubuntu-latest`, checkout antes do composite, `with:` referenciando `${{ secrets.* }}`/`${{ vars.* }}`): coberto; QA valida alinhamento exato `with:`↔`inputs`
+  - AC#8 (jobs anteriores intactos e encadeados; conjunto EXATO de 4 jobs `tests`/`deploy-supabase`/`deploy-amplify`/`smoke-test`): coberto
+- Caminhos críticos: 33/33 testes passando na story (20 dev + 13 QA de contrato)
+  - §5.8 (retries finitos): loop 30×10s com `sleep` entre tentativas e falha explícita ao esgotar; guardrail de teste garante ausência de `while true`; `max_attempts` validado como inteiro positivo finito
+  - §6 (critério de sucesso): HTTP 200 via `%{http_code}` + reforço do corpo `{status:"ok"}`
+  - Consome o endpoint `GET /api/health` da Story 11.1 (não toca no código do endpoint)
+  - Contrato: `needs` exatamente `[deploy-amplify]`; cadeia completa `tests → deploy-supabase → deploy-amplify → smoke-test`; smoke-test é FOLHA (nenhum job depende dele); alvo exato `/api/health`; único step de smoke-test; fronteira de secrets (composite só usa `inputs.*`); `with:`↔`inputs` alinhados; `permissions: contents: read` mantido
+  - Sem execução real de GitHub Actions/HTTP contra produção no sandbox — testes de contrato/estruturais sobre o YAML parseado, alinhado às Stories 11.2/11.3/11.4/11.5
+
+#### Validation
+- `npm run test:story:11.6`: **passed** — 33/33 (20 dev + 13 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 814 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de infraestrutura de CI (um composite YAML novo + extensão do orquestrador + testes de contrato) — nenhum arquivo em `src/`/`app/` tocado, consistente com o resto do Epic 11
+- `js-yaml` reusado para parse semântico real — sem novas dependências
+- Testes de conjunto de jobs das Stories 11.5 (AC8) e 11.4 (AC7) relaxados de `deepEqual` exato para verificação de presença; o conjunto EXATO de 4 jobs passa a ser validado pelo teste da 11.6 (precedente da 11.5 sobre 11.4 e da 11.4 sobre 11.3)
+- 2 itens deferidos do code review para `deferred-work.md` (Story 11.7): (1) `actions/checkout@v4` pinada por tag de major (não SHA) no job smoke-test; (2) smoke-test retenta uniformemente e não valida a URL de produção — validação/distinção de erro transitório no hardening
+
+- [x] tests/unit/story-11-7/documentacao-operacional.test.mjs - Story 11.7 (dev) contratos estruturais do runbook `docs/deployment/production-cicd.md`: existência + H1, arquitetura da pipeline (trigger `prod`, cadeia `tests → deploy-supabase → deploy-amplify → smoke-test`, `needs`, estrutura distribuída composite), descrição dos 4 jobs (Node 22/`npm ci`/`npm test`; link+`db push --dry-run`+`db push`; AssumeRole+merge env+start-job RELEASE+polling; `GET /api/health` HTTP 200 `{status:ok}`), IAM least-privilege (≥2 blocos JSON parseáveis por `JSON.parse`, policy bootstrap só `sts:AssumeRole`, deploy role só `amplify:*` no ARN — negativo: sem `AdministratorAccess`/`"Action":"*"`/`"Resource":"*"` inclusive em forma de array), bootstrap vs release, custom domain/DNS/SSL, migrations expand→contract, rollback, troubleshooting consolidando os 7 itens de hardening deferidos das Stories 11.1–11.6, cross-links (`amplify-deploy.md`, `app/api/health/route.ts`, workflow/composites)
+- [x] tests/unit/story-11-7/production-cicd-contract.test.mjs - Story 11.7 (QA) contratos complementares: doc-drift guard (todo caminho de arquivo referenciado no runbook existe no repo + links markdown relativos resolvem), ≥2 diagramas mermaid, IAM invariantes ESTRITAS (bootstrap com exatamente 1 statement e Resource = ARN de role ≠ `*`; deploy role com o conjunto EXATO das 5 ações amplify e todo Resource com o `<app-id>`; trust policy com `Principal.AWS` escopado ≠ `*`; todas as statements `Allow` escopadas), e consistência com a pipeline real (os 4 jobs + cadeia; os timeouts 15 min/5 min do runbook batem com `max_attempts`/`sleep_seconds` reais dos composites deploy-amplify/smoke-test)
+
+#### Story 11.7 — Documentação Operacional (Runbook end-to-end + IAM)
+- Acceptance criteria: 12/12 cobertos
+  - AC#1 (runbook existe, não vazio, H1): coberto
+  - AC#2 (arquitetura: trigger `prod`, cadeia dos 4 jobs, `needs`, estrutura distribuída): coberto
+  - AC#3 (descrição dos 4 jobs com inputs/secrets): coberto
+  - AC#4 (≥2 policies JSON válidas: bootstrap `sts:AssumeRole` + deploy role `amplify:*` no ARN): coberto (dev + QA com conjunto EXATO de ações)
+  - AC#5 (least-privilege negativo: sem `AdministratorAccess`/wildcards): coberto (string + parse de array)
+  - AC#6 (bootstrap one-time vs release automático): coberto
+  - AC#7 (custom domain + DNS + SSL): coberto
+  - AC#8 (migrations expand→contract + dry-run antes do apply): coberto
+  - AC#9 (rollback app Amplify + implicação de banco): coberto
+  - AC#10 (troubleshooting consolidando hardening 11.1–11.6): coberto (7 itens verificados individualmente)
+  - AC#11 (cross-links sem duplicar): coberto (+ doc-drift guard no QA)
+  - AC#12 (suíte estrutural verde, 0 regressões): coberto
+- Caminhos críticos: 55/55 testes passando na story (38 dev + 17 QA)
+  - IAM: os 3 blocos JSON parseiam e são least-privilege; deploy role tem EXATAMENTE `amplify:GetBranch/GetJob/ListJobs/StartJob/UpdateBranch` escopadas ao `<app-id>`; bootstrap só `sts:AssumeRole`; trust policy com Principal escopado
+  - Doc-drift guard: nenhum cross-link do runbook aponta para arquivo inexistente; timeouts do runbook batem com os composites reais
+  - Consolidação: os 7 itens de hardening deferidos das Stories 11.1–11.6 estão documentados como known-issues/checks (§9), resolvendo os defers anteriores
+  - Story de documentação — GitHub Actions e AWS não rodam no sandbox; testes estruturais/de contrato sobre o markdown (padrão da Story 7.1)
+
+#### Validation
+- `npm run test:story:11.7`: **passed** — 55/55 (38 dev + 17 QA)
+- `npm test` (suite completa) DEPOIS desta story: **passed** — 869 síncronos + 14 dinâmicos, 0 falhas
+
+#### Notes
+- Story de documentação (runbook markdown + testes de contrato + 1 script em `package.json`) — nenhum arquivo em `src/`/`app/`/`.github/`/`amplify.yml` tocado
+- Sem novas dependências — o teste parseia JSON via `JSON.parse` nativo (não precisa de `js-yaml`)
+- Code review limpo (0 decision-needed, 0 patch, 0 defer novo, 1 dismiss); os itens de hardening deferidos das Stories 11.1–11.6 são RESOLVIDOS por esta story ao serem documentados no runbook
+- Última story do Epic 11 — com ela `done`, todas as 7 stories do épico ficam `done`
+
+- [x] tests/unit/story-11-8/env-var-sync-authoritative.test.mjs - Story 11.8 (dev) contratos estruturais/de contrato via `js-yaml` cobrindo AC1-AC6: nomes derivados de `.env.local.example` (ignora comentários/linhas vazias, 13 nomes canônicos, `YAID_VERIFICATION_BASE_URL` ausente), resolução Secrets→Variables com omissão de nome sem valor, replace autoritativo (`update-branch --cli-input-json`, sem `get-branch`/merge), `production.yml` passando `toJSON(vars)`/`toJSON(secrets)`, remoção do input `amplify-environment-variables`, secrets de infra ausentes de `.env.local.example` e ausência de echo de `SECRETS_JSON`/`VARS_JSON`/payload
+- [x] tests/unit/story-11-8/environments-yaid-verification-url.dynamic.test.ts - Story 11.8 (dev + QA) **teste dinâmico/comportamental** — instancia `Environments` real e inspeciona o getter `YAID_VERIFICATION_BASE_URL` de verdade (AC6: derivada de `NEXT_PUBLIC_APP_URL`, ignora `process.env.YAID_VERIFICATION_BASE_URL`). QA estendeu este arquivo com 3 casos novos para o patch de review #1 (barra dupla): `NEXT_PUBLIC_APP_URL` com 1 barra final, com 4 barras finais, e sem barra final — usando `STAGE=DEV` (não `TEST`, cujo `TEST_ENV` fixo mascararia o bug) para exercitar o `.replace(/\/+$/, "")` real do getter contra `process.env` controlado
+- [x] tests/unit/story-11-8/env-var-sync-guards-contract.test.mjs - Story 11.8 (QA) **teste dinâmico/comportamental que EXECUTA o bash real do step de sync** (não apenas regex/parse do YAML) — extrai o corpo do `run:` via `js-yaml` e o roda de fato via `bash -c` (`child_process.execFileSync`) contra fixtures controladas (`.env.local.example` temporário, `SECRETS_JSON`/`VARS_JSON`, um stub `aws` isolado por teste que grava os argumentos recebidos e sempre retorna 0, evitando qualquer chamada de rede real). Cobre os 3 patches de review executáveis: **patch #2** (guard de payload vazio — payload `{}` aborta com `exit 1`/`::error::` e `aws` nunca é chamado; caminho de sucesso chega ao `update-branch` real via stub com o `--cli-input-json` esperado; valor vazio é omitido do payload sem falsamente disparar o guard); **patch #3** (`.env.local.example` ausente, vazio/0 bytes, e presente-mas-sem-linhas-válidas são 3 casos distintos, cada um com `exit 1` e mensagem `::error::` explícita, sem o script abortar cru sob `set -euo pipefail`); **patch #4** (denylist `AWS_*`/`AMPLIFY_*`/`SUPABASE_ACCESS_TOKEN`/`GITHUB_TOKEN` aborta ANTES de resolver o valor — testado para os 6 nomes reais do composite, com caso negativo `SUPABASE_SECRET_KEY` provando que o match é exato/por prefixo e não substring genérico, e um caso de "1 nome no denylist no meio de uma lista maior ainda aborta o replace inteiro"). Os steps `start-job`/polling do mesmo composite continuam não-executados (dependem de `aws` real/autenticado) — mesma abordagem estrutural-apenas das Stories 11.2-11.7
+
+#### Story 11.8 — Sync Autoritativo de Env Vars no Amplify (QA layer sobre os 7 patches de review)
+- Contexto: Story 11.8 reverteu o sync de env vars do Amplify de MERGE (Story 11.5/§5.4) para REPLACE autoritativo derivado do `.env.local.example`, e um round de code review aplicou 7 patches sobre a implementação do dev (2 fixes de bug/hardening no `action.yml`, 1 fix em `environments.ts`, 1 fix de script `package.json`, 2 notas cross-reference em outras stories, 1 wiring de teste). Esta etapa de QA adiciona cobertura dedicada aos 4 patches com efeito comportamental que ainda não tinham teste próprio.
+- Acceptance criteria (7/7 já cobertos pelo dev — QA reforça AC5/AC6 com execução real):
+  - AC#1-AC4, AC7: sem mudança de escopo nesta etapa — permanecem cobertos pelos testes estruturais do dev (`env-var-sync-authoritative.test.mjs`)
+  - AC#5 (secrets de infra nunca chegam ao Amplify): reforçado por `env-var-sync-guards-contract.test.mjs` — o denylist de defesa em profundidade (patch #4) é executado de verdade contra os 6 nomes reais (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AMPLIFY_APP_ID`, `AMPLIFY_BRANCH_NAME`, `SUPABASE_ACCESS_TOKEN`, `GITHUB_TOKEN`), provando `exit 1` + `aws` nunca invocado, além do caso negativo (`SUPABASE_SECRET_KEY` não dispara o guard)
+  - AC#6 (`YAID_VERIFICATION_BASE_URL` derivada de `NEXT_PUBLIC_APP_URL`): reforçado por 3 novos testes dinâmicos em `environments-yaid-verification-url.dynamic.test.ts` provando o fix da barra dupla (patch #1) contra `process.env` real (`STAGE=DEV`), não apenas o `TEST_ENV` fixo já coberto pelo dev
+- Patches de review cobertos por teste NOVO nesta etapa de QA:
+  1. Barra dupla em `YAID_VERIFICATION_BASE_URL` (`src/shared/environments.ts:152`) — 3 testes dinâmicos (barra única, barras múltiplas, sem barra — regressão)
+  2. Guard de payload vazio antes do `update-branch` autoritativo (`action.yml:~167`) — 4 testes que executam o bash real (payload vazio por Secrets/Variables ausentes, payload vazio por JSON `{}`/`{}`, caminho de sucesso via stub `aws` com asserção do `--cli-input-json` exato, valor vazio omitido corretamente)
+  3. Pré-condições de `.env.local.example` sob `pipefail` (`action.yml:~125-143`) — 4 testes que executam o bash real (arquivo ausente, arquivo vazio, arquivo só com comentários/linhas vazias, caminho feliz)
+  4. Denylist de defesa em profundidade AC5 (`action.yml:~150-155`) — 8 testes que executam o bash real (6 nomes reais do denylist, 1 caso negativo, 1 caso "no meio da lista")
+  5. `test:story:11.8` já roda `.dynamic.test.ts` desde a implementação do dev — verificado nesta etapa (`package.json:38`: `node --test "tests/unit/story-11-8/*.test.mjs" && tsx --test "tests/unit/story-11-8/*.dynamic.test.ts"`), sem necessidade de alteração
+  6/7. Notas cross-reference nas Stories 11.5/11.7 — documentação, sem teste aplicável
+- Caminhos críticos: 41/41 testes passando na story (15 dev estruturais + 2 dev dinâmicos + 16 QA dinâmicos-que-executam-bash-real + 3 QA dinâmicos de barra dupla + 5 QA... — ver Validation abaixo para a contagem exata do comando)
+  - Diferencial desta etapa de QA: os testes de guard (patch #2/#3/#4) não são regex sobre o `run:` — extraem o script real via `js-yaml` e o executam via `bash -c` com `child_process.execFileSync`, asserindo em exit code / mensagens `::error::` / o `--cli-input-json` de fato montado pelo `jq` real, contra um stub `aws` isolado por teste (evita qualquer chamada de rede)
+  - Fecha o "deferred" registrado no Change Log da própria Story 11.8: *"Testes só fazem assertion sobre o texto/YAML do step de sync, nunca executam de fato o pipeline grep/sed/jq com fixtures"*
+  - Os steps `start-job`/polling do composite (dependem de `aws` real/autenticado) permanecem não-executados — nota de escopo explícita no arquivo de teste, mesma abordagem das Stories 11.2-11.7
+
+#### Validation
+- `npm run test:story:11.8`: **passed** — 36/36 (15 dev estruturais + 16 QA dinâmicos-bash-real + 2 dev dinâmicos + 3 QA dinâmicos barra-dupla — 31 `.test.mjs` via `node --test` + 5 `.dynamic.test.ts` via `tsx --test`)
+- `npm test` (suite completa) DEPOIS desta etapa de QA: **passed** — 901 síncronos + 19 dinâmicos, 0 falhas (antes: 885 síncronos + 16 dinâmicos — delta exato de +16 síncronos/+3 dinâmicos, os testes novos desta etapa)
+
+#### Notes
+- Nenhum arquivo de produção alterado nesta etapa — só testes (`tests/unit/story-11-8/env-var-sync-guards-contract.test.mjs` novo; `environments-yaid-verification-url.dynamic.test.ts` estendido) e este `test-summary.md`
+- `test:story:11.8` em `package.json` já rodava `.dynamic.test.ts` (patch #5 do dev) — confirmado, nenhuma alteração necessária
+- Nenhum defeito de implementação genuíno encontrado durante a execução real do bash: os 4 patches do code review se comportam exatamente como descrito no Change Log da story sob as fixtures testadas
+- Decisão de design do harness: cada chamada a `runSyncStep()` cria seu próprio diretório temporário de PATH (`aws` stub) e workspace (`.env.local.example`) — evita estado global compartilhado entre testes e problemas de contagem de chamadas quando o test runner agenda testes fora de ordem estritamente sequencial; o delimitador de log de chamadas do stub usa um separador exclusivo (não `\n`) porque o payload `--cli-input-json` é JSON pretty-printed multi-linha

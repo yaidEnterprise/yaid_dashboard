@@ -29,6 +29,7 @@ function isSessionAuthApiRoute(pathname: string, method: string): boolean {
 }
 
 function isPublicApiRoute(pathname: string, method: string): boolean {
+  if (pathname === "/api/health" && method === "GET") return true;
   if (/^\/api\/proof-sessions\/[^/]+$/.test(pathname) && method === "GET")
     return true;
   if (pathname === "/api/webhook-public-key" && method === "GET") return true;

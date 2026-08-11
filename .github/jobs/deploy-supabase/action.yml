@@ -1,0 +1,72 @@
+name: "Deploy Supabase"
+description: >-
+  Composite action que aplica as migrations pendentes ao Supabase Cloud como
+  primeiro passo de infra do release de produção (Epic 11). Configura a Supabase
+  CLI, faz `supabase link` com o project-ref, executa `supabase db push --dry-run`
+  (preview) e só então `supabase db push` (apply), seguindo a política
+  expand -> deploy -> contract (§5.5 da sprint change proposal 2026-08-08).
+
+# SEGURANÇA (§4-D e §5.4 da sprint change proposal 2026-08-08):
+# Este composite consome SECRETS (access token, project-ref e senha do banco).
+# Eles entram EXCLUSIVAMENTE via `inputs` (passados pelo orquestrador
+# `production.yml` a partir de `${{ secrets.* }}`) — NUNCA hardcoded neste
+# arquivo — e são expostos aos comandos apenas via `env:`, NUNCA ecoados nos
+# logs (nada de `echo`/`cat`/`printenv` do token ou da senha).
+#
+# ORDEM CRÍTICA (§5.5, propriedade de segurança-chave desta story):
+# `db push --dry-run` (preview) SEMPRE ANTES de `db push` (apply). O baseline
+# `supabase/migrations/20260728015653_remote_schema.sql` é um dump de `db pull`
+# já refletido no remoto, então o push deve ser no-op no primeiro release; ainda
+# assim o dry-run precede o apply para prever qualquer diff antes de aplicar.
+
+inputs:
+  supabase-access-token:
+    description: >-
+      Personal access token da Supabase (auth da CLI). Passado pelo orquestrador
+      via o secret `secrets.SUPABASE_ACCESS_TOKEN`. Nunca hardcoded, nunca ecoado.
+    required: true
+  supabase-project-ref:
+    description: >-
+      Project ref do projeto Supabase Cloud (ex.: o ref do projeto de produção).
+      Passado via o secret `secrets.SUPABASE_PROJECT_REF`. Nunca hardcoded.
+    required: true
+  supabase-db-password:
+    description: >-
+      Senha do banco de dados Postgres do projeto Supabase (necessária para
+      `link`/`db push`). Passada via o secret `secrets.SUPABASE_DB_PASSWORD`.
+      Nunca hardcoded, nunca ecoada.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Link ao projeto Supabase Cloud
+      run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      shell: bash
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ inputs.supabase-access-token }}
+        SUPABASE_PROJECT_REF: ${{ inputs.supabase-project-ref }}
+        SUPABASE_DB_PASSWORD: ${{ inputs.supabase-db-password }}
+
+    # PREVIEW: prevê o diff das migrations pendentes SEM aplicar. Precede
+    # obrigatoriamente o apply (ordem = propriedade de segurança-chave, §5.5).
+    - name: Preview das migrations (db push --dry-run)
+      run: supabase db push --dry-run --password "$SUPABASE_DB_PASSWORD"
+      shell: bash
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ inputs.supabase-access-token }}
+        SUPABASE_DB_PASSWORD: ${{ inputs.supabase-db-password }}
+
+    # APPLY: aplica as migrations pendentes ao remoto. Só executa DEPOIS do
+    # dry-run acima.
+    - name: Aplicar migrations (db push)
+      run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+      shell: bash
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ inputs.supabase-access-token }}
+        SUPABASE_DB_PASSWORD: ${{ inputs.supabase-db-password }}
