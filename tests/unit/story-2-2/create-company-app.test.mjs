@@ -2,6 +2,13 @@
  * Story 2.2: Criação de App com API Key One-Shot
  *
  * Contract tests for backend creation flow, frontend form, and ApiKeyModal.
+ *
+ * NOTE: the "environment defaults to homol" and Ambiente-selector assertions
+ * below were superseded by Story 7.4 (status: done —
+ * _bmad-output/implementation-artifacts/stories/7-4-seletor-de-ambiente-na-criacao-de-app.md),
+ * which intentionally reintroduced the Ambiente card and changed the schema
+ * default from "dev" to "homol". They no longer reflect Story 2.2's original
+ * contract in isolation.
  */
 
 import { test, describe } from "node:test";
@@ -26,9 +33,11 @@ describe("Story 2.2 — CreateCompanyAppSchema", () => {
     assert.match(src, /webhookUrl.*\.optional\(\)/s, "webhookUrl must be optional");
   });
 
-  test("environment defaults to dev when omitted", () => {
+  test("environment defaults to homol when omitted", () => {
+    // Story 7.4 changed the default from "dev" to "homol" when the
+    // environment selector was added to the create-app form.
     const src = readText("src/modules/company-app/app/create_company_app_viewmodel.ts");
-    assert.match(src, /environment.*\.optional\(\)\.default\("dev"\)/s, "environment must default to dev");
+    assert.match(src, /environment.*\.optional\(\)\.default\("homol"\)/s, "environment must default to homol");
   });
 });
 
@@ -82,11 +91,11 @@ describe("Story 2.2 — Create app page", () => {
     assert.match(src, /zodResolver/, "page must use zodResolver");
   });
 
-  test("has Identificação and Webhook cards only (no Ambiente card)", () => {
+  test("has Identificação and Webhook cards, plus the Ambiente selector (Story 7.4)", () => {
     const src = readText("app/(dashboard)/apps/new/page.tsx");
     assert.match(src, /Identificação/, "must have Identificação card");
     assert.match(src, /Webhook/, "must have Webhook card");
-    assert.equal(src.includes("Ambiente"), false, "must not have Ambiente card");
+    assert.ok(src.includes("Ambiente"), "must have the Ambiente selector added by Story 7.4");
   });
 
   test("uses ApiKeyModal component", () => {
