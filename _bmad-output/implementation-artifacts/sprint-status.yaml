@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-03
+last_updated: 2026-08-11
 project: yaid_dashboard
 
 project_key: NOKEY
@@ -117,7 +117,7 @@ development_status:
   # Epic 9: Verifiable Credential como VC-JWT
   epic-9: in-progress
   9-1-emissao-da-vc-como-vc-jwt-eddsa: done
-  9-2-verificacao-da-vc-jwt-em-presentations-verify: backlog
+  9-2-verificacao-da-vc-jwt-em-presentations-verify: done
   epic-9-retrospective: optional
 
   # Epic 10: Higiene de Configuração e Chaves (Sprint Change 2026-07-28, adendo §7)

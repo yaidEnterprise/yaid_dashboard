@@ -30,6 +30,8 @@
 - [x] tests/unit/story-5-8/verify-presentation-usecase.dynamic.test.ts - Story 5.8 (QA) **teste dinâmico/comportamental** — instancia `VerifyPresentationUseCase` real com repositórios/hasher/blockchain/webhook fake e VP/VC assinados de verdade com `@noble/ed25519`; verifica o `{ valid: boolean }` efetivamente retornado, a transição de status persistida (`updateStatus`) e o `proofType` real entregue ao webhook para: AC#2 (ageOver18:false → rejected), AC#3 (claim ausente → rejected), AC#4 (claim não solicitada irrelevante → approved), controle positivo (ageOver18:true → approved), AC#5 (claim não-booleana → rejected), e o caminho defensivo de `findById` retornando `null` (Task 1). Fecha a lacuna de "testes 100% estáticos" registrada em `deferred-work.md`; verificado por mutação (comentar a checagem nova faz os 2 testes de correspondência falharem, confirmando que o teste exercita o código real). Executado via `tsx --test` (nova devDependency, decisão do usuário) — não via `node --test` puro, pois importa os módulos TypeScript reais com aliases `@/...`
 - [x] tests/unit/story-9-1/vc-jwt-issuance.test.mjs - Story 9.1 (dev) contratos estruturais da migração VC-JWT: ausência do formato JSON-LD antigo (`Ed25519Signature2020`, `proofPurpose`, `type: ["VerifiableCredential"]`), presença do header (`alg: EdDSA`, `typ: JWT`, `kid`) e payload (`iss`, `sub`, `jti`, `iat`, `nbf`, `vc`) prescritos, assinatura via `ed.signAsync` sobre `base64url(header).base64url(payload)`, `execute()` retornando `Promise<string>`, preservação do fluxo OCR/claims/blockchain/erros 401-422-502, não-alteração do hardcode de teste do Epic 10, propagação do tipo `string` pelo controller/rota, compilação TypeScript limpa
 - [x] tests/unit/story-9-1/issue-credential-usecase.dynamic.test.ts - Story 9.1 (dev + QA) **teste dinâmico/comportamental** — instancia `IssueCredentialUseCase` real com `BlockchainClient`/`OcrProvider` fake e um par de chaves Ed25519 de teste; decodifica o JWT de 3 segmentos efetivamente retornado e verifica: header/payload exatamente no formato do AC#1, assinatura EdDSA válida via `ed.verifyAsync` contra a public key derivada de `ISSUER_PRIVATE_KEY`, `ageOver18: false` para holder menor de idade sem lançar exceção (semântica da Story 5.7 preservada), rejeição 401 sem registrar DID tanto para assinatura bem-formada porém inválida quanto para assinatura malformada (não-base64url) — item adicionado nesta etapa de QA para fechar o gap de cobertura registrado no code review
+- [x] tests/unit/story-9-2/vc-jwt-verification.test.mjs - Story 9.2 contratos estruturais: VC compacta única, allow-list `EdDSA`/`JWT`, binding de issuer/key, signing input original, normalização `jti`/`sub`/`vc`, ausência do proof JSON-LD legado e compilação TypeScript
+- [x] tests/unit/story-9-2/verify-presentation-vc-jwt.dynamic.test.ts - Story 9.2 testes comportamentais com Ed25519 real: happy path, segmentos originais não-canônicos, formato/assinatura/header/payload inválidos, JSON-LD legado e regressão das 11 regras
 
 ## Coverage
 
@@ -368,3 +370,24 @@
 - Reaproveitado o padrão dinâmico via `tsx` já estabelecido pela Story 5.8 — nenhuma infraestrutura de teste nova foi necessária, apenas `npm install` para materializar o `tsx` (já declarado como devDependency desde a 5.8, ausente fisicamente no ambiente desta sessão).
 - 6 itens deferidos do code review para `deferred-work.md`, todos fora do escopo desta story: ausência de claims `exp`/`aud` no JWT (formato exato já prescrito pelo AC#1, não deve ser reinventado), `ed.signAsync` na emissão sem try/catch dedicado (padrão pré-existente desde a Story 5.4), cobertura de `ISSUER_PRIVATE_KEY` malformado (Epic 10), e verificação EdDSA com allow-list de algoritmo (Story 9.2).
 - **Break de acoplamento com a Story 9.2 (documentado, não coberto por teste desta story deliberadamente)**: `verify_presentation_usecase.ts` não consegue fazer parse de uma VC-JWT nova — nenhum teste de integração entre emissão e verificação foi adicionado, pois cobri-lo exigiria implementar (ou mockar) a Story 9.2 antes do previsto. A Story 9.2 deve adicionar essa cobertura ao migrar a verificação.
+
+### Story 9.2 — Verificação da VC-JWT em `presentations/verify`
+
+- Acceptance criteria: 8/8 cobertos
+  - AC#1–#3: JWS compacto de três segmentos, base64url estrito, assinatura EdDSA sobre os segmentos originais, allow-list de header e shape/bindings do payload cobertos estrutural e dinamicamente.
+  - AC#4–#5: as 11 regras da Story 5.5 e o mapeamento `PROOF_TYPE_CLAIM_KEY` da 5.8 são exercitados com fakes e assinaturas reais.
+  - AC#6–#7: sucesso e falha validam retorno, sessão, request, webhook, DID e revogação pelo `jti`.
+  - AC#8: objeto JSON-LD legado e credencial `null` são rejeitados.
+- Caminhos críticos: 41/41 testes focados passando (6 estáticos + 35 dinâmicos).
+- QA adicionou o caso de JSON com whitespace e ordem de chaves não canônicos, provando que a assinatura é verificada sobre os segmentos codificados originais e não sobre objetos reserializados.
+
+#### Validation
+
+- `npm run test:story:9.2`: **passed** — 41/41
+- `npm run test:dynamic`: **passed** — 45/45
+- `npm test`: **failed** — 635/637 estáticos; as duas falhas são preexistentes e fora do escopo nas Stories 1.5/1.6, cujos testes exigem `window.location.href` enquanto as páginas atuais usam `router.push`. A execução para antes da etapa dinâmica, que passou separadamente.
+
+#### Notes
+
+- Nenhuma rede, Supabase real, browser ou blockchain real é usada; todos os efeitos externos são fakes determinísticos.
+- `exp`/`aud` e política temporal adicional para `iat`/`nbf` permanecem fora do formato fechado na Story 9.1; não foram adicionados por QA.
