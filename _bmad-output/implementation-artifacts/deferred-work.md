@@ -1,3 +1,23 @@
+## Deferred from: code review of story-7-5-review-manual-em-apps-homologacao (2026-08-16)
+
+- **Race condition (TOCTOU) na transição de status** — `ReviewProofRequestUseCase` lê um snapshot via `findById()`, valida o guard de status terminal contra esse snapshot, e escreve via `updateStatus()` sem compare-and-swap. Duas chamadas de review concorrentes para a mesma request (duas abas, retry duplicado) podem ambas passar o guard 422 antes de qualquer escrita, resultando em dois disparos de webhook ou um `reject` sobrescrevendo um `approve` recém-aplicado. `ProofRequestRepository.updateStatus()` não suporta update condicional (`WHERE status IN (...)`) e é compartilhada por `cancel_proof_session_usecase.ts` e `verify_presentation_usecase.ts`, que têm a mesma limitação — corrigir exige mudar a interface do repositório, uma mudança cross-cutting fora do escopo desta story. [`src/modules/proof-request/app/review_proof_request_usecase.ts`, `src/shared/domain/interfaces/repositories/ProofRequestRepository.ts`]
+
+- **`updatedAt` calculado em memória em vez de lido de volta do banco** — `ReviewProofRequestUseCase.execute()` retorna `new Date().toISOString()` computado na aplicação, não o valor que `updateStatus()` efetivamente persistiu (`updateStatus()` retorna `Promise<void>`). O drift prático é sub-milissegundo dentro da mesma request, mas o response/webhook/UI podem, em teoria, divergir do valor real no banco. Mesma limitação estrutural do item acima. [`src/modules/proof-request/app/review_proof_request_usecase.ts`]
+
+- **`req.headers.get("x-company-id")!` sem guard contra `null`** — se o middleware não rotear a request por `withSessionAuth` por algum motivo não previsto, `companyId` chega `null` e o `!` silencia o type system. Padrão idêntico ao já existente na rota GET irmã (`app/api/proof-requests/[requestId]/route.ts`), não introduzido por esta story. [`app/api/proof-requests/[requestId]/review/route.ts`]
+
+- **`await req.json()` sem tratamento de corpo malformado/vazio** — um `SyntaxError` de JSON inválido cai no branch genérico 500 de `handleHttpError` em vez de um 400 mais preciso. Padrão idêntico ao já existente em `app/api/proof-requests/route.ts` (rota B2B de criação), não introduzido por esta story. [`app/api/proof-requests/[requestId]/review/route.ts`]
+
+- **`ReviewConfirmDialog` sem focus trap** — Tab pode levar o foco para fora do modal enquanto ele está visível. Mesma lacuna de acessibilidade já presente no `DisableConfirmDialog` (`app/(dashboard)/apps/[appId]/page.tsx`) que esta story reaproveitou como padrão de referência; corrigir isoladamente aqui deixaria os dois diálogos inconsistentes entre si — considerar um fix compartilhado se um terceiro diálogo aparecer. [`app/(dashboard)/proof-requests/[requestId]/page.tsx`]
+
+- **`useEffect` do diálogo re-executa em re-renders não relacionados do pai** — depende de `onCancel`, passado como arrow function inline (`onCancel={() => setReviewDialog(null)}`), então qualquer re-render do pai por motivo não relacionado recria a referência e rechama `.focus()` no botão de confirmação. Padrão idêntico ao já existente em `DisableConfirmDialog`/`app/(dashboard)/apps/[appId]/page.tsx:621`, não introduzido por esta story. [`app/(dashboard)/proof-requests/[requestId]/page.tsx`]
+
+- **Botões "Aprovar"/"Reprovar" do header não desabilitados durante `reviewLoading`** — clicar novamente enquanto uma decisão está em voo reabre/reseta o diálogo; sem risco de double-submit real porque o botão de confirmação do diálogo já fica desabilitado pelo mesmo estado `reviewLoading` compartilhado. Severidade baixa. [`app/(dashboard)/proof-requests/[requestId]/page.tsx`]
+
+- **Sem validação de formato do `requestId`** antes de chegar ao repositório (UUID ou outro formato). Mesmo padrão da rota GET irmã, que também não valida. [`app/api/proof-requests/[requestId]/review/route.ts`]
+
+- **Resposta de `reviewProofRequest()` é apenas type-cast, sem validação de schema em runtime** — `(await asJson(res)) as ReviewProofRequestResult` confia no shape sem checagem. Mesmo padrão já usado por `getProofRequest()` no mesmo arquivo. [`utils/proof-requests-store.ts`]
+
 ## Deferred from: code review of story-7-3-allowlist-de-criacao-de-apps (2026-08-09)
 
 - **Migration sem transação explícita** — `ADD COLUMN ... NOT NULL DEFAULT false` + `UPDATE` não estão envolvidas em `BEGIN`/`COMMIT` explícito. Pré-existente como padrão do projeto (mesma observação já feita e deferida nas Stories 7.1/7.2). [`supabase/migrations/20260809165356_add_can_create_apps_to_company.sql`]
