@@ -244,7 +244,7 @@ Hoje a codebase não tem testes automatizados estabelecidos. A introdução deve
 
 ### Decisões em aberto (TBD)
 
-- Provider de OCR concreto (Google Vision, AWS Textract, IDWall, Unico, etc.) — decidir após prototipar com 1–2 amostras de RG.
+- ~~Provider de OCR concreto (Google Vision, AWS Textract, IDWall, Unico, etc.).~~ **Resolvido (Sprint Change 2026-08-19):** **Mistral Document AI** (`POST /v1/ocr`, `mistral-ocr-latest`) com `document_annotation_format` (JSON Schema) devolvendo `{ name, cpf, birthDate }` estruturados. Extração estruturada na origem — sem parsing de texto livre no backend. Provider único em todo ambiente real; `MockOcrProvider` só sob `STAGE=TEST`.
 - ~~Reintrodução de ambientes (sandbox vs production) como feature pós-MVP.~~ **Resolvido (Sprint Change 2026-07-27):** ambientes entram no escopo via flag `company_apps.environment` (`homol`/`prod`), com review manual apenas em homologação. Chains separadas e simulador seguem fora de escopo.
 - Métricas específicas exibidas no overview e definição precisa dos trends (vs período anterior).
 - Política de retry de webhook e formato da tabela `webhook_deliveries`.

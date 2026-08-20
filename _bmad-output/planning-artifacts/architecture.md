@@ -110,7 +110,7 @@ O sistema entrega cinco domínios funcionais integrados em uma única codebase N
 - **Supabase** — Auth e PostgreSQL. Auth user UUID === company UUID (vínculo estrutural, não coluna adicional).
 - **Blockchain** — A integração com blockchain **deve existir**, mas os detalhes de implementação estão em aberto: qual client library usar, como tratar latência on-chain, estratégia de retry em falha de transação, como lidar com reorganizações de bloco, e separação entre ambiente de dev (local) e testnet. **⚠️ TBD: agente responsável pela integração deve questionar todos esses pontos antes de implementar.**
 - **Criptografia e assinaturas** — O sistema usa assinaturas digitais em múltiplos contextos (emissão de VC, autenticação mobile, webhook). Os algoritmos e bibliotecas concretas para cada contexto **estão em aberto**. **⚠️ TBD: agente responsável deve questionar algoritmo por papel, biblioteca a usar, e estratégia de gestão de chaves antes de implementar.**
-- **OCR** — Provider TBD (Google Vision, AWS Textract, IDWall etc.); integração em memória obrigatória.
+- **OCR** — **Mistral Document AI** (`POST /v1/ocr`, `mistral-ocr-latest`), com `document_annotation_format` (JSON Schema) devolvendo `{ name, cpf, birthDate }` já estruturados. Integração em memória obrigatória (NFR7). O backend valida formato; **não faz parsing de texto livre**.
 - **Next.js App Router** — RSC para dashboard; Route Handlers para todas as APIs; sem pages router.
 - **Arquitetura em camadas existente** — route handler → controller → use case → repository/service → infra; módulos por domínio já estabelecidos.
 
@@ -170,7 +170,7 @@ As seguintes dependências são necessárias mas ainda não instaladas:
 
 - **Biblioteca de criptografia** — para assinaturas digitais (issuer, webhook, auth mobile) — **⚠️ TBD: agente responsável deve questionar qual biblioteca usar**
 - **Client blockchain** — para integração com smart contract — **⚠️ TBD: agente responsável deve questionar qual client usar**
-- **OCR SDK** — provider a definir — **⚠️ TBD: ver seção de TBDs no PRD**
+- **OCR SDK** — `@mistralai/mistralai` (SDK oficial TS da Mistral). Import **restrito** a `src/shared/clients/ocr/MistralOcrProvider.ts`; nenhuma outra camada conhece o SDK.
 
 ## Decisões Arquiteturais Centrais
 
@@ -752,7 +752,7 @@ Os três módulos existentes (`company`, `company-app`, `proof-request`) saem de
 
 **Backend → Blockchain:** somente via `shared/clients/blockchain/` — ⚠️ TBD.
 
-**Backend → OCR:** somente via `shared/clients/ocr/` — ⚠️ TBD.
+**Backend → OCR:** somente via `shared/clients/ocr/`, resolvido em `environments.ts#getOcrProvider()`. Em **todo ambiente real** (`DOTENV`, `DEV`, `HOMOLOG`, `PROD`) o provider é `MistralOcrProvider` — **sem fallback**: `MISTRAL_API_KEY` é obrigatória (`productionRequiredEnvNames`), sua ausência derruba o boot em PROD/HOMOLOG e lança no getter nos demais. O `MockOcrProvider` existe apenas como test double e é alcançável **exclusivamente** sob `STAGE=TEST` declarado — ausência de configuração nunca seleciona provider (mesmo critério de `getBlockchainClient()`). O use case depende apenas da interface `OcrProvider` — nunca do client, nem do SDK. A saída do provider é **estruturada na origem**; o client só valida formato (CPF 11 dígitos, `birthDate` em `YYYY-MM-DD`) e lança em caso de saída inválida.
 
 **Backend → Empresa (webhook):** módulo `webhook` (`DeliverWebhookUseCase`) dispara após transição de `proof_request`; tentativa única; falha logada. O **review manual** (`review_proof_request_usecase`, apps `homol`) transiciona para `approved`/`rejected`, seta `updated_at = NOW()` e dispara o webhook normal — mesmo caminho de um fluxo real.
 
