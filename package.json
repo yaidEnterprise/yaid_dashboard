@@ -39,11 +39,13 @@
     "test:story:11.6": "node --test \"tests/unit/story-11-6/*.test.mjs\"",
     "test:story:11.7": "node --test \"tests/unit/story-11-7/*.test.mjs\"",
     "test:story:11.8": "node --test \"tests/unit/story-11-8/*.test.mjs\" && tsx --test \"tests/unit/story-11-8/*.dynamic.test.ts\"",
+    "test:story:5.9": "node --test \"tests/unit/story-5-9/*.test.mjs\" && tsx --test \"tests/unit/story-5-9/*.dynamic.test.ts\"",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@mistralai/mistralai": "^2.6.3",
     "@noble/ed25519": "^3.1.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.3",
