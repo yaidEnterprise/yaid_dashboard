@@ -36,11 +36,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-11
+last_updated: 2026-08-19 (Story 5.9 → done)
 project: yaid_dashboard
 # 2026-08-09: Story 11.4 criada (ready-for-dev)
 # 2026-08-09: Story 11.8 criada (ready-for-dev) — Sprint Change 2026-08-09: sync autoritativo de env vars
 # 2026-08-09: Sprint Change Complementar (simplificação de env vars) aprovado — sem nova story (escopo minor)
+# 2026-08-19: Sprint Change 2026-08-19 (OCR via Mistral Document AI) aprovado — Story 5.9 adicionada
+#             ao Epic 5 (backlog). Escopo moderate: resolve o TBD de provider de OCR no PRD/architecture
+#             e elimina o parsing por regex. NÃO consta em sprint_changes porque gerou story própria.
 
 project_key: NOKEY
 tracking_system: file-system
@@ -93,6 +96,10 @@ development_status:
   # (5-7 sem 5-8 faz a credencial de um menor de idade aprovar um pedido de age_over_18)
   5-7-consolidacao-de-claims-na-emissao: done
   5-8-correspondencia-entre-claim-e-proof-type: done
+  # Sprint Change 2026-08-19 — substitui o parsing por regex do OCR por extração estruturada
+  # (Mistral Document AI). Independente das demais stories do Epic 5; pode correr em paralelo
+  # com 7-5 e 10-x. Contrato público de /api/credentials/issue inalterado.
+  5-9-ocr-estruturado-via-mistral-document-ai: done
   epic-5-retrospective: optional
 
   # Epic 6: Webhooks e Conclusão do Fluxo B2B
