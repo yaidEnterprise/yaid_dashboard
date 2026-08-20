@@ -313,17 +313,17 @@ describe("Patch #2 (real bash): guard de payload vazio antes do update-branch au
   });
 
   test("nome resolvido para valor VAZIO (\"\") em Secrets e Variables é omitido do payload (AC2), não conta para o guard de payload não-vazio", () => {
-    const workspace = makeWorkspace("STAGE=PROD\nOCR_API_URL=\n");
+    const workspace = makeWorkspace("STAGE=PROD\nMISTRAL_API_KEY=\n");
     const result = runSyncStep({
       workspace,
       secretsJson: JSON.stringify({}),
-      varsJson: JSON.stringify({ STAGE: "PROD", OCR_API_URL: "" }),
+      varsJson: JSON.stringify({ STAGE: "PROD", MISTRAL_API_KEY: "" }),
     });
     assert.equal(result.code, 0, `stderr: ${result.stderr}`);
     const calls = result.awsCalls;
     const cliInputMatch = calls[0].match(/--cli-input-json\s+(\{[\s\S]*\})$/);
     const cliInput = JSON.parse(cliInputMatch[1]);
-    assert.deepEqual(cliInput.environmentVariables, { STAGE: "PROD" }, "OCR_API_URL vazio não deve entrar no payload");
+    assert.deepEqual(cliInput.environmentVariables, { STAGE: "PROD" }, "MISTRAL_API_KEY vazio não deve entrar no payload");
   });
 });
 
