@@ -194,11 +194,7 @@ export class VerifyPresentationUseCase {
 
     // ── Rule 4: VC issuer signature is valid ─────────────────────────────────
     // Derive issuer public key from ISSUER_PRIVATE_KEY
-    let issuerPrivKeyHex = this.issuerPrivateKey;
-    if (issuerPrivKeyHex === "test-issuer-private-key") {
-      issuerPrivKeyHex = "0000000000000000000000000000000000000000000000000000000000000001";
-    }
-    const issuerPrivKeyBytes = hexToBytes(issuerPrivKeyHex);
+    const issuerPrivKeyBytes = hexToBytes(this.issuerPrivateKey);
     const issuerPubKeyBytes = await ed.getPublicKeyAsync(issuerPrivKeyBytes);
     const issuerDid = `did:yaid:issuer:${bytesToHex(issuerPubKeyBytes)}`;
 
