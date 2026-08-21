@@ -1,3 +1,53 @@
+## Deferred from: code review of story-10-2-validacao-de-formato-de-chaves-no-boot (2026-08-21)
+
+- **Exclusão do stage `TEST` das checagens novas depende inteiramente de `loadEnvs()` nunca chamar
+  `envSchema.parse()` nesse stage** — não há um guard redundante `if (values.STAGE === Stage.TEST) return`
+  dentro do próprio `superRefine` que tornaria essa invariante auto-protegida. Correto hoje (provado por
+  teste), mas depende de código fora deste bloco nunca mudar. [`src/shared/environments.ts`]
+
+- **`BLOCKCHAIN_WALLET_PRIVATE_KEY` exige hex sem prefixo `0x`, mas ferramentas padrão do ecossistema
+  Ethereum costumam exportar chaves com `0x`** — `ethers.Wallet` aceita ambos os formatos, mas o boot
+  rejeitaria um valor operacionalmente válido só pelo prefixo. Decisão já deliberada nas Dev Notes da Story
+  10.2 ("mesma regra das outras duas chaves") — falha segura, fricção operacional, não brecha de segurança.
+  [`src/shared/environments.ts`]
+
+- **`HEX_PRIVATE_KEY_PATTERN` não tolera espaços/quebra de linha ao redor do valor** — mesmo padrão já
+  presente em `get_webhook_public_key_usecase.ts` desde a Story 6.2/10.1, não introduzido pela Story 10.2.
+  [`src/shared/environments.ts`]
+
+- **`ethers.isAddress` aceita formatos além de `0x` + 40 hex (ex.: endereço ICAP, hex sem `0x`) que só
+  falhariam depois, de forma assíncrona, quando `ethers.Contract`/`resolveName` tentassem usá-los** —
+  exatamente a classe de bug que a Story 10.2 existe para eliminar, porém herdada do precedente em
+  `EthersBlockchainClient.ts:33` que a própria AC #2 manda reaproveitar ("não reimplementar"). Corrigir só
+  em `environments.ts` criaria inconsistência entre os dois pontos de validação — recomenda-se uma story
+  futura para endurecer os dois juntos. [`src/shared/environments.ts`,
+  `src/shared/clients/blockchain/EthersBlockchainClient.ts:33`]
+
+- **`.env.local.example` define valores placeholder não-vazios para os 4 campos de chave** — um
+  `cp .env.local.example .env.local` sem preencher essas linhas agora quebra o boot em `DOTENV`/`DEV`
+  (antes da Story 10.2 isso era tolerado). Resolver é acoplado à Story 11.8, que deriva os nomes
+  sincronizados para o Amplify das linhas não-comentadas deste mesmo arquivo — comentar as linhas
+  removeria esses nomes do sync de produção. Necessita tratamento dedicado (possivelmente um sprint
+  change). [`.env.local.example`]
+
+- **`productionRequiredEnvNames` agora serve duas responsabilidades sob um nome que só sugere a
+  primeira** (obrigatoriedade em PROD/HOMOLOG + rejeição de placeholder do TEST_ENV) — um campo futuro
+  adicionado a uma responsabilidade sem lembrar da outra passaria batido em silêncio.
+  [`src/shared/environments.ts`]
+
+- **Comparação de placeholder (`knownTestValues.has(value)`) é case-sensitive, sem normalização** — hoje
+  inofensivo, pois nenhum valor de `TEST_ENV` contém letras hex `a`-`f`/`A`-`F` para variar. Gap latente na
+  comparação em si, sem exploit disponível hoje. [`src/shared/environments.ts`]
+
+- **Teste `tsc --noEmit` do arquivo estrutural novo (`story-10-2`) compila o projeto inteiro e filtra
+  `"lucide-react"` por substring** — padrão idêntico já usado em dezenas de suítes pré-existentes do
+  projeto, não introduzido por esta story. [`tests/unit/story-10-2/key-format-validation.test.mjs`]
+
+- **Mutação de `process.env` global compartilhado entre os testes dinâmicos via `withEnv`** — seguro
+  apenas enquanto o test runner do Node executar os testes deste arquivo sequencialmente (padrão hoje); é
+  exatamente o padrão que as Dev Notes da Story 10.2 instruíam usar.
+  [`tests/unit/story-10-2/envSchema-key-validation.dynamic.test.ts`]
+
 ## Deferred from: code review of story-10-1-centralizacao-de-chaves-de-teste-no-environments (2026-08-20)
 
 - **Três dos quatro consumidores de chave não validam formato hex** — `issue_credential_usecase.ts`, `verify_presentation_usecase.ts` e `Ed25519WebhookSigner.ts` chamam `hexToBytes` sem checar formato/tamanho antes; só `get_webhook_public_key_usecase.ts` mantém `HEX_PRIVATE_KEY_PATTERN`. `hexToBytes` nesses três arquivos nunca validou formato, antes ou depois da Story 10.1 — a substituição removida só trocava o valor, não validava. Validação de formato é escopo exclusivo da Story 10.2 (`backlog`, depende da 10.1). [`src/modules/credential/app/issue_credential_usecase.ts:124`, `src/modules/presentation/app/verify_presentation_usecase.ts:197`, `src/shared/infra/providers/Ed25519WebhookSigner.ts:24`]
