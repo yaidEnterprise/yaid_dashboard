@@ -1,3 +1,19 @@
+## Deferred from: code review of story-10-1-centralizacao-de-chaves-de-teste-no-environments (2026-08-20)
+
+- **Três dos quatro consumidores de chave não validam formato hex** — `issue_credential_usecase.ts`, `verify_presentation_usecase.ts` e `Ed25519WebhookSigner.ts` chamam `hexToBytes` sem checar formato/tamanho antes; só `get_webhook_public_key_usecase.ts` mantém `HEX_PRIVATE_KEY_PATTERN`. `hexToBytes` nesses três arquivos nunca validou formato, antes ou depois da Story 10.1 — a substituição removida só trocava o valor, não validava. Validação de formato é escopo exclusivo da Story 10.2 (`backlog`, depende da 10.1). [`src/modules/credential/app/issue_credential_usecase.ts:124`, `src/modules/presentation/app/verify_presentation_usecase.ts:197`, `src/shared/infra/providers/Ed25519WebhookSigner.ts:24`]
+
+- **`envSchema`/`superRefine` valida `ISSUER_PRIVATE_KEY`/`WEBHOOK_SIGNING_PRIVATE_KEY` só como `z.string().min(1)`** — presença, não formato hex de 64 chars. Objeto explícito da Story 10.2. [`src/shared/environments.ts:34-35`]
+
+- **Em `verify_presentation_usecase.ts`, a derivação da chave do issuer fica fora do try/catch/`reject()` que protege as outras regras do método** — padrão pré-existente, não introduzido pela Story 10.1 (o remendo removido também estava fora de qualquer try/catch). Corrigir seria além do escopo da story, que instrui preservar comportamento exatamente. [`src/modules/presentation/app/verify_presentation_usecase.ts:197`]
+
+- **Teste `tsc --noEmit` novo passaria silenciosamente se `execSync` falhasse ao sequer iniciar o `tsc`** (stdout vazio → 0 erros filtrados) — padrão idêntico já usado em várias suítes pré-existentes do projeto (`story-6-1`, `story-9-1` etc.), não uma fragilidade introduzida por esta story. [`tests/unit/story-10-1/key-centralization.test.mjs`]
+
+- **Valores hex de teste (`...0001`/`...0002`) duplicados literalmente em `environments.ts` e nos dois arquivos novos de teste**, sem nada garantindo sincronia — mesmo padrão já presente no projeto (ex. `tests/unit/story-6-2` já duplica o hex `...0002`); severidade baixa. [`src/shared/environments.ts`, `tests/unit/story-10-1/*`]
+
+- **Regex `/const TEST_ENV[^;]+;/s` no teste novo para no primeiro `;` ao extrair o bloco `TEST_ENV`** — inofensivo hoje (nenhum valor do objeto contém `;`), mas frágil se um valor futuro contiver um `;` (ex. URL com query string). [`tests/unit/story-10-1/key-centralization.test.mjs`]
+
+- **Vazamento do valor hex de teste em si (não a string placeholder) para `PROD`/`HOMOLOG` continua sem guarda** — o gate de stage removido nunca cobriu esse cenário (só detectava a string placeholder), então não é uma proteção perdida por esta story; é exatamente o problema que a Story 10.2 (validação/allowlist de chaves conhecidas no boot) deve resolver. [`src/shared/environments.ts:66-69`]
+
 ## Deferred from: code review of story-7-5-review-manual-em-apps-homologacao (2026-08-16)
 
 - **Race condition (TOCTOU) na transição de status** — `ReviewProofRequestUseCase` lê um snapshot via `findById()`, valida o guard de status terminal contra esse snapshot, e escreve via `updateStatus()` sem compare-and-swap. Duas chamadas de review concorrentes para a mesma request (duas abas, retry duplicado) podem ambas passar o guard 422 antes de qualquer escrita, resultando em dois disparos de webhook ou um `reject` sobrescrevendo um `approve` recém-aplicado. `ProofRequestRepository.updateStatus()` não suporta update condicional (`WHERE status IN (...)`) e é compartilhada por `cancel_proof_session_usecase.ts` e `verify_presentation_usecase.ts`, que têm a mesma limitação — corrigir exige mudar a interface do repositório, uma mudança cross-cutting fora do escopo desta story. [`src/modules/proof-request/app/review_proof_request_usecase.ts`, `src/shared/domain/interfaces/repositories/ProofRequestRepository.ts`]

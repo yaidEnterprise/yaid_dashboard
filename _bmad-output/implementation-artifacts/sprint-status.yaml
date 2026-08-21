@@ -36,8 +36,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-16
+last_updated: 2026-08-20
 project: yaid_dashboard
+# 2026-08-20: Story 10.1 criada (ready-for-dev) — Epic 10 reaberto (in-progress)
 # 2026-08-09: Story 11.4 criada (ready-for-dev)
 # 2026-08-09: Story 11.8 criada (ready-for-dev) — Sprint Change 2026-08-09: sync autoritativo de env vars
 # 2026-08-09: Sprint Change Complementar (simplificação de env vars) aprovado — sem nova story (escopo minor)
@@ -126,8 +127,8 @@ development_status:
   # Epic 10: Higiene de Configuração e Chaves (Sprint Change 2026-07-28, adendo §7)
   # Ordem obrigatória: 10-1 antes de 10-2 (validar formato antes de 10-1 quebra o stage TEST).
   # Independente das stories 5-7/5-8 — pode correr em paralelo.
-  epic-10: backlog
-  10-1-centralizacao-de-chaves-de-teste-no-environments: backlog
+  epic-10: in-progress
+  10-1-centralizacao-de-chaves-de-teste-no-environments: done
   10-2-validacao-de-formato-de-chaves-no-boot: backlog
   epic-10-retrospective: optional
 
