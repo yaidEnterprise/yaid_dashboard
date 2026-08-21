@@ -121,8 +121,20 @@ test("Story 1.1 centralizes process.env access in src/shared/environments.ts", (
     "WEBHOOK_SIGNING_PRIVATE_KEY",
     "BLOCKCHAIN_WALLET_PRIVATE_KEY",
   ].forEach((envName) => {
-    assert.match(environmentSource, new RegExp(`${envName}: z\\.string\\(\\)\\.min\\(1\\)`));
+    assert.match(environmentSource, new RegExp(`${envName}: z\\.string\\(\\)\\.optional\\(\\)`));
   });
+
+  // Story 10.2: formato validado no superRefine (64 hex chars), não mais só presença/min(1)
+  assert.match(environmentSource, /HEX_PRIVATE_KEY_PATTERN\s*=\s*\/\^\[0-9a-fA-F\]\{64\}\$\//);
+  assert.match(
+    environmentSource,
+    /must be exactly 64 hexadecimal characters \(32 bytes\)/
+  );
+  assert.match(environmentSource, /ethers\.isAddress\(values\.BLOCKCHAIN_CONTRACT_ADDRESS\)/);
+  assert.match(
+    environmentSource,
+    /is set to a known TEST_ENV placeholder value, which must never be used outside the TEST stage/
+  );
 
   // Story 10.1: ISSUER_PRIVATE_KEY/WEBHOOK_SIGNING_PRIVATE_KEY carregam os valores hex prontos
   // diretamente (não mais um placeholder "test-..." remendado no ponto de consumo).
