@@ -122,8 +122,15 @@ test("Story 1.1 centralizes process.env access in src/shared/environments.ts", (
     "BLOCKCHAIN_WALLET_PRIVATE_KEY",
   ].forEach((envName) => {
     assert.match(environmentSource, new RegExp(`${envName}: z\\.string\\(\\)\\.min\\(1\\)`));
-    assert.match(environmentSource, new RegExp(`${envName}: "test-`));
   });
+
+  // Story 10.1: ISSUER_PRIVATE_KEY/WEBHOOK_SIGNING_PRIVATE_KEY carregam os valores hex prontos
+  // diretamente (não mais um placeholder "test-..." remendado no ponto de consumo).
+  assert.match(environmentSource, /ISSUER_PRIVATE_KEY:\s*\n?\s*"[0-9a-f]{64}"/);
+  assert.match(environmentSource, /WEBHOOK_SIGNING_PRIVATE_KEY:\s*\n?\s*"[0-9a-f]{64}"/);
+  // BLOCKCHAIN_WALLET_PRIVATE_KEY permanece com o placeholder — fora do escopo da Story 10.1
+  // (nenhum consumidor faz hexToBytes desse valor em TEST stage).
+  assert.match(environmentSource, /BLOCKCHAIN_WALLET_PRIVATE_KEY: "test-/);
 
   const scannedFiles = [
     ...walkFiles("app"),
