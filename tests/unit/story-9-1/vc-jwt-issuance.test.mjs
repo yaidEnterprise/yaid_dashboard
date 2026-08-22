@@ -87,9 +87,10 @@ test("Story 9.1 IssueCredentialUseCase preserves OCR-in-memory, claims consolida
   assert.match(src, /502|BAD_GATEWAY/, "Must still throw 502/BAD_GATEWAY on blockchain failure");
 });
 
-test("Story 9.1 IssueCredentialUseCase does not touch the ISSUER_PRIVATE_KEY test-placeholder substitution (Epic 10 scope)", () => {
+test("Story 9.1/10.1 — IssueCredentialUseCase reads ISSUER_PRIVATE_KEY directly, no placeholder substitution (Epic 10 landed)", () => {
   const src = readText("src/modules/credential/app/issue_credential_usecase.ts");
-  assert.match(src, /test-issuer-private-key/, "Must keep the existing test-placeholder substitution untouched");
+  assert.doesNotMatch(src, /test-issuer-private-key/, "Placeholder substitution must be removed by Story 10.1");
+  assert.match(src, /hexToBytes\(this\.issuerPrivateKey\)/, "Must read the key directly from the constructor value");
 });
 
 // ─── Verificações Estáticas — Controller/Rota ────────────────────────────────
