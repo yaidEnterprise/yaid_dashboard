@@ -144,7 +144,7 @@ NFR14: Toda listagem cobre 3 estados: loading, erro, vazio (CTA), populado.
 - Implementar `proxy.ts` global (Next.js 16) com roteamento por prefixo de rota para 4 mecanismos de auth distintos (sessão Supabase, API key bearer, DID signature, session token), delegando a lógica para `src/shared/middleware.ts`.
 - `process.env` somente em `src/shared/environments.ts` — lido e validado no boot; nenhuma outra camada lê env vars diretamente.
 - Integração com blockchain (Hardhat local no dev, Sepolia no MVP) — biblioteca client **TBD**: agente implementador deve questionar qual library usar, estratégia de retry e tratamento de latência on-chain antes de implementar.
-- Integração com OCR em memória — provider **TBD** (Google Vision, AWS Textract, IDWall etc.): agente implementador deve questionar antes de implementar.
+- Integração com OCR em memória — provider **definido (Sprint Change 2026-08-19): Mistral Document AI** (`POST https://api.mistral.ai/v1/ocr`, `mistral-ocr-latest`) com `document_annotation_format` (JSON Schema) retornando `{ name, cpf, birthDate }`. O backend **valida** a saída (formato de CPF e de data), **nunca extrai campos de texto corrido por regex**. Autenticação por `MISTRAL_API_KEY` (obrigatória em todo ambiente real); modelo e endpoint são constantes no client. SDK `@mistralai/mistralai` restrito à implementação concreta.
 - Algoritmos e bibliotecas de criptografia — **TBD** para cada papel: agente implementador deve questionar biblioteca a usar para assinatura Ed25519 do issuer, webhook e auth mobile.
 - Testes unitários co-locados ao módulo (ao lado dos arquivos de source); fakes em memória para repositórios; dois testes de integração contra Postgres real cobrindo queries críticas (isolamento por company, criação atômica de proof_request + proof_session).
 - Campos camelCase em todas as respostas da API — ViewModel é responsável por transformar snake_case do banco.
@@ -998,7 +998,7 @@ Para que eu possa usar essa credencial para verificações futuras sem entregar 
 **When** `registerDID` lança exceção
 **Then** retorna HTTP 502 com `{ error: "Blockchain registration failed" }` sem emitir VC parcial
 
-> ⚠️ **TBD para o agente implementador:** questionar provider de OCR (Google Vision, AWS Textract, IDWall etc.) e biblioteca de assinatura Ed25519 antes de implementar.
+> ℹ️ **Decisões fechadas:** provider de OCR = **Mistral Document AI** com extração estruturada via `document_annotation_format` (Sprint Change 2026-08-19; ver Story 5.9). Assinatura Ed25519 = `@noble/ed25519` (resolvido na implementação da 5.4).
 
 ---
 
@@ -1176,6 +1176,98 @@ hardcoded `"verification"`
 > `ageOver18`, inclusive `false`. Como a Regra 5 original só verifica que o valor é booleano,
 > a credencial de um menor de idade **aprovaria** uma `proof_request` de `age_over_18`.
 > Hoje isso não ocorre apenas porque a claim não existe na credencial.
+
+---
+
+### Story 5.9: OCR Estruturado via Mistral Document AI
+
+> Origem: Sprint Change Proposal 2026-08-19. Substitui a implementação do provider de OCR
+> introduzida pela Story 5.4 — os critérios de negócio da 5.4, 5.7 e 5.8 permanecem inalterados.
+
+Como holder com app mobile,
+Quero que os dados do meu documento sejam lidos de forma estruturada e confiável,
+Para que minha credencial não seja negada por uma variação de layout nem emitida com uma idade errada.
+
+**Contexto:** a extração de nome, CPF e data de nascimento é feita hoje por **regex sobre o texto
+livre** devolvido pela API de OCR (`ApiOcrProvider.parseDocumentText`). Além de frágil a cada layout
+novo de RG/CNH, o fallback de data aceita **qualquer** `DD/MM/YYYY` encontrado no documento quando
+não localiza o rótulo — data de emissão, expedição ou validade podem ser lidas como data de
+nascimento. Como esse valor alimenta diretamente o cálculo de `ageOver18` (Story 5.7), um erro de
+parsing se transforma em **claim falsa dentro de uma credencial assinada**. Esta story elimina a
+classe do problema: os campos passam a ser extraídos de forma estruturada na origem, e o backend
+apenas **valida** o que recebe.
+
+**Acceptance Criteria:**
+
+**Given** `MISTRAL_API_KEY` configurada e uma imagem legível de documento brasileiro
+**When** `POST /api/credentials/issue` é processada
+**Then** nome, CPF e data de nascimento são lidos de `document_annotation` retornado pela Mistral
+**And** a VC é emitida com HTTP 201, como nas Stories 5.4/5.7
+**And** **nenhum regex de extração de campo** participa do caminho — o parsing de texto livre deixa
+de existir
+
+**Given** um documento cujo conteúdo não permite ler nome, CPF ou data de nascimento
+**When** o processamento é executado
+**Then** retorna HTTP 422 com `{ error: "Document processing failed" }` sem persistir nada
+
+**Given** uma saída do provider com CPF fora de 11 dígitos, `birthDate` fora de `YYYY-MM-DD`, data
+inexistente ou futura, ou qualquer campo `null`
+**When** a validação estrutural do resultado é executada
+**Then** o resultado é rejeitado e retorna HTTP 422
+**And** a saída do modelo **nunca é aceita sem validação** — validar não é reconstruir campo a partir
+de texto corrido
+
+**Given** qualquer caminho de execução, inclusive os de falha
+**When** a emissão ocorre
+**Then** a imagem do documento e os campos extraídos não são gravados em banco nem em log (NFR7)
+**And** o modo debug do SDK permanece desligado — o request carrega a imagem do documento
+
+**Given** `MISTRAL_API_KEY` ausente e `STAGE` igual a `PROD` ou `HOMOLOG`
+**When** a aplicação inicializa
+**Then** o boot falha na validação do schema de environments
+**And** **não existe fallback para mock** — ausência de configuração deixa de selecionar provider
+
+**Given** `STAGE` igual a `DOTENV`, `DEV`, `HOMOLOG` ou `PROD`
+**When** `getOcrProvider()` resolve o provider
+**Then** devolve **sempre** `MistralOcrProvider`, e lança quando a chave está ausente
+**And Given** `STAGE` igual a `TEST`
+**Then** devolve `MockOcrProvider` sem sequer ler `MISTRAL_API_KEY`
+**And** essa matriz é coberta por **guard automatizado** — a garantia depende de uma condição de
+`STAGE` e por isso precisa de teste próprio
+
+**Given** o código do projeto
+**When** as importações são inspecionadas
+**Then** `@mistralai/mistralai` é importado **apenas** por
+`src/shared/clients/ocr/MistralOcrProvider.ts`
+**And** use case, controller e presenter continuam dependendo somente da interface `OcrProvider`
+
+**Given** a conclusão desta story
+**When** o diretório `src/shared/clients/ocr/` é inspecionado
+**Then** `ApiOcrProvider.ts` não existe mais e nenhum símbolo dele é importado
+**And** `MockOcrProvider.ts` permanece, referenciado exclusivamente pelo ramo `STAGE=TEST`
+
+**Given** o manifesto autoritativo de env vars (Story 11.8)
+**When** a renomeação `OCR_API_URL`/`OCR_API_KEY` → `MISTRAL_API_KEY` é aplicada
+**Then** `.env.local.example`, `amplify.yml`, `docs/deployment/production-cicd.md`,
+`docs/e2e-happy-path-postman.md` e os testes de `story-11-8` refletem os **12 nomes canônicos**
+
+**Given** o sync autoritativo de env vars, que remove do Amplify o que sai do manifesto
+**When** o primeiro deploy pós-merge é executado
+**Then** o Secret `MISTRAL_API_KEY` já está cadastrado no GitHub — sem ele o boot falha
+
+**Given** a suíte de testes do projeto
+**When** `npm run test` é executado
+**Then** passa integralmente
+
+> ℹ️ **Notas de escopo.** Origem: Sprint Change Proposal 2026-08-19
+> (`_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-19.md`).
+> O **contrato público de `POST /api/credentials/issue` não muda** — mesmos campos de entrada e
+> mesmos códigos de resposta (201/401/422/502); o app mobile **não precisa de alteração alguma**.
+> O refino de erro **422 vs 502** para o caso de indisponibilidade do provider (hoje qualquer falha
+> do OCR vira 422, inclusive timeout ou chave inválida, informando ao holder que o documento dele é
+> ruim quando o problema é nosso) foi **deliberadamente deferido** para story própria: alterar isso
+> mexe num AC da Story 5.4 e acrescenta um código de erro ao contrato público, exigindo alinhamento
+> com o app mobile.
 
 ---
 

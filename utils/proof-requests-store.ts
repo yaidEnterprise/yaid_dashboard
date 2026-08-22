@@ -76,6 +76,24 @@ export async function getProofRequest(
   return (await asJson(res)) as ProofRequestDetail;
 }
 
+export interface ReviewProofRequestResult {
+  id: string;
+  status: ProofRequestStatus;
+  updatedAt: string;
+}
+
+export async function reviewProofRequest(
+  requestId: string,
+  decision: "approve" | "reject"
+): Promise<ReviewProofRequestResult> {
+  const res = await fetchWithAuth(`/api/proof-requests/${requestId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision }),
+  });
+  return (await asJson(res)) as ReviewProofRequestResult;
+}
+
 /** PT-BR label for each backend status. */
 export const PROOF_REQUEST_STATUS_LABELS: Record<ProofRequestStatus, string> = {
   pending_user: "Aguardando usuário",

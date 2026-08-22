@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronRight, ChevronLeft, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, ShieldCheck, CheckCircle2, Check, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { StatusBadge, type StatusKind } from "@/components/feedback/status-badge";
 import { EnvBadge } from "@/components/feedback/environment-badge";
 import { InlineCode } from "@/components/api/code-block";
 import {
   getProofRequest,
+  reviewProofRequest,
   formatProofType,
   confirmedClaims,
   PROOF_REQUEST_STATUS_LABELS,
@@ -38,6 +40,8 @@ export default function ProofRequestDetailPage() {
   const [data, setData] = useState<ProofRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviewDialog, setReviewDialog] = useState<"approve" | "reject" | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +61,29 @@ export default function ProofRequestDetailPage() {
       cancelled = true;
     };
   }, [requestId]);
+
+  async function handleReviewConfirm() {
+    if (!reviewDialog || !data) return;
+    setReviewLoading(true);
+    try {
+      const result = await reviewProofRequest(requestId, reviewDialog);
+      setData({ ...data, status: result.status, updatedAt: result.updatedAt });
+      toast.success(
+        reviewDialog === "approve" ? "Verificação aprovada" : "Verificação reprovada"
+      );
+      setReviewDialog(null);
+    } catch (e) {
+      toast.error((e as Error).message || "Falha ao registrar a decisão");
+      // Resync in case the rejection happened because another actor already
+      // reviewed this request concurrently (e.g. 422 terminal-state guard) —
+      // otherwise the buttons would keep showing for an already-terminal request.
+      getProofRequest(requestId)
+        .then(setData)
+        .catch(() => {});
+    } finally {
+      setReviewLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -83,6 +110,10 @@ export default function ProofRequestDetailPage() {
       </div>
     );
   }
+
+  const canReview =
+    data.environment === "homol" &&
+    (data.status === "pending_user" || data.status === "processing");
 
   const isApproved = data.status === "approved";
   // Only surface confirmed claims when the result is not an explicit failure —
@@ -131,6 +162,26 @@ export default function ProofRequestDetailPage() {
             <InlineCode copyable>{data.id}</InlineCode>
           </div>
         </div>
+        {canReview && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setReviewDialog("approve")}
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-success px-4 text-sm font-medium text-success-foreground transition-colors hover:bg-success/90"
+            >
+              <Check className="h-4 w-4" />
+              Aprovar
+            </button>
+            <button
+              type="button"
+              onClick={() => setReviewDialog("reject")}
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+            >
+              <X className="h-4 w-4" />
+              Reprovar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Grid principal */}
@@ -216,6 +267,117 @@ export default function ProofRequestDetailPage() {
           </div>
         </aside>
       </section>
+
+      <ReviewConfirmDialog
+        decision={reviewDialog}
+        onCancel={() => setReviewDialog(null)}
+        onConfirm={handleReviewConfirm}
+        loading={reviewLoading}
+      />
     </>
+  );
+}
+
+// ─── Review Confirm Dialog ─────────────────────────────────────────────────
+
+function ReviewConfirmDialog({
+  decision,
+  onCancel,
+  onConfirm,
+  loading,
+}: {
+  decision: "approve" | "reject" | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+  loading: boolean;
+}) {
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (decision) {
+      confirmBtnRef.current?.focus();
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && !loading) onCancel();
+      };
+      document.addEventListener("keydown", onKey);
+      return () => document.removeEventListener("keydown", onKey);
+    }
+  }, [decision, loading, onCancel]);
+
+  if (!decision) return null;
+
+  const isApprove = decision === "approve";
+  const Icon = isApprove ? Check : X;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="review-proof-request-dialog-title"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (!loading && e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-md overflow-hidden rounded-lg border border-border bg-surface shadow-elevated">
+        {/* Header */}
+        <div className="flex items-start gap-3 border-b border-border px-6 py-5">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${
+              isApprove ? "bg-success-bg text-success-text" : "bg-error-bg text-error-text"
+            }`}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <h2
+              id="review-proof-request-dialog-title"
+              className="text-base font-semibold text-text-primary"
+            >
+              {isApprove ? "Aprovar verificação" : "Reprovar verificação"}
+            </h2>
+            <p className="mt-0.5 text-sm text-text-secondary">
+              Esta ação envia o webhook real para o app e não pode ser desfeita.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 bg-surface-muted/40 px-6 py-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            ref={confirmBtnRef}
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            className={`inline-flex h-10 items-center gap-2 rounded-md px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              isApprove
+                ? "bg-success text-success-foreground hover:bg-success/90"
+                : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            }`}
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Icon className="h-4 w-4" />
+            )}
+            {loading
+              ? isApprove
+                ? "Aprovando..."
+                : "Reprovando..."
+              : isApprove
+                ? "Aprovar"
+                : "Reprovar"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

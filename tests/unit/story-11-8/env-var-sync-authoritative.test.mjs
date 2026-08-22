@@ -83,7 +83,7 @@ test("AC1: .env.local.example NÃO lista YAID_VERIFICATION_BASE_URL (AC6)", () =
   );
 });
 
-test("AC1: .env.local.example lista exatamente os 13 nomes canônicos", () => {
+test("AC1: .env.local.example lista exatamente os 12 nomes canônicos", () => {
   const expected = [
     "STAGE",
     "NEXT_PUBLIC_APP_URL",
@@ -96,8 +96,7 @@ test("AC1: .env.local.example lista exatamente os 13 nomes canônicos", () => {
     "BLOCKCHAIN_CONTRACT_ADDRESS",
     "ISSUER_PRIVATE_KEY",
     "WEBHOOK_SIGNING_PRIVATE_KEY",
-    "OCR_API_URL",
-    "OCR_API_KEY",
+    "MISTRAL_API_KEY",
   ].sort();
   const actual = namesFromEnvExample().sort();
   assert.deepEqual(actual, expected);

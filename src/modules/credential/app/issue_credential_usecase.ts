@@ -121,14 +121,7 @@ export class IssueCredentialUseCase {
     // 5. Construir e assinar a VC com ISSUER_PRIVATE_KEY
     const id = randomUUID();
 
-    // CORRIGIR ISSO! variaveis de ambiente de teste devem ser definidas no environments.ts
-    // Mapear isso e descobrir onde mais existem hardcode de variavel de ambiente por falta de retorno do environments.ts
-    let privateKeyHex = this.issuerPrivateKey;
-    if (privateKeyHex === "test-issuer-private-key") {
-      privateKeyHex = "0000000000000000000000000000000000000000000000000000000000000001";
-    }
-
-    const privateKeyBytes = hexToBytes(privateKeyHex);
+    const privateKeyBytes = hexToBytes(this.issuerPrivateKey);
     const issuerPubKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
     const issuerPubKeyHex = bytesToHex(issuerPubKeyBytes);
     const issuerDid = `did:yaid:issuer:${issuerPubKeyHex}`;
