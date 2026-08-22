@@ -17,17 +17,11 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-const TEST_KEY_PLACEHOLDER = "test-webhook-signing-private-key";
-const TEST_KEY_HEX =
-  "0000000000000000000000000000000000000000000000000000000000000002";
-
 export class Ed25519WebhookSigner implements WebhookSigner {
   private readonly privateKeyBytes: Uint8Array;
 
   constructor(privateKeyHex: string) {
-    const hex =
-      privateKeyHex === TEST_KEY_PLACEHOLDER ? TEST_KEY_HEX : privateKeyHex;
-    this.privateKeyBytes = hexToBytes(hex);
+    this.privateKeyBytes = hexToBytes(privateKeyHex);
   }
 
   async sign(payload: string): Promise<WebhookSignResult> {

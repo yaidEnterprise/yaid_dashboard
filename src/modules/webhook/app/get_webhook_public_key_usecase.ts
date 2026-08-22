@@ -1,9 +1,5 @@
 import * as ed from "@noble/ed25519";
-import { Stage } from "@/shared/environments";
 
-const TEST_PRIVATE_KEY_PLACEHOLDER = "test-webhook-signing-private-key";
-const TEST_PRIVATE_KEY_HEX =
-  "0000000000000000000000000000000000000000000000000000000000000002";
 const HEX_PRIVATE_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
 
 function hexToBytes(hex: string): Uint8Array {
@@ -25,23 +21,10 @@ export interface GetWebhookPublicKeyOutput {
 }
 
 export class GetWebhookPublicKeyUseCase {
-  constructor(
-    private readonly webhookSigningPrivateKey: string,
-    private readonly stage: Stage
-  ) {}
+  constructor(private readonly webhookSigningPrivateKey: string) {}
 
   async execute(): Promise<GetWebhookPublicKeyOutput> {
-    let privateKeyHex = this.webhookSigningPrivateKey;
-    if (privateKeyHex === TEST_PRIVATE_KEY_PLACEHOLDER) {
-      if (this.stage !== Stage.TEST) {
-        throw new Error(
-          "WEBHOOK_SIGNING_PRIVATE_KEY is set to the TEST_ENV placeholder outside the TEST stage"
-        );
-      }
-      privateKeyHex = TEST_PRIVATE_KEY_HEX;
-    }
-
-    const privateKeyBytes = hexToBytes(privateKeyHex);
+    const privateKeyBytes = hexToBytes(this.webhookSigningPrivateKey);
     const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
 
     return {

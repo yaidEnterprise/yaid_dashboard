@@ -80,9 +80,10 @@ test("Story 6.1 Ed25519WebhookSigner preserves raw payload bytes", () => {
   assert.match(src, /TextEncoder/, "Must encode payload to bytes via TextEncoder");
 });
 
-test("Story 6.1 Ed25519WebhookSigner has test key fallback", () => {
+test("Story 6.1 Ed25519WebhookSigner uses the received private key directly (no placeholder substitution — Epic 10)", () => {
   const src = readText("src/shared/infra/providers/Ed25519WebhookSigner.ts");
-  assert.match(src, /test-webhook-signing-private-key/, "Must handle test key placeholder");
+  assert.doesNotMatch(src, /test-webhook-signing-private-key/, "Placeholder substitution must be removed");
+  assert.match(src, /this\.privateKeyBytes = hexToBytes\(privateKeyHex\)/, "Constructor must use the received value directly");
 });
 
 // ─── Contrato do DeliverWebhookUseCase ────────────────────────────────────────

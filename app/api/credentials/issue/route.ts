@@ -18,7 +18,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       holderDid,
     });
 
-    return NextResponse.json(vcJwt, { status: 201 });
+    return new NextResponse(vcJwt, {
+      status: 201,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   } catch (error: any) {
     if (error instanceof AppError) {
       if (
