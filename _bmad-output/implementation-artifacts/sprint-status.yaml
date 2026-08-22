@@ -36,8 +36,12 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-21
+last_updated: 2026-08-22
 project: yaid_dashboard
+# 2026-08-22: Epic 13 criado (backlog) — Sprint Change 2026-08-22: landing page institucional
+#             em "/" (dashboard migra para "/dashboard"). Stories 13.1 e 13.2 registradas.
+# 2026-08-22: Epic 12 criado (backlog) — Sprint Change 2026-08-22: página pública de
+#             documentação de integração (/docs). Stories 12.1 e 12.2 registradas.
 # 2026-08-21: Story 10.2 criada (ready-for-dev)
 # 2026-08-20: Story 10.1 criada (ready-for-dev) — Epic 10 reaberto (in-progress)
 # 2026-08-09: Story 11.4 criada (ready-for-dev)
@@ -157,6 +161,18 @@ development_status:
   11-7-documentacao-operacional: done
   11-8-sync-autoritativo-de-env-vars-no-amplify: done
   epic-11-retrospective: optional
+
+  # Epic 12: Documentação Pública de Integração (Sprint Change 2026-08-22)
+  epic-12: backlog
+  12-1-estrutura-da-pagina-e-secao-conta-e-apps: backlog
+  12-2-conteudo-proof-requests-e-webhooks: backlog
+  epic-12-retrospective: optional
+
+  # Epic 13: Landing Page Institucional (Sprint Change 2026-08-22)
+  epic-13: backlog
+  13-1-mover-dashboard-para-dashboard-e-ajustar-middleware: backlog
+  13-2-pagina-publica-landing-institucional: backlog
+  epic-13-retrospective: optional
 
 # Registro de sprint changes que NÃO geraram story própria (escopo minor).
 # Não fazem parte de development_status — são rastreados aqui apenas para auditoria.
