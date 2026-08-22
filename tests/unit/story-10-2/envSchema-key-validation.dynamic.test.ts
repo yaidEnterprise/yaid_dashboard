@@ -22,6 +22,10 @@ const VALID_ISSUER_HEX = "11".repeat(32);
 const VALID_WEBHOOK_HEX = "22".repeat(32);
 const VALID_WALLET_HEX = "33".repeat(32);
 const VALID_CONTRACT_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+// Pre-existing PROD-required var (src/shared/environments.ts productionRequiredEnvNames),
+// unrelated to Story 10.2's 4 keys but still enforced by the same superRefine presence
+// check — every PROD/HOMOLOG "doesNotThrow" fixture below must supply it too.
+const VALID_MISTRAL_API_KEY = "test-mistral-api-key";
 
 const BASE_ENV = {
   NEXT_PUBLIC_SUPABASE_URL: "http://localhost:54321",
@@ -111,7 +115,7 @@ test("Story 10.2 — ISSUER_PRIVATE_KEY defined as an empty string fails boot in
   );
 });
 
-test("Story 10.2 — all 4 keys with valid, non-placeholder values do not throw in PROD", () => {
+test("Story 10.2 — all 4 keys with valid, non-placeholder values do not throw in PROD (plus the pre-existing MISTRAL_API_KEY requirement)", () => {
   withEnv(
     {
       STAGE: Stage.PROD,
@@ -119,6 +123,7 @@ test("Story 10.2 — all 4 keys with valid, non-placeholder values do not throw 
       WEBHOOK_SIGNING_PRIVATE_KEY: VALID_WEBHOOK_HEX,
       BLOCKCHAIN_WALLET_PRIVATE_KEY: VALID_WALLET_HEX,
       BLOCKCHAIN_CONTRACT_ADDRESS: VALID_CONTRACT_ADDRESS,
+      MISTRAL_API_KEY: VALID_MISTRAL_API_KEY,
     },
     () => {
       assert.doesNotThrow(() => new Environments().loadEnvs());
@@ -332,6 +337,25 @@ test("Story 10.2 (regression) — STAGE=PROD without ISSUER_PRIVATE_KEY at all s
       assert.throws(
         () => new Environments().loadEnvs(),
         /ISSUER_PRIVATE_KEY is required for PROD/
+      );
+    }
+  );
+});
+
+test("Story 10.2 (regression) — STAGE=PROD without MISTRAL_API_KEY at all still fails with the pre-existing presence message", () => {
+  withEnv(
+    {
+      STAGE: Stage.PROD,
+      ISSUER_PRIVATE_KEY: VALID_ISSUER_HEX,
+      WEBHOOK_SIGNING_PRIVATE_KEY: VALID_WEBHOOK_HEX,
+      BLOCKCHAIN_WALLET_PRIVATE_KEY: VALID_WALLET_HEX,
+      BLOCKCHAIN_CONTRACT_ADDRESS: VALID_CONTRACT_ADDRESS,
+      MISTRAL_API_KEY: undefined,
+    },
+    () => {
+      assert.throws(
+        () => new Environments().loadEnvs(),
+        /MISTRAL_API_KEY is required for PROD/
       );
     }
   );
