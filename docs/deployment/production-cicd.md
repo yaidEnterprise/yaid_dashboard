@@ -361,15 +361,15 @@ consulta Secrets/Variables para ele.
 **Classificação atual (12 nomes cadastráveis, derivados do `.env.local.example`; `STAGE` é o 13º nome
 mas é automático — ver acima):**
 
-| GitHub Variables (5) | GitHub Secrets (7) |
+| GitHub Variables (4) | GitHub Secrets (8) |
 |---|---|
 | `NEXT_PUBLIC_APP_URL` | `SUPABASE_SECRET_KEY` |
 | `NEXT_PUBLIC_SUPABASE_URL` | `SUPABASE_DB_PASSWORD` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `BLOCKCHAIN_RPC_URL` |
 | `BLOCKCHAIN_CONTRACT_ADDRESS` | `BLOCKCHAIN_WALLET_PRIVATE_KEY` |
-| `OCR_API_URL` | `ISSUER_PRIVATE_KEY` |
+| | `ISSUER_PRIVATE_KEY` |
 | | `WEBHOOK_SIGNING_PRIVATE_KEY` |
-| | `OCR_API_KEY` |
+| | `MISTRAL_API_KEY` |
 
 > `YAID_VERIFICATION_BASE_URL` **não** consta nessa lista e **não existe mais** como getter em
 > `environments.ts`: a URL de verificação é derivada inline em

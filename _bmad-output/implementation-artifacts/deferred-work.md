@@ -1,3 +1,12 @@
+## Deferred from: code review of story-5-9-ocr-estruturado-via-mistral-document-ai (2026-08-19)
+
+- **`validateOcrResult` valida CPF só por contagem de dígitos (11), sem dígito verificador** — a mesma limitação já existia no `ApiOcrProvider` removido por esta story; o AC #3 da Story 5.9 só pede validação de formato (11 dígitos, `YYYY-MM-DD`), não checksum. Considerar dígito verificador de CPF numa story futura de hardening. [`src/shared/clients/ocr/MistralOcrProvider.ts`]
+
+- **`Buffer.from(base64Image, "base64")` não valida entrada base64 nem rejeita string vazia** — produz um buffer de 0 bytes que ainda é enviado à Mistral como uma data URI "bem formada" sem conteúdo. Não causa aprovação incorreta (a API rejeita e o fluxo cai em 422 do mesmo jeito) — só adia a falha por uma chamada de rede desnecessária. [`src/shared/clients/ocr/MistralOcrProvider.ts`]
+
+- **Erros de rede/timeout/SDK indistinguíveis de "documento ilegível" — ambos colapsam no 422 genérico** — é exatamente o refino 422 vs 502 que o Sprint Change Proposal 2026-08-19 (§4.5) marca como opcional e recomenda explicitamente **não** incluir na Story 5.9 (mudaria um AC da Story 5.4 e o contrato público de `POST /api/credentials/issue`, exigindo alinhamento com o app mobile). Candidato a story própria se o produto priorizar. [`src/shared/clients/ocr/MistralOcrProvider.ts`, `src/modules/credential/app/issue_credential_usecase.ts:94-99`]
+
+- **Suíte de testes 100% estática (existência de arquivo + regex sobre o source + `tsc --noEmit`)** — nenhum teste instancia `MistralOcrProvider` com o SDK mockado para exercitar `processDocument` em runtime (JSON malformado, campos inválidos, etc.). Padrão sistêmico em todas as stories do projeto desde a 5.4, já identificado e deferido em code reviews anteriores (Story 5.8 registrou a mesma observação). [`tests/unit/story-5-9/mistral-ocr-provider-selection.test.mjs`]
 ## Deferred from: code review of story-10-2-validacao-de-formato-de-chaves-no-boot (2026-08-21)
 
 - **Exclusão do stage `TEST` das checagens novas depende inteiramente de `loadEnvs()` nunca chamar

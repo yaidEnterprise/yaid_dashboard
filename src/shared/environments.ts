@@ -21,6 +21,7 @@ const productionRequiredEnvNames = [
   "WEBHOOK_SIGNING_PRIVATE_KEY",
   "BLOCKCHAIN_WALLET_PRIVATE_KEY",
   "BLOCKCHAIN_CONTRACT_ADDRESS",
+  "MISTRAL_API_KEY",
 ] as const;
 
 const HEX_PRIVATE_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
@@ -39,8 +40,7 @@ const envSchema = z
     BLOCKCHAIN_WALLET_PRIVATE_KEY: z.string().optional(),
     BLOCKCHAIN_CONTRACT_ADDRESS: z.string().optional(),
     BLOCKCHAIN_RPC_URL: z.string().url().default("http://127.0.0.1:8545"),
-    OCR_API_URL: z.string().url().optional(),
-    OCR_API_KEY: z.string().min(1).optional(),
+    MISTRAL_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((values, ctx) => {
     const hexKeyEnvNames = [
@@ -148,8 +148,7 @@ function readProcessEnv() {
     BLOCKCHAIN_WALLET_PRIVATE_KEY: process.env.BLOCKCHAIN_WALLET_PRIVATE_KEY,
     BLOCKCHAIN_CONTRACT_ADDRESS: process.env.BLOCKCHAIN_CONTRACT_ADDRESS,
     BLOCKCHAIN_RPC_URL: process.env.BLOCKCHAIN_RPC_URL,
-    OCR_API_URL: process.env.OCR_API_URL,
-    OCR_API_KEY: process.env.OCR_API_KEY,
+    MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
   };
 }
 
@@ -238,12 +237,8 @@ export class Environments {
     return this.values.BLOCKCHAIN_RPC_URL;
   }
 
-  get OCR_API_URL() {
-    return this.values.OCR_API_URL;
-  }
-
-  get OCR_API_KEY() {
-    return this.values.OCR_API_KEY;
+  get MISTRAL_API_KEY() {
+    return requireConfiguredValue(this.values.MISTRAL_API_KEY, "MISTRAL_API_KEY");
   }
 
   toJSON() {
@@ -320,20 +315,17 @@ export class Environments {
   }
 
   async getOcrProvider(): Promise<OcrProvider> {
-    const url = this.values.OCR_API_URL;
-    const key = this.values.OCR_API_KEY;
-
-    if (url && key) {
-      const { ApiOcrProvider } = await import(
-        "@/shared/clients/ocr/ApiOcrProvider"
+    if (this.stage === Stage.TEST) {
+      const { MockOcrProvider } = await import(
+        "@/shared/clients/ocr/MockOcrProvider"
       );
-      return new ApiOcrProvider(url, key);
+      return new MockOcrProvider();
     }
 
-    const { MockOcrProvider } = await import(
-      "@/shared/clients/ocr/MockOcrProvider"
+    const { MistralOcrProvider } = await import(
+      "@/shared/clients/ocr/MistralOcrProvider"
     );
-    return new MockOcrProvider();
+    return new MistralOcrProvider(this.MISTRAL_API_KEY);
   }
 
   static getEnvs() {

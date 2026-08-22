@@ -104,7 +104,11 @@ test("Story 9.1 IssueCredentialController propagates a string (JWT) return type"
 test("Story 9.1 API route handler returns the VC-JWT with status 201", () => {
   const src = readText("app/api/credentials/issue/route.ts");
   assert.match(src, /makeIssueCredentialController/, "Route handler must still use the presenter");
-  assert.match(src, /NextResponse\.json\(vcJwt, \{ status: 201 \}\)/, "Route must return the JWT string with status 201");
+  // NextResponse.json(vcJwt, ...) would JSON-encode the compact JWT string,
+  // wrapping it in literal quote characters the client never expects — the
+  // response must be the raw compact JWT text (see MOBILE-API-CONTRACT.md §4.1).
+  assert.doesNotMatch(src, /NextResponse\.json\(vcJwt/, "Route must not JSON-encode the JWT string");
+  assert.match(src, /new NextResponse\(vcJwt, \{[\s\S]*?status: 201/, "Route must return the raw JWT string with status 201");
 });
 
 // ─── Compilação TypeScript ────────────────────────────────────────────────────
