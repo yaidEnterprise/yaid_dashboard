@@ -19,6 +19,10 @@ editHistory:
     changes: 'Nota de infraestrutura de entrega — Sprint Change 2026-08-08: introdução do Epic 11 (pipeline de CI/CD de produção orquestrada pelo GitHub Actions na branch prod, gates tests → deploy-supabase → deploy-amplify → smoke-test). Núcleo e MVP do produto inalterados.'
   - date: '2026-08-09'
     changes: 'Nota de infraestrutura de entrega — Sprint Change 2026-08-09 (Story 11.8): sync de env vars no Amplify passa de merge para autoritativo derivado do .env.local.example (replace; valores pela colocação Secrets→Variables; exceções NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY→Variable e BLOCKCHAIN_RPC_URL→Secret); YAID_VERIFICATION_BASE_URL passa a ser derivada de NEXT_PUBLIC_APP_URL + /v; secret AMPLIFY_ENVIRONMENT_VARIABLES removido. Núcleo e MVP inalterados.'
+  - date: '2026-08-22'
+    changes: 'Correct Course — novo Epic 12: página pública de documentação de integração (/docs, sem autenticação, layout independente tipo tela coringa) orientando empresas parceiras a criar conta/app, entender ambientes homolog/prod e disparar proof_requests. FR35 adicionado. Aditivo; núcleo e MVP inalterados.'
+  - date: '2026-08-22'
+    changes: 'Correct Course — novo Epic 13: landing page institucional em "/" para empresas parceiras (proposta de valor, como funciona, CTA para /sign-up e link para /docs); dashboard (Overview) migra de "/" para "/dashboard". FR36 adicionado. Aditivo; núcleo e MVP inalterados.'
 ---
 
 # PRD — Dashboard Empresarial + Backend YaID
@@ -32,7 +36,14 @@ editHistory:
 > Para a linguagem do domínio (DID, VC, VP, Holder, Issuer, Verifier, Company,
 > Proof Request, Proof Session), ver [CONTEXT.md](../CONTEXT.md).
 >
-> **Última atualização:** 2026-08-09 (Sprint Change 2026-08-09 — Story 11.8: sync
+> **Última atualização:** 2026-08-22 (Sprint Change 2026-08-22 — Epic 13: landing page
+> institucional em `/`; dashboard passa a viver em `/dashboard`. Aditivo; núcleo e MVP
+> inalterados)
+>
+> Revisão anterior: 2026-08-22 (Sprint Change 2026-08-22 — Epic 12: página pública de
+> documentação de integração para empresas parceiras. Aditivo; núcleo e MVP inalterados)
+>
+> Revisão anterior: 2026-08-09 (Sprint Change 2026-08-09 — Story 11.8: sync
 > autoritativo de env vars no Amplify derivado do `.env.local.example`. Infraestrutura de
 > entrega, aditiva; núcleo e MVP do produto permanecem intactos)
 >
@@ -164,6 +175,27 @@ A experiência do desenvolvedor é defensável: nenhum dado pessoal do holder mo
 - Polling em `GET /api/proof-sessions/{token}` a cada 5–10s nas fases ativas; para nas fases terminais. SSE como roadmap.
 - Mobile esconde QR e dá destaque ao botão de deep link; desktop mostra QR.
 - A tela exibe apenas: nome da company, proof_type traduzido para linguagem natural, status, tempo até expirar. Nunca: `external_reference`, `session_token` bruto, `request_id` interno.
+
+### Documentação pública de integração
+
+- Rota pública `/docs` (fora do grupo `(dashboard)`, sem middleware de auth, layout
+  independente — mesmo padrão de página pública da tela coringa), com marca YaID e navegação
+  por seções/âncoras: Visão geral · Criando sua conta e seu primeiro app · Ambientes
+  (Homologação vs Produção) · Solicitando uma Proof Request · Webhooks.
+- Reaproveita os componentes `CodeBlock`/`InlineCode` já existentes no dashboard para os
+  exemplos de código, com botão de copiar.
+- Conteúdo é estático (sem dados dinâmicos de company) — nenhuma API nova é necessária.
+- Todo exemplo de API key/segredo usa placeholder fictício (nunca uma chave real).
+
+### Landing page institucional
+
+- Rota pública `/` passa a exibir uma landing institucional (fora de qualquer grupo de rotas,
+  usa só o layout global) apresentando a YaID para empresas parceiras: proposta de valor, como
+  funciona a verificação de identidade em alto nível, CTA para `/sign-up` e link para `/docs`.
+- Usuário autenticado que acessa `/` é redirecionado para `/dashboard`.
+- O dashboard (Overview) passa a viver em `/dashboard` (antes em `/`); demais rotas do dashboard
+  (`/apps`, `/proof-requests`, `/settings`) não mudam.
+- Conteúdo é estático — nenhuma API nova é necessária.
 
 ### APIs
 

@@ -20,6 +20,12 @@ sprintChangeRuns:
   - date: '2026-07-28'
     approach: 'Adendo §7 — higiene de configuração e chaves. Epic 10 criado (transversal a shared/, Epic 5 e Epic 6): stories 10.1 (centralização das chaves de teste no environments.ts, removendo 4 substituições locais) e 10.2 (validação de formato de chaves no boot). Independente das stories 5.7/5.8.'
     decisions: 'environments.ts entrega valores prontos — proibido remendar configuração no ponto de uso; formato de chave validado no boot, não em runtime; placeholders do TEST_ENV recusados fora do stage TEST; ordem obrigatória 10.1 antes de 10.2.'
+  - date: '2026-08-22'
+    approach: 'Novo Epic 12 (Documentação Pública de Integração) — página pública /docs, sem auth, layout independente (mesmo padrão da tela coringa). Aditivo, não altera Epics 1–11.'
+    decisions: 'Página única com navegação por âncoras (não um subsistema multi-página de docs); conteúdo estático reaproveitando CodeBlock/InlineCode já existentes; 2 stories (12.1 estrutura + conta/apps, 12.2 proof requests + webhooks).'
+  - date: '2026-08-22'
+    approach: 'Novo Epic 13 (Landing Page Institucional) — landing pública assume a rota "/"; dashboard (Overview) migra para "/dashboard". Independente do Epic 12 (/docs), mas os dois se referenciam no conteúdo.'
+    decisions: 'Usuário autenticado em "/" é redirecionado para "/dashboard"; demais rotas do dashboard (/apps, /proof-requests, /settings) não mudam de URL; landing usa apenas o layout global (mesmo padrão de /v/[sessionToken]), sem layout próprio adicional; 2 stories (13.1 migração de rota/middleware, 13.2 conteúdo da landing). FR2 (Epic 1, done) recebe nota de atualização do destino do redirect pós-login.'
 ---
 
 # yaid_dashboard - Epic Breakdown
@@ -34,7 +40,8 @@ Este documento fornece o detalhamento completo de épicos e stories para o yaid_
 
 FR1: O sistema deve permitir cadastro de nova empresa com email, senha, nome da empresa e CNPJ obrigatório em um único formulário atômico — criando `auth.users` e `public.company` na mesma operação; falha em qualquer passo desfaz ambos. Não existe estado "usuário sem company".
 
-FR2: O sistema deve autenticar empresas via Supabase Auth; pós-login redireciona para "/" (ou `?next=<path>` se preenchido); tela `/sign-up` redireciona direto para "/" após cadastro bem-sucedido.
+FR2: O sistema deve autenticar empresas via Supabase Auth; pós-login redireciona para "/dashboard" (ou `?next=<path>` se preenchido); tela `/sign-up` redireciona direto para "/dashboard" após cadastro bem-sucedido.
+> Nota (Sprint Change 2026-08-22 — Epic 13): destino do redirect atualizado de "/" para "/dashboard", já que "/" passa a ser a landing page pública.
 
 FR3: O dashboard deve exibir uma página de overview com aviso institucional de privacidade e card "próximo passo recomendado" adaptativo — alimentado por API real (sem metric cards ou tabela de métricas no MVP).
 
@@ -102,6 +109,14 @@ FR33 (#8 VC-JWT): O backend deve emitir a Verifiable Credential como VC-JWT comp
 
 FR34 (#9 Migrations): O sistema deve versionar o schema via Supabase Migrations — diretório `supabase/` versionado (`config.toml`, `migrations/`, `seed.sql`), CLI linkada ao project-ref `lygkwhcwsrxfozswhxyo`. Baseline (`supabase db pull`) captura o schema hoje deployado (encerra o drift); forward migrations timestampadas para `add_updated_at_to_proof_requests`, `add_can_create_apps_to_company` (+ backfill) e ajuste de `environment`/default em `company_apps`. `.gitignore` cobre `supabase/.branches` e `supabase/.temp`; CI opcional roda `supabase db diff --check` no PR.
 > Nota (Sprint Change 2026-08-08): além do `db diff --check` opcional no PR, o release em `prod` aplica migrations pendentes via `supabase db push` (precedido de `--dry-run`) como primeiro passo de infra da pipeline, antes do deploy do app (ver Epic 11 / NFR11).
+
+<!-- ── Sprint Change 2026-08-22: requisito novo (FR35). Não altera FR1–FR34. ── -->
+
+FR35: O sistema deve expor uma página pública de documentação (`/docs`, sem autenticação, layout independente) orientando a empresa parceira a: (a) criar conta e primeiro app pelo dashboard, incluindo a escolha de ambiente; (b) entender a diferença de comportamento entre apps de homologação (review manual disponível) e produção (sem review manual); (c) criar uma proof_request via API (`POST /api/proof-requests`) ou pelo helper do dashboard; (d) verificar a assinatura Ed25519 dos webhooks recebidos usando `GET /api/webhook-public-key`.
+
+<!-- ── Sprint Change 2026-08-22: requisito novo (FR36). Não altera FR1–FR35 (exceto nota de redirect no FR2). ── -->
+
+FR36: A rota raiz (`/`) deve exibir uma landing page pública institucional apresentando a proposta de valor da YaID para empresas parceiras (visão geral do fluxo de verificação de identidade, CTA para criar conta) sem exigir autenticação; usuários autenticados que acessarem `/` devem ser redirecionados para `/dashboard`, que passa a hospedar a home atual do dashboard (Overview).
 
 ### NonFunctional Requirements
 
@@ -210,6 +225,8 @@ FR31: Epic 7 — Remoção da seção "Resposta da API" no detalhe da proof_requ
 FR26: Epic 8 — Ícone oficial yaid_icon.svg nas 4 superfícies de marca
 FR27: Epic 8 — Topbar dinâmica (company logada, sem badge global de ambiente)
 FR33: Epic 9 — Emissão/verificação da VC como VC-JWT (EdDSA)
+FR35: Epic 12 — Página pública de documentação de integração
+FR36: Epic 13 — Landing page institucional + reorganização de rota do dashboard
 
 ## Epic List
 
@@ -310,6 +327,22 @@ Todo merge/push em `prod` dispara um release determinístico e auditável orques
 >    `NEXT_PUBLIC_APP_URL` **sem** barra final.
 
 **FRs cobertos:** nenhum (infraestrutura de entrega / operação) — decorre de NFR11.
+
+<!-- ── Sprint Change 2026-08-22: novo épico (12). Epics 1–11 permanecem intocados. ── -->
+
+### Epic 12: Documentação Pública de Integração
+
+Empresa parceira encontra, sem precisar de login, um guia passo a passo de como integrar seu sistema com a YaID: criar conta e app pelo dashboard, entender a diferença entre ambientes de homologação e produção, disparar uma proof_request e verificar a assinatura dos webhooks recebidos.
+
+**FRs cobertos:** FR35
+
+<!-- ── Sprint Change 2026-08-22: novo épico (13). Independente do Epic 12. ── -->
+
+### Epic 13: Landing Page Institucional
+
+Visitante anônimo que chega ao domínio da YaID encontra uma landing page pública explicando o que é a plataforma e como funciona a verificação de identidade, com caminho claro para criar conta. Usuário autenticado continua indo direto para o dashboard, agora em `/dashboard`.
+
+**FRs cobertos:** FR36
 
 ---
 
@@ -1740,3 +1773,120 @@ Para que nunca seja possível subir produção assinando com uma chave inválida
 **Given** a suíte de testes completa
 **When** executada após a mudança
 **Then** passa integralmente
+
+---
+
+## Epic 12: Documentação Pública de Integração
+
+Empresa parceira encontra, sem precisar de login, um guia passo a passo de como integrar seu sistema com a YaID: criar conta e app pelo dashboard, entender a diferença entre ambientes de homologação e produção, disparar uma proof_request e verificar a assinatura dos webhooks recebidos.
+
+### Story 12.1: Estrutura da Página e Seção "Conta e Apps"
+
+Como desenvolvedor,
+Quero uma página pública `/docs` com layout independente e navegação por seções,
+Para que empresas parceiras acessem um guia de integração sem precisar de login.
+
+**Acceptance Criteria:**
+
+**Given** a rota `/docs` (fora do grupo `(dashboard)`, sem sidebar/topbar do dashboard, layout próprio com marca YaID)
+**When** acessada sem autenticação
+**Then** a página carrega normalmente (rota pública, sem middleware de auth)
+**And** exibe navegação por seções/âncoras: "Visão geral", "Criando sua conta e seu primeiro app", "Ambientes: Homologação vs Produção", "Solicitando uma verificação (Proof Request)", "Webhooks"
+**And** usa os componentes `CodeBlock`/`InlineCode` já existentes no dashboard para trechos de código, com botão de copiar
+
+**Given** a seção "Visão geral"
+**When** renderizada
+**Then** descreve o fluxo ponta a ponta em alto nível (criar conta → criar app → obter API key → chamar `POST /api/proof-requests` → redirecionar holder → receber webhook)
+
+**Given** a seção "Criando sua conta e seu primeiro app"
+**When** renderizada
+**Then** documenta passo a passo: cadastro em `/sign-up` (email, senha, nome da empresa, CNPJ), criação de app em `/apps/new` (nome, webhook opcional, seleção de ambiente), captura obrigatória da API key exibida uma única vez no modal
+
+**Given** a seção "Ambientes: Homologação vs Produção"
+**When** renderizada
+**Then** explica que o ambiente é escolhido na criação do app e é imutável no MVP; que apps de homologação permitem aprovação/reprovação manual da proof_request pelo dashboard (`Aprovar`/`Reprovar`), enquanto apps de produção dependem exclusivamente do fluxo real do holder; reforça que não há isolamento de dados entre ambientes (uma proof_request é "real" em qualquer ambiente)
+
+---
+
+### Story 12.2: Conteúdo — Proof Requests e Webhooks
+
+Como desenvolvedor,
+Quero documentar como a empresa parceira cria proof requests e valida webhooks,
+Para que o time de integração da empresa implemente o fluxo sem depender de suporte manual da YaID.
+
+**Acceptance Criteria:**
+
+**Given** a seção "Solicitando uma verificação (Proof Request)"
+**When** renderizada
+**Then** documenta a chamada `POST /api/proof-requests` com header `Authorization: Bearer <api_key>`, body `{ proofType, externalReference? }` e exemplo de request/response com `verificationUrl`
+**And** documenta o helper `/proof-requests/new` no dashboard como alternativa para testes manuais (sem precisar de sistema externo)
+**And** documenta os status possíveis da proof_request e seu significado (`waiting_user`, `opened`, `approved`, `rejected`, `expired`)
+
+**Given** a seção "Webhooks"
+**When** renderizada
+**Then** documenta o payload do webhook, os headers `X-YaID-Signature` + `X-YaID-Timestamp`, e o passo a passo para buscar a chave pública em `GET /api/webhook-public-key` e verificar a assinatura Ed25519
+**And** inclui exemplo de código (Node.js) de verificação de assinatura
+**And** reforça que a YaID nunca envia VC, VP ou dado pessoal do holder no webhook — apenas `valid: true|false` e metadados
+
+**Given** qualquer trecho de código nas duas stories deste epic
+**When** exibido
+**Then** usa dados de exemplo fictícios (nunca uma API key real) e placeholders claramente identificáveis (ex: `sk_live_xxx`)
+
+---
+
+## Epic 13: Landing Page Institucional
+
+Visitante anônimo que chega ao domínio da YaID encontra uma landing page pública explicando o que é a plataforma e como funciona a verificação de identidade, com caminho claro para criar conta. Usuário autenticado continua indo direto para o dashboard, agora em `/dashboard`.
+
+### Story 13.1: Mover Dashboard para `/dashboard` e Ajustar Middleware/Redirects
+
+Como desenvolvedor,
+Quero liberar a rota raiz `/` do dashboard e mover a home atual para `/dashboard`,
+Para que a landing page institucional possa ocupar `/` sem quebrar o acesso autenticado.
+
+**Acceptance Criteria:**
+
+**Given** o arquivo `app/(dashboard)/page.tsx` (Overview atual)
+**When** a mudança é aplicada
+**Then** o conteúdo passa a viver em `app/(dashboard)/dashboard/page.tsx`, servindo a rota `/dashboard` com o mesmo layout (sidebar/topbar) e o mesmo comportamento de hoje
+
+**Given** `src/shared/middleware.ts`
+**When** a mudança é aplicada
+**Then** `isDashboardPage` protege `/dashboard`, `/apps`, `/proof-requests` e `/settings` (não mais `/`)
+**And** a rota `/` passa por uma checagem própria: se houver sessão autenticada, redireciona para `/dashboard`; caso contrário, deixa passar (a landing pública é renderizada)
+**And** o redirect de usuário autenticado que acessa `/sign-in` ou `/sign-up` passa a apontar para `/dashboard` (em vez de `/`)
+
+**Given** `app/sign-up/page.tsx` e `app/sign-in/page.tsx`
+**When** o cadastro é concluído ou o login é bem-sucedido sem parâmetro `next`
+**Then** o redirecionamento acontece para `/dashboard` (não mais `/`)
+
+**Given** `components/layout/app-sidebar.tsx`
+**When** renderizado
+**Then** o item de navegação "Overview" aponta para `/dashboard` e é destacado como ativo corretamente quando `pathname` é `/dashboard`
+
+**Given** a suíte de testes existente que referencia a rota `/` como dashboard
+**When** executada após a mudança
+**Then** os testes foram atualizados para refletir `/dashboard` e passam integralmente
+
+---
+
+### Story 13.2: Página Pública "/" — Landing Institucional
+
+Como visitante anônimo (empresa parceira em potencial),
+Quero encontrar uma página institucional ao acessar o domínio da YaID,
+Para que eu entenda o que é a plataforma e como criar uma conta antes de precisar fazer login.
+
+**Acceptance Criteria:**
+
+**Given** a rota `/` (novo `app/page.tsx`, fora de qualquer route group, usando apenas o layout global — mesmo padrão de `app/v/[sessionToken]/page.tsx`)
+**When** acessada sem autenticação
+**Then** a página carrega normalmente, sem sidebar/topbar do dashboard
+**And** apresenta: hero com proposta de valor, seção "Como funciona" (fluxo de verificação de identidade em alto nível, 3–4 passos), CTA principal para `/sign-up`, link secundário para `/docs` (guia técnico de integração do Epic 12)
+
+**Given** um usuário com sessão autenticada
+**When** acessa `/`
+**Then** é redirecionado para `/dashboard` (não vê a landing)
+
+**Given** a landing page
+**When** renderizada em mobile e desktop
+**Then** segue a mesma identidade visual (paleta, tipografia, marca YaID) já usada nas demais páginas públicas do produto (`/v/[sessionToken]`, `/docs`)
