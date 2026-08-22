@@ -25,6 +25,8 @@ function isSessionAuthApiRoute(pathname: string, method: string): boolean {
   if (pathname.startsWith("/api/auth/sign-out")) return true;
   if (pathname.startsWith("/api/proof-requests") && method === "GET")
     return true;
+  if (/^\/api\/proof-requests\/[^/]+\/review\/?$/.test(pathname) && method === "POST")
+    return true;
   return false;
 }
 

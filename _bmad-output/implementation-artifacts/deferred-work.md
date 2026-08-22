@@ -7,6 +7,91 @@
 - **Erros de rede/timeout/SDK indistinguíveis de "documento ilegível" — ambos colapsam no 422 genérico** — é exatamente o refino 422 vs 502 que o Sprint Change Proposal 2026-08-19 (§4.5) marca como opcional e recomenda explicitamente **não** incluir na Story 5.9 (mudaria um AC da Story 5.4 e o contrato público de `POST /api/credentials/issue`, exigindo alinhamento com o app mobile). Candidato a story própria se o produto priorizar. [`src/shared/clients/ocr/MistralOcrProvider.ts`, `src/modules/credential/app/issue_credential_usecase.ts:94-99`]
 
 - **Suíte de testes 100% estática (existência de arquivo + regex sobre o source + `tsc --noEmit`)** — nenhum teste instancia `MistralOcrProvider` com o SDK mockado para exercitar `processDocument` em runtime (JSON malformado, campos inválidos, etc.). Padrão sistêmico em todas as stories do projeto desde a 5.4, já identificado e deferido em code reviews anteriores (Story 5.8 registrou a mesma observação). [`tests/unit/story-5-9/mistral-ocr-provider-selection.test.mjs`]
+## Deferred from: code review of story-10-2-validacao-de-formato-de-chaves-no-boot (2026-08-21)
+
+- **Exclusão do stage `TEST` das checagens novas depende inteiramente de `loadEnvs()` nunca chamar
+  `envSchema.parse()` nesse stage** — não há um guard redundante `if (values.STAGE === Stage.TEST) return`
+  dentro do próprio `superRefine` que tornaria essa invariante auto-protegida. Correto hoje (provado por
+  teste), mas depende de código fora deste bloco nunca mudar. [`src/shared/environments.ts`]
+
+- **`BLOCKCHAIN_WALLET_PRIVATE_KEY` exige hex sem prefixo `0x`, mas ferramentas padrão do ecossistema
+  Ethereum costumam exportar chaves com `0x`** — `ethers.Wallet` aceita ambos os formatos, mas o boot
+  rejeitaria um valor operacionalmente válido só pelo prefixo. Decisão já deliberada nas Dev Notes da Story
+  10.2 ("mesma regra das outras duas chaves") — falha segura, fricção operacional, não brecha de segurança.
+  [`src/shared/environments.ts`]
+
+- **`HEX_PRIVATE_KEY_PATTERN` não tolera espaços/quebra de linha ao redor do valor** — mesmo padrão já
+  presente em `get_webhook_public_key_usecase.ts` desde a Story 6.2/10.1, não introduzido pela Story 10.2.
+  [`src/shared/environments.ts`]
+
+- **`ethers.isAddress` aceita formatos além de `0x` + 40 hex (ex.: endereço ICAP, hex sem `0x`) que só
+  falhariam depois, de forma assíncrona, quando `ethers.Contract`/`resolveName` tentassem usá-los** —
+  exatamente a classe de bug que a Story 10.2 existe para eliminar, porém herdada do precedente em
+  `EthersBlockchainClient.ts:33` que a própria AC #2 manda reaproveitar ("não reimplementar"). Corrigir só
+  em `environments.ts` criaria inconsistência entre os dois pontos de validação — recomenda-se uma story
+  futura para endurecer os dois juntos. [`src/shared/environments.ts`,
+  `src/shared/clients/blockchain/EthersBlockchainClient.ts:33`]
+
+- **`.env.local.example` define valores placeholder não-vazios para os 4 campos de chave** — um
+  `cp .env.local.example .env.local` sem preencher essas linhas agora quebra o boot em `DOTENV`/`DEV`
+  (antes da Story 10.2 isso era tolerado). Resolver é acoplado à Story 11.8, que deriva os nomes
+  sincronizados para o Amplify das linhas não-comentadas deste mesmo arquivo — comentar as linhas
+  removeria esses nomes do sync de produção. Necessita tratamento dedicado (possivelmente um sprint
+  change). [`.env.local.example`]
+
+- **`productionRequiredEnvNames` agora serve duas responsabilidades sob um nome que só sugere a
+  primeira** (obrigatoriedade em PROD/HOMOLOG + rejeição de placeholder do TEST_ENV) — um campo futuro
+  adicionado a uma responsabilidade sem lembrar da outra passaria batido em silêncio.
+  [`src/shared/environments.ts`]
+
+- **Comparação de placeholder (`knownTestValues.has(value)`) é case-sensitive, sem normalização** — hoje
+  inofensivo, pois nenhum valor de `TEST_ENV` contém letras hex `a`-`f`/`A`-`F` para variar. Gap latente na
+  comparação em si, sem exploit disponível hoje. [`src/shared/environments.ts`]
+
+- **Teste `tsc --noEmit` do arquivo estrutural novo (`story-10-2`) compila o projeto inteiro e filtra
+  `"lucide-react"` por substring** — padrão idêntico já usado em dezenas de suítes pré-existentes do
+  projeto, não introduzido por esta story. [`tests/unit/story-10-2/key-format-validation.test.mjs`]
+
+- **Mutação de `process.env` global compartilhado entre os testes dinâmicos via `withEnv`** — seguro
+  apenas enquanto o test runner do Node executar os testes deste arquivo sequencialmente (padrão hoje); é
+  exatamente o padrão que as Dev Notes da Story 10.2 instruíam usar.
+  [`tests/unit/story-10-2/envSchema-key-validation.dynamic.test.ts`]
+
+## Deferred from: code review of story-10-1-centralizacao-de-chaves-de-teste-no-environments (2026-08-20)
+
+- **Três dos quatro consumidores de chave não validam formato hex** — `issue_credential_usecase.ts`, `verify_presentation_usecase.ts` e `Ed25519WebhookSigner.ts` chamam `hexToBytes` sem checar formato/tamanho antes; só `get_webhook_public_key_usecase.ts` mantém `HEX_PRIVATE_KEY_PATTERN`. `hexToBytes` nesses três arquivos nunca validou formato, antes ou depois da Story 10.1 — a substituição removida só trocava o valor, não validava. Validação de formato é escopo exclusivo da Story 10.2 (`backlog`, depende da 10.1). [`src/modules/credential/app/issue_credential_usecase.ts:124`, `src/modules/presentation/app/verify_presentation_usecase.ts:197`, `src/shared/infra/providers/Ed25519WebhookSigner.ts:24`]
+
+- **`envSchema`/`superRefine` valida `ISSUER_PRIVATE_KEY`/`WEBHOOK_SIGNING_PRIVATE_KEY` só como `z.string().min(1)`** — presença, não formato hex de 64 chars. Objeto explícito da Story 10.2. [`src/shared/environments.ts:34-35`]
+
+- **Em `verify_presentation_usecase.ts`, a derivação da chave do issuer fica fora do try/catch/`reject()` que protege as outras regras do método** — padrão pré-existente, não introduzido pela Story 10.1 (o remendo removido também estava fora de qualquer try/catch). Corrigir seria além do escopo da story, que instrui preservar comportamento exatamente. [`src/modules/presentation/app/verify_presentation_usecase.ts:197`]
+
+- **Teste `tsc --noEmit` novo passaria silenciosamente se `execSync` falhasse ao sequer iniciar o `tsc`** (stdout vazio → 0 erros filtrados) — padrão idêntico já usado em várias suítes pré-existentes do projeto (`story-6-1`, `story-9-1` etc.), não uma fragilidade introduzida por esta story. [`tests/unit/story-10-1/key-centralization.test.mjs`]
+
+- **Valores hex de teste (`...0001`/`...0002`) duplicados literalmente em `environments.ts` e nos dois arquivos novos de teste**, sem nada garantindo sincronia — mesmo padrão já presente no projeto (ex. `tests/unit/story-6-2` já duplica o hex `...0002`); severidade baixa. [`src/shared/environments.ts`, `tests/unit/story-10-1/*`]
+
+- **Regex `/const TEST_ENV[^;]+;/s` no teste novo para no primeiro `;` ao extrair o bloco `TEST_ENV`** — inofensivo hoje (nenhum valor do objeto contém `;`), mas frágil se um valor futuro contiver um `;` (ex. URL com query string). [`tests/unit/story-10-1/key-centralization.test.mjs`]
+
+- **Vazamento do valor hex de teste em si (não a string placeholder) para `PROD`/`HOMOLOG` continua sem guarda** — o gate de stage removido nunca cobriu esse cenário (só detectava a string placeholder), então não é uma proteção perdida por esta story; é exatamente o problema que a Story 10.2 (validação/allowlist de chaves conhecidas no boot) deve resolver. [`src/shared/environments.ts:66-69`]
+
+## Deferred from: code review of story-7-5-review-manual-em-apps-homologacao (2026-08-16)
+
+- **Race condition (TOCTOU) na transição de status** — `ReviewProofRequestUseCase` lê um snapshot via `findById()`, valida o guard de status terminal contra esse snapshot, e escreve via `updateStatus()` sem compare-and-swap. Duas chamadas de review concorrentes para a mesma request (duas abas, retry duplicado) podem ambas passar o guard 422 antes de qualquer escrita, resultando em dois disparos de webhook ou um `reject` sobrescrevendo um `approve` recém-aplicado. `ProofRequestRepository.updateStatus()` não suporta update condicional (`WHERE status IN (...)`) e é compartilhada por `cancel_proof_session_usecase.ts` e `verify_presentation_usecase.ts`, que têm a mesma limitação — corrigir exige mudar a interface do repositório, uma mudança cross-cutting fora do escopo desta story. [`src/modules/proof-request/app/review_proof_request_usecase.ts`, `src/shared/domain/interfaces/repositories/ProofRequestRepository.ts`]
+
+- **`updatedAt` calculado em memória em vez de lido de volta do banco** — `ReviewProofRequestUseCase.execute()` retorna `new Date().toISOString()` computado na aplicação, não o valor que `updateStatus()` efetivamente persistiu (`updateStatus()` retorna `Promise<void>`). O drift prático é sub-milissegundo dentro da mesma request, mas o response/webhook/UI podem, em teoria, divergir do valor real no banco. Mesma limitação estrutural do item acima. [`src/modules/proof-request/app/review_proof_request_usecase.ts`]
+
+- **`req.headers.get("x-company-id")!` sem guard contra `null`** — se o middleware não rotear a request por `withSessionAuth` por algum motivo não previsto, `companyId` chega `null` e o `!` silencia o type system. Padrão idêntico ao já existente na rota GET irmã (`app/api/proof-requests/[requestId]/route.ts`), não introduzido por esta story. [`app/api/proof-requests/[requestId]/review/route.ts`]
+
+- **`await req.json()` sem tratamento de corpo malformado/vazio** — um `SyntaxError` de JSON inválido cai no branch genérico 500 de `handleHttpError` em vez de um 400 mais preciso. Padrão idêntico ao já existente em `app/api/proof-requests/route.ts` (rota B2B de criação), não introduzido por esta story. [`app/api/proof-requests/[requestId]/review/route.ts`]
+
+- **`ReviewConfirmDialog` sem focus trap** — Tab pode levar o foco para fora do modal enquanto ele está visível. Mesma lacuna de acessibilidade já presente no `DisableConfirmDialog` (`app/(dashboard)/apps/[appId]/page.tsx`) que esta story reaproveitou como padrão de referência; corrigir isoladamente aqui deixaria os dois diálogos inconsistentes entre si — considerar um fix compartilhado se um terceiro diálogo aparecer. [`app/(dashboard)/proof-requests/[requestId]/page.tsx`]
+
+- **`useEffect` do diálogo re-executa em re-renders não relacionados do pai** — depende de `onCancel`, passado como arrow function inline (`onCancel={() => setReviewDialog(null)}`), então qualquer re-render do pai por motivo não relacionado recria a referência e rechama `.focus()` no botão de confirmação. Padrão idêntico ao já existente em `DisableConfirmDialog`/`app/(dashboard)/apps/[appId]/page.tsx:621`, não introduzido por esta story. [`app/(dashboard)/proof-requests/[requestId]/page.tsx`]
+
+- **Botões "Aprovar"/"Reprovar" do header não desabilitados durante `reviewLoading`** — clicar novamente enquanto uma decisão está em voo reabre/reseta o diálogo; sem risco de double-submit real porque o botão de confirmação do diálogo já fica desabilitado pelo mesmo estado `reviewLoading` compartilhado. Severidade baixa. [`app/(dashboard)/proof-requests/[requestId]/page.tsx`]
+
+- **Sem validação de formato do `requestId`** antes de chegar ao repositório (UUID ou outro formato). Mesmo padrão da rota GET irmã, que também não valida. [`app/api/proof-requests/[requestId]/review/route.ts`]
+
+- **Resposta de `reviewProofRequest()` é apenas type-cast, sem validação de schema em runtime** — `(await asJson(res)) as ReviewProofRequestResult` confia no shape sem checagem. Mesmo padrão já usado por `getProofRequest()` no mesmo arquivo. [`utils/proof-requests-store.ts`]
 
 ## Deferred from: code review of story-7-3-allowlist-de-criacao-de-apps (2026-08-09)
 
