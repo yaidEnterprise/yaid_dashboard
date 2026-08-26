@@ -5,6 +5,6 @@ import { GetWebhookPublicKeyController } from "./get_webhook_public_key_controll
 export async function makeGetWebhookPublicKeyController(): Promise<GetWebhookPublicKeyController> {
   const envs = Environments.getEnvs();
   return new GetWebhookPublicKeyController(
-    new GetWebhookPublicKeyUseCase(envs.WEBHOOK_SIGNING_PRIVATE_KEY, envs.stage)
+    new GetWebhookPublicKeyUseCase(envs.WEBHOOK_SIGNING_PRIVATE_KEY)
   );
 }

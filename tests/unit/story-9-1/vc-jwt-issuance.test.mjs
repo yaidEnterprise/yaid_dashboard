@@ -87,9 +87,10 @@ test("Story 9.1 IssueCredentialUseCase preserves OCR-in-memory, claims consolida
   assert.match(src, /502|BAD_GATEWAY/, "Must still throw 502/BAD_GATEWAY on blockchain failure");
 });
 
-test("Story 9.1 IssueCredentialUseCase does not touch the ISSUER_PRIVATE_KEY test-placeholder substitution (Epic 10 scope)", () => {
+test("Story 9.1/10.1 — IssueCredentialUseCase reads ISSUER_PRIVATE_KEY directly, no placeholder substitution (Epic 10 landed)", () => {
   const src = readText("src/modules/credential/app/issue_credential_usecase.ts");
-  assert.match(src, /test-issuer-private-key/, "Must keep the existing test-placeholder substitution untouched");
+  assert.doesNotMatch(src, /test-issuer-private-key/, "Placeholder substitution must be removed by Story 10.1");
+  assert.match(src, /hexToBytes\(this\.issuerPrivateKey\)/, "Must read the key directly from the constructor value");
 });
 
 // ─── Verificações Estáticas — Controller/Rota ────────────────────────────────
@@ -103,7 +104,11 @@ test("Story 9.1 IssueCredentialController propagates a string (JWT) return type"
 test("Story 9.1 API route handler returns the VC-JWT with status 201", () => {
   const src = readText("app/api/credentials/issue/route.ts");
   assert.match(src, /makeIssueCredentialController/, "Route handler must still use the presenter");
-  assert.match(src, /NextResponse\.json\(vcJwt, \{ status: 201 \}\)/, "Route must return the JWT string with status 201");
+  // NextResponse.json(vcJwt, ...) would JSON-encode the compact JWT string,
+  // wrapping it in literal quote characters the client never expects — the
+  // response must be the raw compact JWT text (see MOBILE-API-CONTRACT.md §4.1).
+  assert.doesNotMatch(src, /NextResponse\.json\(vcJwt/, "Route must not JSON-encode the JWT string");
+  assert.match(src, /new NextResponse\(vcJwt, \{[\s\S]*?status: 201/, "Route must return the raw JWT string with status 201");
 });
 
 // ─── Compilação TypeScript ────────────────────────────────────────────────────

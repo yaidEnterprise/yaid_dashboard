@@ -36,11 +36,20 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-11
+last_updated: 2026-08-22
 project: yaid_dashboard
+# 2026-08-22: Epic 13 criado (backlog) — Sprint Change 2026-08-22: landing page institucional
+#             em "/" (dashboard migra para "/dashboard"). Stories 13.1 e 13.2 registradas.
+# 2026-08-22: Epic 12 criado (backlog) — Sprint Change 2026-08-22: página pública de
+#             documentação de integração (/docs). Stories 12.1 e 12.2 registradas.
+# 2026-08-21: Story 10.2 criada (ready-for-dev)
+# 2026-08-20: Story 10.1 criada (ready-for-dev) — Epic 10 reaberto (in-progress)
 # 2026-08-09: Story 11.4 criada (ready-for-dev)
 # 2026-08-09: Story 11.8 criada (ready-for-dev) — Sprint Change 2026-08-09: sync autoritativo de env vars
 # 2026-08-09: Sprint Change Complementar (simplificação de env vars) aprovado — sem nova story (escopo minor)
+# 2026-08-19: Sprint Change 2026-08-19 (OCR via Mistral Document AI) aprovado — Story 5.9 adicionada
+#             ao Epic 5 (backlog). Escopo moderate: resolve o TBD de provider de OCR no PRD/architecture
+#             e elimina o parsing por regex. NÃO consta em sprint_changes porque gerou story própria.
 
 project_key: NOKEY
 tracking_system: file-system
@@ -93,6 +102,10 @@ development_status:
   # (5-7 sem 5-8 faz a credencial de um menor de idade aprovar um pedido de age_over_18)
   5-7-consolidacao-de-claims-na-emissao: done
   5-8-correspondencia-entre-claim-e-proof-type: done
+  # Sprint Change 2026-08-19 — substitui o parsing por regex do OCR por extração estruturada
+  # (Mistral Document AI). Independente das demais stories do Epic 5; pode correr em paralelo
+  # com 7-5 e 10-x. Contrato público de /api/credentials/issue inalterado.
+  5-9-ocr-estruturado-via-mistral-document-ai: done
   epic-5-retrospective: optional
 
   # Epic 6: Webhooks e Conclusão do Fluxo B2B
@@ -107,7 +120,7 @@ development_status:
   7-2-coluna-updated-at-e-gravacao-em-toda-transicao: done
   7-3-allowlist-de-criacao-de-apps: done
   7-4-seletor-de-ambiente-na-criacao-de-app: done
-  7-5-review-manual-em-apps-homologacao: backlog
+  7-5-review-manual-em-apps-homologacao: done
   7-6-remocao-secao-resposta-da-api: done
   epic-7-retrospective: optional
 
@@ -126,9 +139,9 @@ development_status:
   # Epic 10: Higiene de Configuração e Chaves (Sprint Change 2026-07-28, adendo §7)
   # Ordem obrigatória: 10-1 antes de 10-2 (validar formato antes de 10-1 quebra o stage TEST).
   # Independente das stories 5-7/5-8 — pode correr em paralelo.
-  epic-10: backlog
-  10-1-centralizacao-de-chaves-de-teste-no-environments: backlog
-  10-2-validacao-de-formato-de-chaves-no-boot: backlog
+  epic-10: done
+  10-1-centralizacao-de-chaves-de-teste-no-environments: done
+  10-2-validacao-de-formato-de-chaves-no-boot: done
   epic-10-retrospective: optional
 
   # Epic 11: Pipeline de CI/CD de Produção (Sprint Change 2026-08-08)
@@ -148,6 +161,18 @@ development_status:
   11-7-documentacao-operacional: done
   11-8-sync-autoritativo-de-env-vars-no-amplify: done
   epic-11-retrospective: optional
+
+  # Epic 12: Documentação Pública de Integração (Sprint Change 2026-08-22)
+  epic-12: backlog
+  12-1-estrutura-da-pagina-e-secao-conta-e-apps: backlog
+  12-2-conteudo-proof-requests-e-webhooks: backlog
+  epic-12-retrospective: optional
+
+  # Epic 13: Landing Page Institucional (Sprint Change 2026-08-22)
+  epic-13: backlog
+  13-1-mover-dashboard-para-dashboard-e-ajustar-middleware: backlog
+  13-2-pagina-publica-landing-institucional: backlog
+  epic-13-retrospective: optional
 
 # Registro de sprint changes que NÃO geraram story própria (escopo minor).
 # Não fazem parte de development_status — são rastreados aqui apenas para auditoria.

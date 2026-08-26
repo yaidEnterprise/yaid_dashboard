@@ -77,7 +77,7 @@ Crie uma **Collection** no Postman (ex.: `YaID E2E`) e, em **Variables**, adicio
 | `requestId` | *(preenche sozinho no §3)* |
 | `vc` | *(preenche sozinho no §4)* |
 | `nonce` | *(preenche sozinho no §5)* |
-| `docImage` | *(OCR mock: deixe vazio · OCR real: cole o base64 da imagem — §4)* |
+| `docImage` | *(obrigatório — cole o base64 puro da imagem do documento — §4)* |
 | `bodySignature` | *(preenche sozinho no §4)* |
 | `vpJson` | *(preenche sozinho no §6)* |
 | `naclSource` | *(preencher no passo 1.2)* |
@@ -185,11 +185,8 @@ Registra o DID do holder on-chain e devolve a VC assinada pelo issuer.
 
 ```js
 setDidAuth('POST', '/api/credentials/issue');
-// `docImage` vem da variável de coleção (veja o box "OCR" abaixo):
-//   - OCR mockado: qualquer string sem "fail"/"invalid" (default abaixo)
-//   - OCR real: base64 puro de uma imagem legível do documento
-var docImage = pm.collectionVariables.get('docImage') || 'mock-doc-personhood';
-pm.collectionVariables.set('docImage', docImage);
+// `docImage`: base64 puro (sem prefixo data:image/...;base64,) de uma imagem legível do documento
+var docImage = pm.collectionVariables.get('docImage');
 pm.collectionVariables.set('bodySignature', edSign(docImage));
 ```
 
@@ -209,9 +206,14 @@ pm.test('VC emitida (201)', function () { pm.response.to.have.status(201); });
 pm.collectionVariables.set('vc', JSON.stringify(pm.response.json()));
 ```
 
-> **OCR — mock vs. real:** o provider é escolhido em `src/shared/environments.ts` conforme o `.env`.
-> - **Sem `OCR_API_URL`/`OCR_API_KEY`** → OCR **mockado**: qualquer `docImage` sem `fail`/`invalid` funciona (deixe a variável `docImage` vazia; o script usa `mock-doc-personhood`).
-> - **Com `OCR_API_URL`/`OCR_API_KEY`** → OCR **real**: o `docImage` precisa ser **base64 puro** (sem prefixo `data:image/...;base64,`) de uma imagem **legível** cujo texto de OCR contenha **NOME, CPF e data de nascimento** — senão o parse falha com **422**, mesmo para `personhood`. Gere e copie o base64 com `base64 -i rg.png | tr -d '\n' | pbcopy` e cole na variável de coleção `docImage`. Dica: reduza a imagem (~1000px) para não pesar.
+> **OCR (obrigatório):** o fluxo de emissão exige `MISTRAL_API_KEY` configurada — **não existe modo
+> mockado em ambiente real**. O `MockOcrProvider` só é usado sob `STAGE=TEST` (suíte automatizada),
+> nunca em execução local/homol/prod. Sem a chave, a emissão falha ao ler o env (e em PROD/HOMOLOG o
+> app nem sobe).
+> O `docImage` deve ser **base64 puro** (sem prefixo `data:image/...;base64,`) de uma imagem legível
+> do documento. Gere com `base64 -i rg.png | tr -d '\n' | pbcopy`. Dica: reduza a imagem (~1000px).
+> A extração é estruturada (Mistral Document AI) — um **422** agora significa que o modelo não
+> encontrou nome, CPF ou data de nascimento no documento, não que um regex falhou.
 
 ---
 
@@ -317,7 +319,7 @@ Rode do §3 ao §6 **em ordem** (cada um usa dados do anterior). Uma sessão exp
 | §4/§5/§6 responde **401 "Request expired"** | Relógio da máquina fora de ±5 min do servidor | Ajuste o relógio do SO. |
 | Pre-request quebra com **`Cannot find module 'crypto'`** | `loadNacl` sem o shim de `require` (o TweetNaCl tenta `require('crypto')`) | Use a versão de `loadNacl` do [§1.3](#13--preâmbulo-do-holder-usado-nos-4-5-e-6) (com `require`/`self`/`window` fajutos). |
 | §5 responde **405 Method Not Allowed** | Request enviado como `POST` — a rota de challenge é **`GET`** | Troque o método do §5 para `GET` e assine com `setDidAuth('GET', ...)`. |
-| §4 responde **422** | OCR mock: `docImage` contém `fail`/`invalid`. OCR real: imagem ilegível ou sem NOME/CPF/nascimento no texto | Mock: use `mock-doc-personhood`. Real: use um base64 legível e teste sua API de OCR isolada antes (deve retornar `{ text: "...NOME...CPF...NASCIMENTO..." }`). |
+| §4 responde **422** | Imagem ilegível, ou o modelo não conseguiu extrair nome, CPF ou data de nascimento | Use um base64 legível de um documento real; confirme `MISTRAL_API_KEY` configurada. |
 | §5 responde **422 "Session not in waiting_user state"** | O desafio já foi pedido, ou a sessão expirou/foi usada | Recomece do §3 (nova proof request). |
 | §6 responde **`{ "valid": false }`** | VC/nonce desatualizados, DID não registrado on-chain, ou ordem dos passos trocada | Rode §3→§6 na ordem, na mesma execução. O §4 **precisa** ter registrado o DID antes do §6. |
 | §3 responde **401 "Invalid API key"** | `apiKey` errado ou app desabilitado | Recopie a API key do dashboard (formato `uuid.segredo`). |

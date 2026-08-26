@@ -114,10 +114,10 @@ describe("Story 6.2 — GetWebhookPublicKeyUseCase (structure)", () => {
     assert.equal(src.includes("base64url"), false, "must not use base64url encoding");
   });
 
-  test("substitutes the non-hex TEST_ENV placeholder with a valid hex fallback key", () => {
+  test("uses the private key value directly — no placeholder substitution (Epic 10)", () => {
     const src = readText(USECASE);
-    assert.match(src, /test-webhook-signing-private-key/);
-    assert.match(src, /[0-9a-f]{64}/i, "must define a 64-char hex fallback key");
+    assert.doesNotMatch(src, /test-webhook-signing-private-key/, "Placeholder substitution must be removed");
+    assert.doesNotMatch(src, /TEST_PRIVATE_KEY_PLACEHOLDER|TEST_PRIVATE_KEY_HEX/, "Placeholder constants must be removed");
   });
 
   test("returns algorithm literal 'Ed25519'", () => {
@@ -125,21 +125,16 @@ describe("Story 6.2 — GetWebhookPublicKeyUseCase (structure)", () => {
     assert.match(src, /algorithm:\s*"Ed25519"/);
   });
 
-  test("constructor receives the private key and stage as plain values (injected by presenter)", () => {
+  test("constructor receives only the private key as a plain value (injected by presenter)", () => {
     const src = readText(USECASE);
     assert.match(src, /private readonly webhookSigningPrivateKey: string/);
-    assert.match(src, /private readonly stage: Stage/);
+    assert.doesNotMatch(src, /private readonly stage: Stage/, "Stage parameter must be removed — no more stage-gating");
   });
 
   test("validates hex format and throws on malformed input (review patch)", () => {
     const src = readText(USECASE);
     assert.match(src, /HEX_PRIVATE_KEY_PATTERN/);
     assert.match(src, /throw new Error/);
-  });
-
-  test("gates the test-key placeholder substitution to the TEST stage (review patch)", () => {
-    const src = readText(USECASE);
-    assert.match(src, /if \(this\.stage !== Stage\.TEST\)/);
   });
 });
 
@@ -182,7 +177,7 @@ describe("Story 6.2 — viewmodel, controller, presenter", () => {
     const src = readText(PRESENTER);
     assert.match(src, /Environments\.getEnvs\(\)/);
     assert.match(src, /envs\.WEBHOOK_SIGNING_PRIVATE_KEY/);
-    assert.match(src, /new GetWebhookPublicKeyUseCase\(envs\.WEBHOOK_SIGNING_PRIVATE_KEY, envs\.stage\)/);
+    assert.match(src, /new GetWebhookPublicKeyUseCase\(envs\.WEBHOOK_SIGNING_PRIVATE_KEY\)/);
   });
 });
 
