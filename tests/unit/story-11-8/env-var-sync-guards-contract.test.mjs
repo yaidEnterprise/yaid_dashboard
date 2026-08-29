@@ -152,10 +152,32 @@ function runSyncStep({ workspace, secretsJson = "{}", varsJson = "{}" }) {
 }
 
 // ---------------------------------------------------------------------------
+// Pré-requisito de ambiente: o step real usa `jq` para montar o payload de
+// environmentVariables. O runner do CI é ubuntu-latest, que já traz `jq`; uma
+// máquina de desenvolvimento Windows normalmente não. Sem `jq` estes testes
+// não podem exercer o pipeline — o que é uma LACUNA DE AMBIENTE, não uma
+// falha do código. Reportar como skip (com motivo) em vez de vermelho evita
+// que a suíte treine a equipe a ignorar falhas legítimas.
+// ---------------------------------------------------------------------------
+
+function jqAvailable() {
+  try {
+    execFileSync("bash", ["-c", "command -v jq"], { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const SKIP_WITHOUT_JQ = jqAvailable()
+  ? false
+  : "requer `jq` no PATH (presente no runner ubuntu-latest do CI; no Windows instale com `winget install jqlang.jq`)";
+
+// ---------------------------------------------------------------------------
 // Patch #3 — `.env.local.example` ausente/vazio/sem linhas válidas
 // ---------------------------------------------------------------------------
 
-describe("Patch #3 (real bash): .env.local.example ausente/vazio/sem nomes válidos", () => {
+describe("Patch #3 (real bash): .env.local.example ausente/vazio/sem nomes válidos", { skip: SKIP_WITHOUT_JQ }, () => {
   test("arquivo AUSENTE: exit 1 com mensagem clara antes do grep", () => {
     const workspace = makeWorkspace(null); // não cria o arquivo
     const result = runSyncStep({ workspace });
@@ -201,7 +223,7 @@ describe("Patch #3 (real bash): .env.local.example ausente/vazio/sem nomes váli
 // Patch #4 — denylist de defesa em profundidade (AC5)
 // ---------------------------------------------------------------------------
 
-describe("Patch #4 (real bash): denylist AWS_*/AMPLIFY_*/SUPABASE_ACCESS_TOKEN/GITHUB_TOKEN", () => {
+describe("Patch #4 (real bash): denylist AWS_*/AMPLIFY_*/SUPABASE_ACCESS_TOKEN/GITHUB_TOKEN", { skip: SKIP_WITHOUT_JQ }, () => {
   const denylistCases = [
     ["AWS_SECRET_ACCESS_KEY", "prefixo AWS_"],
     ["AWS_ACCESS_KEY_ID", "prefixo AWS_"],
@@ -258,7 +280,7 @@ describe("Patch #4 (real bash): denylist AWS_*/AMPLIFY_*/SUPABASE_ACCESS_TOKEN/G
 // Patch #2 — guard de payload vazio (recusa o replace autoritativo)
 // ---------------------------------------------------------------------------
 
-describe("Patch #2 (real bash): guard de payload vazio antes do update-branch autoritativo", () => {
+describe("Patch #2 (real bash): guard de payload vazio antes do update-branch autoritativo", { skip: SKIP_WITHOUT_JQ }, () => {
   test("todos os nomes SEM valor em Secrets/Variables: payload {} -> exit 1, aws NUNCA chamado", () => {
     // STAGE é excluído deste fixture de propósito: desde o auto-derive por
     // branch, STAGE sempre resolve um valor, então incluí-lo aqui não testaria
@@ -331,7 +353,7 @@ describe("Patch #2 (real bash): guard de payload vazio antes do update-branch au
 // STAGE — derivado automaticamente do branch publicado, nunca de Secrets/Vars
 // ---------------------------------------------------------------------------
 
-describe("STAGE (real bash): derivado de AMPLIFY_BRANCH_NAME, nunca de Secrets/Variables", () => {
+describe("STAGE (real bash): derivado de AMPLIFY_BRANCH_NAME, nunca de Secrets/Variables", { skip: SKIP_WITHOUT_JQ }, () => {
   test("branch 'prod' -> STAGE=PROD no payload, mesmo sem STAGE em Secrets/Variables", () => {
     const workspace = makeWorkspace("STAGE=DOTENV\n");
     const result = runSyncStep({
