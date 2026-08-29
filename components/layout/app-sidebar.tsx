@@ -8,7 +8,7 @@ import { LayoutDashboard, Boxes, ShieldCheck, User, PanelLeft } from "lucide-rea
 import { cn } from "@/utils/utils";
 
 const navItems = [
-  { title: "Overview", url: "/", icon: LayoutDashboard },
+  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Apps", url: "/apps", icon: Boxes },
   { title: "Proof Requests", url: "/proof-requests", icon: ShieldCheck },
   { title: "Perfil", url: "/settings", icon: User },
@@ -20,7 +20,7 @@ export function AppSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (url: string) =>
-    url === "/" ? pathname === "/" : pathname.startsWith(url);
+    pathname === url || pathname.startsWith(`${url}/`);
 
   const renderItem = (item: typeof navItems[number]) => {
     const active = isActive(item.url);

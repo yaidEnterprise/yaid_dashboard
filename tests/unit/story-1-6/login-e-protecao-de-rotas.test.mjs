@@ -199,12 +199,12 @@ test("Story 1.6 sign-in page still has link to /sign-up", () => {
 
 // ─── Middleware: AC #3 — unauthenticated users redirected from dashboard ──────
 
-test("Story 1.6 middleware isDashboardPage covers / (overview)", () => {
+test("Story 1.6 middleware isDashboardPage covers /dashboard (overview)", () => {
   const src = readText("src/shared/middleware.ts");
   assert.match(
     src,
-    /["']\/["']/,
-    "isDashboardPage must include root path /"
+    /["']\/dashboard["']/,
+    "isDashboardPage must include /dashboard — Story 13.1 moved the overview off the root path"
   );
 });
 
@@ -246,17 +246,17 @@ test("Story 1.6 middleware redirects unauthenticated users to /sign-in with ?nex
 
 // ─── Middleware: AC #4 — authenticated users redirected away from /sign-in ───
 
-test("Story 1.6 middleware redirects authenticated users from /sign-in to /", () => {
+test("Story 1.6 middleware redirects authenticated users from /sign-in to /dashboard", () => {
   const src = readText("src/shared/middleware.ts");
   assert.match(
     src,
     /pathname === ["']\/sign-in["']/,
-    "middleware must redirect authenticated users from /sign-in to /"
+    "middleware must redirect authenticated users away from /sign-in"
   );
   assert.match(
     src,
-    /NextResponse\.redirect\(new URL\(["']\/["']/,
-    "redirect target must be /"
+    /NextResponse\.redirect\(new URL\(["']\/dashboard["']/,
+    "redirect target must be /dashboard — Story 13.1 moved the overview off the root path"
   );
 });
 
@@ -306,17 +306,31 @@ test("Story 1.6 signInSchema rejects empty password", async () => {
 test("Story 1.6 safe redirect logic rejects protocol-relative URLs", () => {
   // Inline replication of the safe redirect logic from sign-in page
   function getSafePath(next) {
-    return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    return next && next.startsWith("/") && !next.startsWith("//")
+      ? next
+      : "/dashboard";
   }
 
-  assert.equal(getSafePath(null), "/", "null next → /");
-  assert.equal(getSafePath(undefined), "/", "undefined next → /");
-  assert.equal(getSafePath(""), "/", "empty next → /");
+  assert.equal(getSafePath(null), "/dashboard", "null next → /dashboard");
+  assert.equal(getSafePath(undefined), "/dashboard", "undefined next → /dashboard");
+  assert.equal(getSafePath(""), "/dashboard", "empty next → /dashboard");
   assert.equal(getSafePath("/apps"), "/apps", "valid path /apps → /apps");
   assert.equal(getSafePath("/proof-requests/123"), "/proof-requests/123", "deep path preserved");
-  assert.equal(getSafePath("//evil.com"), "/", "protocol-relative URL rejected → /");
-  assert.equal(getSafePath("http://evil.com"), "/", "absolute URL rejected → /");
-  assert.equal(getSafePath("javascript:alert(1)"), "/", "XSS payload rejected → /");
+  assert.equal(
+    getSafePath("//evil.com"),
+    "/dashboard",
+    "protocol-relative URL rejected → /dashboard"
+  );
+  assert.equal(
+    getSafePath("http://evil.com"),
+    "/dashboard",
+    "absolute URL rejected → /dashboard"
+  );
+  assert.equal(
+    getSafePath("javascript:alert(1)"),
+    "/dashboard",
+    "XSS payload rejected → /dashboard"
+  );
 });
 
 // ─── TypeScript compilation ───────────────────────────────────────────────────
