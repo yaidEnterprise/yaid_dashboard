@@ -52,10 +52,14 @@ describe("Story 12.2 — contrato de proof request publicado", () => {
       "verificationUrl",
       "deepLinkUrl",
       "expiresAt",
-      "/proof-requests/new",
     ]) {
       assert.ok(src.includes(expected), `documentação deve conter ${expected}`);
     }
+    assert.doesNotMatch(
+      src,
+      /proof-requests\/new/,
+      "documentação não deve referenciar a página removida /proof-requests/new"
+    );
   });
 
   test("separa estados de proof request dos estados da sessão", () => {

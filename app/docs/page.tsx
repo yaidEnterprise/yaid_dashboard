@@ -449,11 +449,11 @@ export default function DocsPage() {
             Teste manual sem escrever código
           </h3>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
-            O dashboard tem um atalho para criar a mesma proof request pela interface, em{" "}
-            <InlineCode>/proof-requests/new</InlineCode>. É útil para conferir o fluxo antes de
-            integrar. Esse caminho é autenticado pela sua sessão do dashboard, não pela API key, e
-            por isso pede que você escolha o app na tela — é o único lugar onde{" "}
-            <InlineCode>appId</InlineCode> aparece. A proof request criada é idêntica à da API.
+            Proof requests são criadas exclusivamente pela API — o dashboard não tem um atalho
+            para isso. Para conferir o fluxo antes de integrar, use um cliente HTTP como{" "}
+            <InlineCode>curl</InlineCode>, Postman ou Insomnia com a chamada acima e a API key do
+            seu app: nenhum código precisa ser escrito, e a proof request criada é idêntica à que
+            sua integração vai gerar em produção.
           </p>
 
           <h3 className="mt-8 text-sm font-semibold text-text-primary">Status da proof request</h3>

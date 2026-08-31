@@ -185,7 +185,6 @@ test("Story 1.1 preserves user and API flow entrypoints", () => {
     "app/(dashboard)/apps/new/page.tsx",
     "app/(dashboard)/apps/[appId]/page.tsx",
     "app/(dashboard)/proof-requests/page.tsx",
-    "app/(dashboard)/proof-requests/new/page.tsx",
     "app/(dashboard)/proof-requests/[requestId]/page.tsx",
     "app/v/[sessionToken]/page.tsx",
     "app/api/auth/sign-out/route.ts",
