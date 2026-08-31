@@ -382,5 +382,5 @@ O usuário pediu 4 mudanças independentes na mesma mensagem, depois pediu para 
 
 - [x] **Remover testes unitários que só validam compilação TypeScript** — feito no commit `5a6f96d`.
 - [x] **Reescrever a documentação de integração para ficar mais profissional** — feito no commit `fa77a22` (`app/docs/page.tsx`, rota pública `/docs`). Manteve a menção a `/proof-requests/new` na seção "Teste manual sem escrever código" (decisão do subagente: era conteúdo útil, não ruído de UI) — **isso precisa ser revisitado/removido pelo item de remoção do `/proof-requests/new` abaixo**, já que essa rota está prestes a deixar de existir.
-- [ ] **Incluir acesso à documentação em nova aba dentro do dashboard** — link/botão de navegação (`target="_blank"`) para `/docs` a partir do dashboard autenticado. Em andamento.
+- [x] **Incluir acesso à documentação em nova aba dentro do dashboard** — feito no commit `791ba64` (`components/layout/app-sidebar.tsx`, link "Documentação" com ícone `BookOpen`, `target="_blank"`).
 - [ ] **Remover a funcionalidade `/proof-requests/new`** — `proof-request` deve ser criado exclusivamente via API. Remover página/rota e links de navegação, e também atualizar `app/docs/page.tsx` (linha com `<InlineCode>/proof-requests/new</InlineCode>`, seção "Teste manual sem escrever código") para não referenciar mais essa rota. Em andamento.
