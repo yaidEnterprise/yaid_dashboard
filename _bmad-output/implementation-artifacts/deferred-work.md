@@ -378,10 +378,9 @@
 
 ## Deferred from: multi-goal split de pedido do usuário (bmad-quick-dev, 2026-08-31)
 
-O usuário pediu 4 mudanças independentes na mesma mensagem. Escopo foi restrito à primeira (remoção de testes triviais de compilação TS); os 3 itens abaixo ficam para specs próprias em seguida.
+O usuário pediu 4 mudanças independentes na mesma mensagem, depois pediu para executar as 4 até o fim via subagents com contexto limpo, sequencialmente. Status:
 
-- **Reescrever a documentação de integração para ficar mais profissional** — remover detalhes voltados à UI que só fazem sentido para quem usa o dashboard (ex.: "esse guia é público", "`/sign-up` é a rota de login", "`/apps/new` é a rota de criação do app"). Manter passos iniciais de como o usuário cria coisas pelo dashboard, mas focar a explicação em como usar isso para integrar via API — o que é esperado no retorno e o que é o webhook. A explicação de integração ao final da página já está boa e deve ser preservada. [páginas/arquivos de documentação de integração do dashboard]
-
-- **Incluir acesso à documentação em nova aba dentro do dashboard** — link/botão de navegação que abre a documentação (`target="_blank"`) a partir de algum ponto do dashboard autenticado. Depende conceitualmente do item acima (mesma área de documentação), mas é uma mudança de navegação shippable isoladamente. [layout/nav do dashboard]
-
-- **Remover a funcionalidade `/proof-requests/new`** — o usuário não sabia que essa rota existia; a intenção do produto é que `proof-request` seja criado exclusivamente via API, não pela UI do dashboard. Remover a página/rota e quaisquer links de navegação que apontem para ela. [rota `/proof-requests/new` e navegação relacionada]
+- [x] **Remover testes unitários que só validam compilação TypeScript** — feito no commit `5a6f96d`.
+- [x] **Reescrever a documentação de integração para ficar mais profissional** — feito no commit `fa77a22` (`app/docs/page.tsx`, rota pública `/docs`). Manteve a menção a `/proof-requests/new` na seção "Teste manual sem escrever código" (decisão do subagente: era conteúdo útil, não ruído de UI) — **isso precisa ser revisitado/removido pelo item de remoção do `/proof-requests/new` abaixo**, já que essa rota está prestes a deixar de existir.
+- [ ] **Incluir acesso à documentação em nova aba dentro do dashboard** — link/botão de navegação (`target="_blank"`) para `/docs` a partir do dashboard autenticado. Em andamento.
+- [ ] **Remover a funcionalidade `/proof-requests/new`** — `proof-request` deve ser criado exclusivamente via API. Remover página/rota e links de navegação, e também atualizar `app/docs/page.tsx` (linha com `<InlineCode>/proof-requests/new</InlineCode>`, seção "Teste manual sem escrever código") para não referenciar mais essa rota. Em andamento.
