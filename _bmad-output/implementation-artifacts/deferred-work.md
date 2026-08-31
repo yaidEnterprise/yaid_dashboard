@@ -375,3 +375,13 @@
 - **`TEST_ENV` não define `MISTRAL_API_KEY`** (`src/shared/environments.ts` linhas ~115–128) — como `knownTestValues` é construído via `productionRequiredEnvNames.map(name => TEST_ENV[name])`, isso insere `undefined` nesse `Set` silenciosamente. Inofensivo hoje (nenhum valor de teste colide com `undefined`), mas é um padrão frágil sem teste/guard que o proteja. [`src/shared/environments.ts`]
 
 - **Nenhum teste amarra o literal `VALID_MISTRAL_API_KEY` usado nos fixtures à futura ausência de colisão com um placeholder de `TEST_ENV`** — hoje seguro por coincidência (não há `TEST_ENV.MISTRAL_API_KEY`), mas se um dia for adicionado, nada impede que reutilize um valor igual ao literal de teste sem que nenhum teste capture a regressão. [`tests/unit/story-10-2/envSchema-key-validation.dynamic.test.ts`, `src/shared/environments.ts`]
+
+## Deferred from: multi-goal split de pedido do usuário (bmad-quick-dev, 2026-08-31)
+
+O usuário pediu 4 mudanças independentes na mesma mensagem. Escopo foi restrito à primeira (remoção de testes triviais de compilação TS); os 3 itens abaixo ficam para specs próprias em seguida.
+
+- **Reescrever a documentação de integração para ficar mais profissional** — remover detalhes voltados à UI que só fazem sentido para quem usa o dashboard (ex.: "esse guia é público", "`/sign-up` é a rota de login", "`/apps/new` é a rota de criação do app"). Manter passos iniciais de como o usuário cria coisas pelo dashboard, mas focar a explicação em como usar isso para integrar via API — o que é esperado no retorno e o que é o webhook. A explicação de integração ao final da página já está boa e deve ser preservada. [páginas/arquivos de documentação de integração do dashboard]
+
+- **Incluir acesso à documentação em nova aba dentro do dashboard** — link/botão de navegação que abre a documentação (`target="_blank"`) a partir de algum ponto do dashboard autenticado. Depende conceitualmente do item acima (mesma área de documentação), mas é uma mudança de navegação shippable isoladamente. [layout/nav do dashboard]
+
+- **Remover a funcionalidade `/proof-requests/new`** — o usuário não sabia que essa rota existia; a intenção do produto é que `proof-request` seja criado exclusivamente via API, não pela UI do dashboard. Remover a página/rota e quaisquer links de navegação que apontem para ela. [rota `/proof-requests/new` e navegação relacionada]

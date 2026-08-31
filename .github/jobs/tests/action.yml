@@ -2,7 +2,8 @@ name: "Tests"
 description: >-
   Composite action que roda a suíte de testes do projeto como gate da pipeline
   de produção. Configura Node 22 (LTS), instala dependências de forma
-  determinística com `npm ci` e executa `npm test`.
+  determinística com `npm ci` e executa `npm run typecheck` seguido de
+  `npm test`.
 
 # ATENÇÃO (risco crítico §5.1 da sprint change proposal 2026-08-08):
 # `npm test` executa `node --test "tests/unit/**/*.test.mjs"`. O padrão glob `**`
@@ -22,6 +23,29 @@ runs:
     - name: Install dependencies (deterministic)
       run: npm ci
       shell: bash
+
+    # Checagem de compilação TypeScript CENTRALIZADA aqui (`npm run typecheck`
+    # = `tsc --noEmit` uma única vez no projeto inteiro). Novas stories NÃO
+    # devem adicionar testes unitários que só rodam `tsc --noEmit` — esse
+    # padrão foi removido da suíte (redundante, uma checagem por arquivo) em
+    # favor deste step único.
+    #
+    # O filtro de `error TS` que ignora linhas com "lucide-react" preserva a
+    # tolerância que os testes por-arquivo removidos já aplicavam a um ruído
+    # conhecido de tipos desse pacote — sem ele, um erro TS pré-existente e já
+    # tolerado voltaria a bloquear o deploy.
+    - name: Run typecheck (gate)
+      shell: bash
+      run: |
+        set -o pipefail
+        output="$(npm run typecheck 2>&1)" || true
+        echo "$output"
+        errors="$(printf '%s\n' "$output" | grep "error TS" | grep -v "lucide-react" || true)"
+        if [ -n "$errors" ]; then
+          echo "::error::TypeScript errors found:"
+          echo "$errors"
+          exit 1
+        fi
 
     - name: Run test suite (gate)
       run: npm test
