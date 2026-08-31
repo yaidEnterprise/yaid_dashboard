@@ -215,8 +215,8 @@ export default function DocsPage() {
           Integre a verificação de identidade da YaID
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-text-secondary">
-          Da criação da conta ao webhook de resultado. Este guia é público: não é preciso estar
-          autenticado para lê-lo, e todos os exemplos usam valores fictícios.
+          Da criação da conta ao webhook de resultado. Todos os exemplos desta página usam valores
+          fictícios.
         </p>
 
         <nav
@@ -307,22 +307,26 @@ export default function DocsPage() {
 
           <h3 className="mt-6 text-sm font-semibold text-text-primary">1. Cadastro da empresa</h3>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
-            O cadastro é feito em <InlineCode>/sign-up</InlineCode> e pede quatro dados: E-mail,
-            Senha, Nome da empresa e CNPJ. O e-mail informado vira o login do primeiro usuário e a
-            empresa criada é a dona de todos os apps.
+            O cadastro pede quatro dados: E-mail, Senha, Nome da empresa e CNPJ. O e-mail
+            informado vira o login do primeiro usuário, e a empresa criada é a dona de todos os
+            apps — cada app é um ponto de integração distinto, com sua própria API key.
           </p>
 
           <h3 className="mt-8 text-sm font-semibold text-text-primary">2. Criação do app</h3>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
-            Já autenticado, o app é criado em <InlineCode>/apps/new</InlineCode> com três campos:
-            nome do app, Webhook HTTPS opcional (a URL que receberá os eventos) e ambiente
-            (<InlineCode>homol</InlineCode> ou <InlineCode>prod</InlineCode>).
+            A criação do app pede três campos: nome do app, ambiente (
+            <InlineCode>homol</InlineCode> ou <InlineCode>prod</InlineCode>) e Webhook HTTPS opcional.
+            Essa URL é o endereço da sua aplicação que a YaID chama automaticamente quando uma
+            verificação é concluída, para entregar o resultado sem que você precise ficar
+            consultando a API (o formato do evento e como validar sua autenticidade estão
+            detalhados na seção Webhooks, adiante).
           </p>
           <div className="mt-4 max-w-2xl rounded-lg border border-warning-border bg-warning-bg px-4 py-3">
             <p className="text-sm leading-relaxed text-warning-text">
               A criação de apps depende da liberação da sua empresa. Enquanto a flag{" "}
-              <InlineCode>can_create_apps</InlineCode> não estiver habilitada, a tela de criação
-              fica indisponível e a API responde 403. Fale com o time YaID para liberar o acesso.
+              <InlineCode>can_create_apps</InlineCode> não estiver habilitada, não é possível
+              criar um novo app e a chamada correspondente responde 403. Fale com o time YaID
+              para liberar o acesso.
             </p>
           </div>
 
@@ -330,8 +334,9 @@ export default function DocsPage() {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
             Ao concluir a criação, a API key é exibida uma única vez, em um modal que só pode ser
             fechado depois que você confirmar que copiou a chave. Ela não é recuperável: se for
-            perdida, o caminho é criar um novo app. Guarde-a em um gerenciador de segredos antes de
-            concluir o modal.
+            perdida, o caminho é criar um novo app. Guarde-a em um gerenciador de segredos — é essa
+            chave que autentica todas as chamadas da sua aplicação à API da YaID, como detalhado na
+            seção Solicitando uma verificação (Proof Request), adiante.
           </p>
           <div className="mt-4 max-w-2xl">
             <CodeBlock code={apiKeyExample} language="bash" />
@@ -592,7 +597,7 @@ export default function DocsPage() {
       <footer className="border-t border-border bg-surface">
         <div className="mx-auto w-full max-w-5xl px-6 py-6">
           <p className="text-xs text-text-tertiary">
-            YaID — documentação pública de integração. Todos os exemplos desta página usam valores
+            YaID — documentação de integração. Todos os exemplos desta página usam valores
             fictícios.
           </p>
         </div>
