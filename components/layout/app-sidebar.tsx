@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Boxes, ShieldCheck, User, PanelLeft } from "lucide-react";
+import { LayoutDashboard, Boxes, ShieldCheck, User, PanelLeft, BookOpen } from "lucide-react";
 import { cn } from "@/utils/utils";
 
 const navItems = [
@@ -61,6 +61,22 @@ export function AppSidebar() {
       <nav className="flex-1 px-2 py-3">
         <ul className="space-y-0.5">
           {navItems.map(renderItem)}
+        </ul>
+        <ul className="mt-2 space-y-0.5 border-t border-sidebar-border pt-2">
+          <li>
+            <a
+              href="/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              )}
+            >
+              <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+              {!collapsed && <span>Documentação</span>}
+            </a>
+          </li>
         </ul>
       </nav>
     </div>
