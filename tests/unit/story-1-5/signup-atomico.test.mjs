@@ -284,12 +284,12 @@ test("Story 1.5 sign-up page calls signInWithPassword after successful signup", 
   );
 });
 
-test("Story 1.5 sign-up page redirects to / after sign-in", () => {
+test("Story 1.5 sign-up page redirects to /dashboard after sign-in", () => {
   const src = readText("app/sign-up/page.tsx");
   assert.match(
     src,
-    /router\.push\(["']\/["']\)/,
-    "must redirect to '/' after establishing the session (router.push('/'))"
+    /router\.push\(["']\/dashboard["']\)/,
+    "must redirect to '/dashboard' after establishing the session (router.push('/dashboard')) — Story 13.1 moved the overview off /"
   );
 });
 

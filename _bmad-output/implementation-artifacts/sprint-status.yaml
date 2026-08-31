@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-12
-last_updated: 2026-08-22
+last_updated: 2026-08-28
 project: yaid_dashboard
 # 2026-08-22: Epic 13 criado (backlog) — Sprint Change 2026-08-22: landing page institucional
 #             em "/" (dashboard migra para "/dashboard"). Stories 13.1 e 13.2 registradas.
@@ -163,15 +163,19 @@ development_status:
   epic-11-retrospective: optional
 
   # Epic 12: Documentação Pública de Integração (Sprint Change 2026-08-22)
-  epic-12: backlog
-  12-1-estrutura-da-pagina-e-secao-conta-e-apps: backlog
-  12-2-conteudo-proof-requests-e-webhooks: backlog
+  # 2026-08-28: stories 12.1 e 12.2 criadas e implementadas; aguardando code review.
+  epic-12: in-progress
+  12-1-estrutura-da-pagina-e-secao-conta-e-apps: review
+  12-2-conteudo-proof-requests-e-webhooks: review
   epic-12-retrospective: optional
 
   # Epic 13: Landing Page Institucional (Sprint Change 2026-08-22)
-  epic-13: backlog
-  13-1-mover-dashboard-para-dashboard-e-ajustar-middleware: backlog
-  13-2-pagina-publica-landing-institucional: backlog
+  # 2026-08-28: stories 13.1 e 13.2 criadas e implementadas; aguardando code review.
+  # Ordem obrigatória: 13.1 antes de 13.2 (a landing só pode ocupar "/" depois que o
+  # dashboard migrar para "/dashboard" — route groups não alteram a URL).
+  epic-13: in-progress
+  13-1-mover-dashboard-para-dashboard-e-ajustar-middleware: review
+  13-2-pagina-publica-landing-institucional: review
   epic-13-retrospective: optional
 
 # Registro de sprint changes que NÃO geraram story própria (escopo minor).
