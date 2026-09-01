@@ -23,6 +23,8 @@ editHistory:
     changes: 'Correct Course — novo Epic 12: página pública de documentação de integração (/docs, sem autenticação, layout independente tipo tela coringa) orientando empresas parceiras a criar conta/app, entender ambientes homolog/prod e disparar proof_requests. FR35 adicionado. Aditivo; núcleo e MVP inalterados.'
   - date: '2026-08-22'
     changes: 'Correct Course — novo Epic 13: landing page institucional em "/" para empresas parceiras (proposta de valor, como funciona, CTA para /sign-up e link para /docs); dashboard (Overview) migra de "/" para "/dashboard". FR36 adicionado. Aditivo; núcleo e MVP inalterados.'
+  - date: '2026-08-31'
+    changes: 'Correct Course — QR Code na tela coringa: FR14 em epics.md corrigido para remover descoping "(sem QR code no MVP)" — o PRD body já descrevia corretamente QR + botão no estado waiting_user com comportamento responsivo (desktop mostra, mobile esconde). Aditivo; núcleo e MVP inalterados.'
 ---
 
 # PRD — Dashboard Empresarial + Backend YaID
