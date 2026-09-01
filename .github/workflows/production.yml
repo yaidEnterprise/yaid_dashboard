@@ -95,11 +95,19 @@ jobs:
       # `amplify-branch-name` vem de `github.ref_name` (branch que disparou o
       # workflow via `on.push.branches: [prod]`) — não é um secret, pois é
       # sempre igual ao branch da pipeline, nunca configurado à parte.
+      #
+      # BOOTSTRAP FEDERADO (conta AWS da faculdade, sem OIDC): os 3 secrets
+      # AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN vêm de uma
+      # sessão do AWS IAM Identity Center (SSO), renovada MANUALMENTE por um
+      # humano (`aws sso login` + `aws configure export-credentials`) antes de
+      # cada release em `prod` — não há refresh automático possível a partir
+      # do CI, já que o login SSO exige interação humana.
       - name: Run deploy-amplify composite
         uses: ./.github/jobs/deploy-amplify
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           amplify-app-id: ${{ secrets.AMPLIFY_APP_ID }}

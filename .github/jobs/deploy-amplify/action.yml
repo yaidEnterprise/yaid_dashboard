@@ -23,6 +23,15 @@ description: >-
 # `echo`/`cat`/`printenv` de credenciais ou env vars sensíveis). Nenhum secret
 # server-side é transformado em `NEXT_PUBLIC_*`.
 #
+# BOOTSTRAP FEDERADO (conta AWS da faculdade, sem OIDC disponível): as
+# credenciais bootstrap passam a vir de uma sessão do AWS IAM Identity Center
+# (SSO), não mais de um IAM User permanente. Sessões SSO são SEMPRE temporárias
+# e exigem um `session_token` além de access key/secret key — por isso o input
+# `aws-session-token` abaixo é obrigatório neste modelo. Os 3 secrets são
+# renovados MANUALMENTE por um humano (`aws sso login` + `aws configure
+# export-credentials`) antes de cada release em `prod`; não há automação
+# possível para esse refresh a partir do CI (exige login interativo).
+#
 # SYNC AUTORITATIVO DE ENV VARS (Story 11.8 — reverte o modelo de MERGE da §5.4
 # da proposta 2026-08-08): a lista de NOMES vem do `.env.local.example` (fonte
 # única de verdade de QUAIS variáveis existem — ignora comentários/linhas
@@ -47,15 +56,24 @@ description: >-
 inputs:
   aws-access-key-id:
     description: >-
-      Access key ID das credenciais bootstrap do IAM User (que só possui
-      `sts:AssumeRole`). Passado via o secret `secrets.AWS_ACCESS_KEY_ID`. Nunca
-      hardcoded, nunca ecoado.
+      Access key ID da sessão federada (AWS IAM Identity Center / SSO) usada
+      como bootstrap (que só possui `sts:AssumeRole`). Passado via o secret
+      `secrets.AWS_ACCESS_KEY_ID`. Nunca hardcoded, nunca ecoado.
     required: true
   aws-secret-access-key:
     description: >-
-      Secret access key das credenciais bootstrap do IAM User. Passado via
+      Secret access key da sessão federada usada como bootstrap. Passado via
       o secret `secrets.AWS_SECRET_ACCESS_KEY`. Nunca hardcoded, nunca ecoado.
     required: true
+  aws-session-token:
+    description: >-
+      Session token da sessão federada (AWS IAM Identity Center / SSO) usada
+      como bootstrap. Obrigatório nesse modelo — credenciais SSO são sempre
+      temporárias e não autenticam sem session token. Passado via o secret
+      `secrets.AWS_SESSION_TOKEN`, renovado manualmente antes de cada deploy.
+      Nunca hardcoded, nunca ecoado.
+    required: false
+    default: ''
   aws-region:
     description: >-
       Região AWS do app Amplify (ex.: us-east-1). Passada via
@@ -96,14 +114,36 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # VALIDAÇÃO (bootstrap federado): sessões SSO são sempre temporárias e
+    # exigem session_token — sem ele, `configure-aws-credentials` falharia com
+    # um erro genérico da AWS. Falha explícita aqui aponta a causa raiz real
+    # (secret não renovado) em vez de um erro opaco de autenticação.
+    - name: Valida presença do session token (bootstrap federado)
+      shell: bash
+      env:
+        AWS_SESSION_TOKEN_INPUT: ${{ inputs.aws-session-token }}
+      run: |
+        set -euo pipefail
+        # Trim de espaços/quebras de linha antes do check: um secret colado com
+        # newline/espaço residual não é string vazia para o `-z`, mas também não
+        # é um session token válido — o trim evita esse falso-negativo.
+        trimmed="$(printf '%s' "$AWS_SESSION_TOKEN_INPUT" | tr -d '[:space:]')"
+        if [ -z "$trimmed" ]; then
+          echo "::error::aws-session-token ausente — bootstrap federado (SSO) exige session token. Renove a sessão (aws sso login + aws configure export-credentials) e atualize o secret AWS_SESSION_TOKEN antes de reexecutar o deploy."
+          exit 1
+        fi
+
     # AUTENTICAÇÃO (§5.7): credenciais bootstrap (só `sts:AssumeRole`) usadas para
     # ASSUMIR o deploy role via `role-to-assume`. OIDC está indisponível — daí o
-    # fluxo bootstrap creds -> AssumeRole -> deploy role least-privilege.
+    # fluxo bootstrap creds -> AssumeRole -> deploy role least-privilege. O
+    # bootstrap é uma sessão federada SSO temporária, por isso o session token
+    # é passado junto com access key/secret key.
     - name: Configura credenciais AWS (bootstrap -> AssumeRole do deploy role)
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ inputs.aws-access-key-id }}
         aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-session-token: ${{ inputs.aws-session-token }}
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.aws-role-to-assume }}
         role-session-name: yaid-deploy-amplify

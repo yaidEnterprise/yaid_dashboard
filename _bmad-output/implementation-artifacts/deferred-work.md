@@ -1,3 +1,7 @@
+## Deferred from: code review of spec-aws-federated-sso-deploy-auth (2026-09-01)
+
+- **`aws-access-key-id`/`aws-secret-access-key` não têm validação fail-fast de vazio** — só o novo `aws-session-token` ganhou o step de validação explícita (`::error::`) antes de `configure-aws-credentials`. Um valor vazio nesses dois secrets ainda cai no erro opaco da AWS CLI que esta story eliminou apenas para o session token. Pré-existente ao bootstrap federado (já era assim com o IAM User permanente); considerar generalizar a validação para os 3 inputs numa story futura de hardening do pipeline. [`.github/jobs/deploy-amplify/action.yml`]
+
 ## Deferred from: code review of story-5-9-ocr-estruturado-via-mistral-document-ai (2026-08-19)
 
 - **`validateOcrResult` valida CPF só por contagem de dígitos (11), sem dígito verificador** — a mesma limitação já existia no `ApiOcrProvider` removido por esta story; o AC #3 da Story 5.9 só pede validação de formato (11 dígitos, `YYYY-MM-DD`), não checksum. Considerar dígito verificador de CPF numa story futura de hardening. [`src/shared/clients/ocr/MistralOcrProvider.ts`]
