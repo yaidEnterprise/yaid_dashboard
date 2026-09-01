@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/unit/**/*.test.mjs\" && npm run test:dynamic",
     "test:unit": "node --test \"tests/unit/**/*.test.mjs\"",
     "test:dynamic": "tsx --test \"tests/unit/**/*.dynamic.test.ts\"",

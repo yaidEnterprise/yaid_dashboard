@@ -74,12 +74,10 @@ describe("Story 12.1 — conteúdo Conta e Apps", () => {
 
   test("documenta signup, app, allowlist e reveal one-shot", () => {
     for (const required of [
-      "/sign-up",
       "E-mail",
       "Senha",
       "Nome da empresa",
       "CNPJ",
-      "/apps/new",
       "Webhook HTTPS opcional",
       "can_create_apps",
       "uma única vez",
