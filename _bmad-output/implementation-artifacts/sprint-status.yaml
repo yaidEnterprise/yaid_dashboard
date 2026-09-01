@@ -181,6 +181,22 @@ development_status:
 # Registro de sprint changes que NÃO geraram story própria (escopo minor).
 # Não fazem parte de development_status — são rastreados aqui apenas para auditoria.
 sprint_changes:
+  - id: sprint-change-2026-08-31-qr-code-tela-coringa
+    date: '2026-08-31'
+    epic: epic-4
+    story: 4-2-tela-coringa-com-polling-e-6-estados-visuais
+    scope: minor
+    status: done # implementado em 2026-08-31 — react-qr-code instalado, QrCode no estado waiting_user (hidden mobile, visível desktop)
+    proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-31.md
+    summary: >-
+      QR code reativado no estado waiting_user da tela coringa — o PRD sempre o descrevia,
+      mas FR14 nos epics o descartou com "(sem QR code no MVP)". Feature puramente frontend:
+      adicionar biblioteca de QR code (react-qr-code ou qrcode.react), renderizar QR com a URL
+      yaid://verify?session=<token> (mesmo destino do botão de deep link); mobile oculta QR
+      e amplia botão, desktop mostra ambos. Zero impacto em backend/banco/CI/migrations.
+    artifacts_updated:
+      - _bmad-output/planning-artifacts/epics.md
+      - _bmad-output/planning-artifacts/prd.md
   - id: sprint-change-2026-08-09-simplificacao-env-vars
     date: '2026-08-09'
     epic: epic-11

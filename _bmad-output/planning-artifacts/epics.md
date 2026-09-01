@@ -65,7 +65,8 @@ FR12: O sistema deve criar proof_session atomicamente junto com a proof_request,
 
 FR13: A tela coringa (`/v/[sessionToken]`) deve exibir 6 estados visuais: `waiting_user` (deep link + tempo restante), `opened` (spinner aguardando), `approved` (sucesso + return_url opcional), `rejected`/`cancelled` (mensagem genérica), `expired` (mensagem clara), inválida (genérica sem enumeration).
 
-FR14: A tela coringa deve realizar polling em `GET /api/proof-sessions/{token}` a cada 5–10s nas fases ativas; parar nas fases terminais; exibe botão de deep link `yaid://verify?session=<token>` (sem QR code no MVP).
+FR14: A tela coringa deve realizar polling em `GET /api/proof-sessions/{token}` a cada 5–10s nas fases ativas; parar nas fases terminais; no estado `waiting_user`, exibe botão de deep link `yaid://verify?session=<token>` em destaque e QR code codificando a mesma URL — em dispositivos mobile o QR code é ocultado e o botão de deep link recebe destaque ampliado (touch target mínimo 48px); em desktop ambos são exibidos com o QR como elemento principal de escaneamento acompanhado de instrução textual.
+> Nota (Sprint Change 2026-08-31): QR code reativado — o PRD sempre o descreveu; descoping em "(sem QR code no MVP)" foi removido. Feature puramente frontend; zero impacto em backend/banco/CI.
 
 FR15: O backend deve emitir Verifiable Credentials (VC) com claims booleanos (`personhood: true` | `ageOver18: true`) após OCR em memória, sem persistir PII, e registrar o DID do holder on-chain via `registerDID`.
 
@@ -207,7 +208,7 @@ FR9: Epic 3 — Helper /proof-requests/new autenticado por sessão
 FR11: Epic 3 — POST /api/proof-requests via API key B2B
 FR12: Epic 3 — Criação atômica de proof_session com challenge fields
 FR13: Epic 4 — 6 estados visuais da tela coringa
-FR14: Epic 4 — Polling + botão de deep link (sem QR code no MVP)
+FR14: Epic 4 — Polling + botão de deep link + QR code (waiting_user; mobile oculta QR, desktop mostra)
 FR15: Epic 5 — Emissão de VC + OCR em memória + registro DID on-chain
 FR16: Epic 5 — Challenge/nonce para app mobile
 FR17: Epic 5 — Verificação de VP (assinatura holder + issuer + claims + nonce + revogação)
@@ -870,8 +871,21 @@ Para que eu complete o fluxo de verificação de identidade sem entregar documen
 **Then** exibe layout independente (sem sidebar ou topbar), container centralizado com marca YaID
 **And** exibe o nome da company solicitante e o proof_type traduzido para linguagem natural (ex: "Verificação de identidade pessoal")
 **And** exibe botão de deep link `yaid://verify?session=<token>` em destaque
+**And** exibe QR code codificando a URL `yaid://verify?session=<token>` — o mesmo destino do botão
 **And** exibe contador regressivo de tempo até expiração
 **And** inicia polling a `GET /api/proof-sessions/{sessionToken}` a cada 5–10 segundos
+
+**Given** a tela coringa em `waiting_user` acessada em dispositivo mobile (viewport < 1024px)
+**When** o componente de QR code renderiza
+**Then** o QR code é ocultado (ex: `hidden md:block` ou equivalente responsivo)
+**And** o botão de deep link recebe tamanho e destaque ampliados (`size="lg"`, touch target mínimo 48px)
+
+**Given** a tela coringa em `waiting_user` acessada em desktop (viewport ≥ 1024px)
+**When** o componente de QR code renderiza
+**Then** o QR code é exibido como elemento principal de escaneamento, acima ou ao lado do botão
+**And** o QR exibe instrução textual ("Escaneie com o app YaID Wallet")
+
+> *(Sprint Change 2026-08-31: ACs de QR code adicionados — feature reativada do PRD original. Story já `done`; implementação pendente via sprint change minor.)*
 
 **Given** a tela em polling e a sessão transiciona para `opened`
 **When** o poll retorna `status: "opened"`
