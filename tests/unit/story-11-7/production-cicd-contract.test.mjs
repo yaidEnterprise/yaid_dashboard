@@ -6,9 +6,9 @@
  *    (cross-links não podem apontar para arquivos inexistentes).
  *  - Diagramas: o runbook tem os diagramas mermaid (fluxo por release + ONCE/EACH).
  *  - IAM (invariantes mais estritas que o teste do dev):
- *      · bootstrap: exatamente 1 statement, Action == "sts:AssumeRole" (só), Resource = ARN de role (não "*");
  *      · deploy role: conjunto EXATO das 5 ações amplify (nem a mais, nem a menos), todo Resource com o app-id;
- *      · trust policy: Principal.AWS escopado (não "*").
+ *      · trust policy: Principal.Federated apontando para o OIDC provider do GitHub, com Condition
+ *        escopando o `sub` ao repo (nunca "*").
  *  - Consistência com a pipeline real: os 4 nomes de job e a cadeia aparecem; os números de
  *    polling/retry do runbook batem com os composites reais (15 min / 5 min).
  *
@@ -77,23 +77,6 @@ describe("Story 11.7 QA — diagramas mermaid", () => {
 });
 
 describe("Story 11.7 QA — IAM invariantes estritas", () => {
-  test("policy bootstrap: exatamente 1 statement, só sts:AssumeRole, Resource = ARN de role (não '*')", () => {
-    const bootstrap = policies.find((p) =>
-      stmtsOf(p).some((s) => arrify(s.Action).length === 1 && arrify(s.Action)[0] === "sts:AssumeRole")
-    );
-    assert.ok(bootstrap, "deve existir a policy bootstrap");
-    const stmts = stmtsOf(bootstrap);
-    assert.equal(stmts.length, 1, "bootstrap deve ter exatamente 1 statement");
-    const s = stmts[0];
-    assert.deepEqual(arrify(s.Action), ["sts:AssumeRole"], "bootstrap só pode ter sts:AssumeRole");
-    assert.equal(s.Effect, "Allow");
-    for (const r of arrify(s.Resource)) {
-      assert.notEqual(r, "*", "Resource do bootstrap não pode ser '*'");
-      assert.match(r, /^arn:aws:iam::/, "Resource do bootstrap deve ser um ARN de IAM role");
-      assert.ok(r.includes(":role/"), "Resource do bootstrap deve apontar para um role");
-    }
-  });
-
   test("deploy role: conjunto EXATO das 5 ações amplify e todo Resource com o app-id", () => {
     const expected = [
       "amplify:GetBranch",
@@ -117,20 +100,51 @@ describe("Story 11.7 QA — IAM invariantes estritas", () => {
     }
   });
 
-  test("trust policy: Principal escopado (não '*')", () => {
+  test("trust policy: Principal.Federated aponta para o OIDC provider do GitHub, com Condition escopando o sub ao repo", () => {
     const trust = policies.find((p) =>
       stmtsOf(p).some((s) => s.Principal !== undefined)
     );
     assert.ok(trust, "deve existir a trust policy do deploy role");
-    for (const s of stmtsOf(trust)) {
-      if (s.Principal === undefined) continue;
+    const stmts = stmtsOf(trust).filter((s) => s.Principal !== undefined);
+    assert.ok(stmts.length > 0, "trust policy deve ter ao menos 1 statement com Principal");
+    for (const s of stmts) {
       assert.notEqual(s.Principal, "*", "Principal não pode ser '*'");
-      const aws = s.Principal.AWS;
-      assert.ok(aws, "trust policy deve declarar Principal.AWS");
-      for (const a of arrify(aws)) {
-        assert.notEqual(a, "*", "Principal.AWS não pode ser '*'");
-        assert.match(a, /^arn:aws:iam::/, "Principal.AWS deve ser um ARN de IAM");
+      const federated = s.Principal.Federated;
+      assert.ok(federated, "trust policy deve declarar Principal.Federated (OIDC), não Principal.AWS (IAM user)");
+      for (const f of arrify(federated)) {
+        assert.notEqual(f, "*", "Principal.Federated não pode ser '*'");
+        assert.match(
+          f,
+          /^arn:aws:iam::.*:oidc-provider\/token\.actions\.githubusercontent\.com$/,
+          "Principal.Federated deve apontar para o OIDC provider do GitHub (token.actions.githubusercontent.com)",
+        );
       }
+      assert.equal(
+        s.Action,
+        "sts:AssumeRoleWithWebIdentity",
+        "trust policy OIDC deve usar sts:AssumeRoleWithWebIdentity",
+      );
+      assert.ok(s.Condition, "trust policy OIDC deve declarar Condition");
+      const aud = s.Condition.StringEquals?.["token.actions.githubusercontent.com:aud"];
+      assert.equal(
+        aud,
+        "sts.amazonaws.com",
+        "Condition deve fixar token.actions.githubusercontent.com:aud como sts.amazonaws.com",
+      );
+      const subCondition =
+        s.Condition.StringEquals?.["token.actions.githubusercontent.com:sub"] ??
+        s.Condition.StringLike?.["token.actions.githubusercontent.com:sub"];
+      assert.ok(subCondition, "Condition deve escopar token.actions.githubusercontent.com:sub");
+      // Regra estrita: nem "*" nem qualquer wildcard/prefixo genérico — precisa ser um
+      // valor exato "repo:<org>/<repo>:ref:refs/heads/<branch>". Um regex frouxo como
+      // /^repo:/ deixaria passar "repo:org/repo:*" (qualquer branch/PR/tag), a
+      // misconfiguration mais comum de trust policy OIDC.
+      assert.notEqual(subCondition, "*", "Condition do sub nunca pode ser '*'");
+      assert.match(
+        subCondition,
+        /^repo:[^/*]+\/[^:*]+:ref:refs\/heads\/[^*]+$/,
+        "Condition do sub deve ser um valor exato repo:<org>/<repo>:ref:refs/heads/<branch> — sem wildcards",
+      );
     }
   });
 

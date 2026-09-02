@@ -37,14 +37,18 @@ function stepsOf(node) {
 }
 
 const REQUIRED_INPUTS = [
-  "aws-access-key-id",
-  "aws-secret-access-key",
   "aws-region",
   "aws-role-to-assume",
   "amplify-app-id",
   "amplify-branch-name",
   "github-variables-json",
   "github-secrets-json",
+];
+
+const STATIC_CREDENTIAL_INPUTS = [
+  "aws-access-key-id",
+  "aws-secret-access-key",
+  "aws-session-token",
 ];
 
 // ---------------------------------------------------------------------------
@@ -89,7 +93,57 @@ test("AC2: inputs necessários são required: true", () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC #3 — auth AWS via configure-aws-credentials com AssumeRole; shell em todo run
+// GitHub OIDC — regressão: nenhuma credencial estática, id-token: write
+// ---------------------------------------------------------------------------
+
+test("OIDC: nenhum input de credencial estática (access-key/secret-key/session-token) existe no composite", () => {
+  const doc = loadYaml(actionPath);
+  for (const key of STATIC_CREDENTIAL_INPUTS) {
+    assert.ok(
+      !doc.inputs || doc.inputs[key] === undefined,
+      `input '${key}' não pode mais existir — migração para GitHub OIDC é troca completa, sem credenciais estáticas`,
+    );
+  }
+});
+
+test("OIDC: nenhum with: do job deploy-amplify referencia credenciais estáticas", () => {
+  const doc = loadYaml(workflowPath);
+  const steps = stepsOf(doc.jobs["deploy-amplify"]);
+  const compositeStep = steps.find(
+    (s) => typeof s.uses === "string" && s.uses === "./.github/jobs/deploy-amplify",
+  );
+  assert.ok(compositeStep?.with, "o step do composite deve ter bloco with:");
+  for (const key of STATIC_CREDENTIAL_INPUTS) {
+    assert.ok(
+      compositeStep.with[key] === undefined,
+      `with.${key} não pode mais existir no job deploy-amplify (sem credenciais estáticas)`,
+    );
+  }
+});
+
+test("OIDC: job deploy-amplify declara permissions.id-token === 'write'", () => {
+  const doc = loadYaml(workflowPath);
+  const job = doc.jobs["deploy-amplify"];
+  assert.ok(job.permissions, "job deploy-amplify deve declarar permissions");
+  assert.equal(
+    job.permissions["id-token"],
+    "write",
+    "job deploy-amplify deve declarar permissions.id-token: write (precondição do OIDC)",
+  );
+});
+
+test("OIDC: job deploy-amplify mantém permissions.contents === 'read' (permissions no nível do job substitui, não mescla, o default do workflow)", () => {
+  const doc = loadYaml(workflowPath);
+  const job = doc.jobs["deploy-amplify"];
+  assert.equal(
+    job.permissions.contents,
+    "read",
+    "sem isso o actions/checkout perde acesso de leitura ao repositório assim que permissions.id-token é declarado no job",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// AC #3 — auth AWS via configure-aws-credentials com AssumeRoleWithWebIdentity (OIDC); shell em todo run
 // ---------------------------------------------------------------------------
 
 test("AC3: composite autentica via aws-actions/configure-aws-credentials", () => {

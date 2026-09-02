@@ -3,19 +3,19 @@ description: >-
   Composite action que publica o app Next.js SSR no AWS Amplify Hosting como o
   passo de deploy do app no release de produção (Epic 11), DEPOIS das migrations
   (deploy-supabase, Story 11.4) e ANTES do smoke-test (Story 11.6). Autentica na
-  AWS via `aws-actions/configure-aws-credentials` com assunção de role
-  (`sts:AssumeRole`, pois OIDC está indisponível), sincroniza as env vars para o
-  branch Amplify de forma AUTORITATIVA (nomes derivados do `.env.local.example`,
-  valores resolvidos por colocação em Secrets/Variables do GitHub, replace total
-  via `update-branch`), dispara o deploy via `aws amplify start-job --job-type
-  RELEASE` e faz polling finito (com timeout) até um estado terminal, falhando em
-  qualquer estado ≠ SUCCEED.
+  AWS via `aws-actions/configure-aws-credentials` usando GitHub Actions OIDC
+  puro (`sts:AssumeRoleWithWebIdentity` direto no deploy role, sem nenhuma
+  credencial estática), sincroniza as env vars para o branch Amplify de forma
+  AUTORITATIVA (nomes derivados do `.env.local.example`, valores resolvidos por
+  colocação em Secrets/Variables do GitHub, replace total via `update-branch`),
+  dispara o deploy via `aws amplify start-job --job-type RELEASE` e faz polling
+  finito (com timeout) até um estado terminal, falhando em qualquer estado ≠
+  SUCCEED.
 
 # SEGURANÇA (§4-D e §5.7 da sprint change proposal 2026-08-08; Story 11.8):
-# Este composite consome SECRETS (credenciais bootstrap AWS, ARN do role de
-# deploy, app-id e os payloads JSON de Variables/Secrets do GitHub) e o nome do
-# branch via `github.ref_name` (não é secret — sempre igual ao branch da
-# pipeline). Eles
+# Este composite consome SECRETS (ARN do role de deploy, app-id e os payloads
+# JSON de Variables/Secrets do GitHub) e o nome do branch via `github.ref_name`
+# (não é secret — sempre igual ao branch da pipeline). Eles
 # entram EXCLUSIVAMENTE via `inputs` (passados pelo orquestrador `production.yml`
 # a partir de `${{ secrets.* }}` / `${{ toJSON(vars) }}` / `${{ toJSON(secrets) }}`)
 # — NUNCA hardcoded neste arquivo — e são expostos aos comandos apenas via `env:`
@@ -23,14 +23,17 @@ description: >-
 # `echo`/`cat`/`printenv` de credenciais ou env vars sensíveis). Nenhum secret
 # server-side é transformado em `NEXT_PUBLIC_*`.
 #
-# BOOTSTRAP FEDERADO (conta AWS da faculdade, sem OIDC disponível): as
-# credenciais bootstrap passam a vir de uma sessão do AWS IAM Identity Center
-# (SSO), não mais de um IAM User permanente. Sessões SSO são SEMPRE temporárias
-# e exigem um `session_token` além de access key/secret key — por isso o input
-# `aws-session-token` abaixo é obrigatório neste modelo. Os 3 secrets são
-# renovados MANUALMENTE por um humano (`aws sso login` + `aws configure
-# export-credentials`) antes de cada release em `prod`; não há automação
-# possível para esse refresh a partir do CI (exige login interativo).
+# GITHUB ACTIONS OIDC (substitui o bootstrap federado SSO): a autenticação AWS
+# usa `sts:AssumeRoleWithWebIdentity` diretamente no deploy role — o runner
+# obtém um ID token OIDC de curta duração do próprio GitHub Actions (o job em
+# `production.yml` declara `permissions: id-token: write` como precondição) e
+# `configure-aws-credentials` o troca por credenciais temporárias junto à AWS,
+# sem nenhuma credencial estática (access-key/secret-key/session-token) e sem
+# sessão a renovar manualmente. A trust policy do deploy role (fora do escopo
+# deste código — configurada pelo humano na conta AWS) confia no OIDC Identity
+# Provider do GitHub (`token.actions.githubusercontent.com`) com uma
+# `Condition` que escopa o `sub` ao repo/branch (ver o runbook em
+# docs/deployment/production-cicd.md).
 #
 # SYNC AUTORITATIVO DE ENV VARS (Story 11.8 — reverte o modelo de MERGE da §5.4
 # da proposta 2026-08-08): a lista de NOMES vem do `.env.local.example` (fonte
@@ -44,36 +47,17 @@ description: >-
 # (Variables/Secrets); nenhuma variável server-side vive apenas no console do
 # Amplify — logo nada é apagado sem ser reprovisionado no mesmo passo.
 #
-# §5.7 (IAM least-privilege): as credenciais bootstrap só têm `sts:AssumeRole`;
-# o deploy role assumido só tem `amplify:StartJob/GetJob/GetBranch/UpdateBranch/
-# ListJobs` no ARN do app (o JSON das policies é documentado na Story 11.7). Esta
-# story WIRA o uso do assume-role via `role-to-assume`.
+# §5.7 (IAM least-privilege): a autenticação OIDC não carrega nenhuma permissão
+# própria — apenas troca o ID token pela sessão temporária do deploy role, que
+# só tem `amplify:StartJob/GetJob/GetBranch/UpdateBranch/ListJobs` no ARN do app
+# (o JSON das policies é documentado na Story 11.7). Esta story wira o uso do
+# `AssumeRoleWithWebIdentity` via `role-to-assume`.
 #
 # §5.8 CRÍTICO (polling finito): o wait do job Amplify tem timeout / número máximo
 # de tentativas (loop finito) e falha explicitamente (exit não-zero) em qualquer
 # estado terminal diferente de SUCCEED (FAILED/CANCELLED) e no estouro do timeout.
 
 inputs:
-  aws-access-key-id:
-    description: >-
-      Access key ID da sessão federada (AWS IAM Identity Center / SSO) usada
-      como bootstrap (que só possui `sts:AssumeRole`). Passado via o secret
-      `secrets.AWS_ACCESS_KEY_ID`. Nunca hardcoded, nunca ecoado.
-    required: true
-  aws-secret-access-key:
-    description: >-
-      Secret access key da sessão federada usada como bootstrap. Passado via
-      o secret `secrets.AWS_SECRET_ACCESS_KEY`. Nunca hardcoded, nunca ecoado.
-    required: true
-  aws-session-token:
-    description: >-
-      Session token da sessão federada (AWS IAM Identity Center / SSO) usada
-      como bootstrap. Obrigatório nesse modelo — credenciais SSO são sempre
-      temporárias e não autenticam sem session token. Passado via o secret
-      `secrets.AWS_SESSION_TOKEN`, renovado manualmente antes de cada deploy.
-      Nunca hardcoded, nunca ecoado.
-    required: false
-    default: ''
   aws-region:
     description: >-
       Região AWS do app Amplify (ex.: us-east-1). Passada via
@@ -81,9 +65,9 @@ inputs:
     required: true
   aws-role-to-assume:
     description: >-
-      ARN do IAM Role de deploy a ser assumido via `sts:AssumeRole` (least-
-      privilege: apenas ações do Amplify no ARN do app). Passado via
-      o secret `secrets.AWS_DEPLOY_ROLE_ARN`. Nunca hardcoded.
+      ARN do IAM Role de deploy a ser assumido via `sts:AssumeRoleWithWebIdentity`
+      (GitHub Actions OIDC; least-privilege: apenas ações do Amplify no ARN do
+      app). Passado via o secret `secrets.AWS_DEPLOY_ROLE_ARN`. Nunca hardcoded.
     required: true
   amplify-app-id:
     description: >-
@@ -114,44 +98,26 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # VALIDAÇÃO (bootstrap federado): sessões SSO são sempre temporárias e
-    # exigem session_token — sem ele, `configure-aws-credentials` falharia com
-    # um erro genérico da AWS. Falha explícita aqui aponta a causa raiz real
-    # (secret não renovado) em vez de um erro opaco de autenticação.
-    - name: Valida presença do session token (bootstrap federado)
-      shell: bash
-      env:
-        AWS_SESSION_TOKEN_INPUT: ${{ inputs.aws-session-token }}
-      run: |
-        set -euo pipefail
-        # Trim de espaços/quebras de linha antes do check: um secret colado com
-        # newline/espaço residual não é string vazia para o `-z`, mas também não
-        # é um session token válido — o trim evita esse falso-negativo.
-        trimmed="$(printf '%s' "$AWS_SESSION_TOKEN_INPUT" | tr -d '[:space:]')"
-        if [ -z "$trimmed" ]; then
-          echo "::error::aws-session-token ausente — bootstrap federado (SSO) exige session token. Renove a sessão (aws sso login + aws configure export-credentials) e atualize o secret AWS_SESSION_TOKEN antes de reexecutar o deploy."
-          exit 1
-        fi
-
-    # AUTENTICAÇÃO (§5.7): credenciais bootstrap (só `sts:AssumeRole`) usadas para
-    # ASSUMIR o deploy role via `role-to-assume`. OIDC está indisponível — daí o
-    # fluxo bootstrap creds -> AssumeRole -> deploy role least-privilege. O
-    # bootstrap é uma sessão federada SSO temporária, por isso o session token
-    # é passado junto com access key/secret key.
-    - name: Configura credenciais AWS (bootstrap -> AssumeRole do deploy role)
+    # AUTENTICAÇÃO (§5.7 — GitHub Actions OIDC): `configure-aws-credentials`
+    # obtém o ID token OIDC do próprio job (via `permissions: id-token: write`,
+    # declarado em `production.yml`) e o troca por credenciais temporárias
+    # através de `sts:AssumeRoleWithWebIdentity`, direto no deploy role — sem
+    # nenhuma credencial estática nem sessão a renovar manualmente. A trust
+    # policy do deploy role (configurada pelo humano na conta AWS, fora deste
+    # código) confia no OIDC Identity Provider do GitHub e escopa o `sub` ao
+    # repo/branch.
+    - name: Configura credenciais AWS (GitHub Actions OIDC -> deploy role)
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ inputs.aws-access-key-id }}
-        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
-        aws-session-token: ${{ inputs.aws-session-token }}
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.aws-role-to-assume }}
         role-session-name: yaid-deploy-amplify
-        # O bootstrap user tem SÓ `sts:AssumeRole` (least-privilege, §5.7). Por
-        # padrão o action faz session tagging (`sts:TagSession`), permissão que o
-        # usuário não possui — desabilitamos para não exigir permissão extra e
-        # honrar o least-privilege. Não usamos ABAC nem as session tags no
-        # CloudTrail (o rastreio vem do log do Actions + role-session-name).
+        # O action tenta, por padrão, marcar a sessão assumida via `sts:TagSession`
+        # (para ABAC/rastreio por tags) — permissão que a trust policy do deploy
+        # role NÃO concede (least-privilege: só `sts:AssumeRoleWithWebIdentity`).
+        # Sem este flag, `AssumeRoleWithWebIdentity` falharia por falta de
+        # `sts:TagSession`. Não usamos ABAC nem session tags; o rastreio vem do
+        # log do Actions + role-session-name.
         role-skip-session-tagging: true
 
     # SYNC AUTORITATIVO DE ENV VARS (Story 11.8 — replace, sem get-branch/merge):
