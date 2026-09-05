@@ -94,7 +94,14 @@ export class IssueCredentialUseCase {
     let ocrResult;
     try {
       ocrResult = await this.ocrProvider.processDocument(documentImage);
-    } catch {
+    } catch (err) {
+      // TODO(debug-422-mobile): remover após diagnosticar a causa do 422 no fluxo smartphone.
+      // Loga só metadados não sensíveis do payload (tamanho, prefixo) + o erro real do OCR.
+      console.error("[issue-credential][ocr-failure]", {
+        errorMessage: err instanceof Error ? err.message : String(err),
+        documentImageLength: documentImage.length,
+        documentImagePrefix: documentImage.slice(0, 30),
+      });
       throw new AppError("Document processing failed", 422, "UNPROCESSABLE_ENTITY");
     }
 
