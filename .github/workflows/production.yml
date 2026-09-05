@@ -81,25 +81,41 @@ jobs:
     # (mesmo nome do branch que dispara o workflow) — sem esta declaração,
     # `secrets.*`/`vars.*` resolvem vazios para jobs fora desse environment.
     environment: prod
+    # GITHUB ACTIONS OIDC (precondição): `permissions` no nível do JOB substitui
+    # (não soma a) o default `permissions: contents: read` do workflow — por
+    # isso `contents: read` é repetido aqui, junto com `id-token: write`. Sem
+    # `id-token: write` o runner não emite o ID token OIDC e
+    # `configure-aws-credentials` (no composite deploy-amplify) falha ao tentar
+    # obter o token antes de qualquer chamada AWS.
+    permissions:
+      id-token: write
+      contents: read
     steps:
       # Checkout necessário para resolver o composite local `./.github/jobs/...`.
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # Secrets centralizados no orquestrador e passados via `with:` — nunca
-      # hardcoded no composite. Autenticação bootstrap -> AssumeRole (§5.7);
-      # env vars server-side sincronizadas de forma AUTORITATIVA (Story 11.8):
-      # nomes derivados do `.env.local.example`, valores resolvidos por
-      # colocação (Secrets -> Variables) a partir de `toJSON(vars)`/
-      # `toJSON(secrets)` — replace total do branch, sem get-branch/merge.
-      # `amplify-branch-name` vem de `github.ref_name` (branch que disparou o
-      # workflow via `on.push.branches: [prod]`) — não é um secret, pois é
-      # sempre igual ao branch da pipeline, nunca configurado à parte.
+      # hardcoded no composite. Autenticação via GitHub Actions OIDC puro
+      # (`sts:AssumeRoleWithWebIdentity` direto no deploy role, §5.7); env vars
+      # server-side sincronizadas de forma AUTORITATIVA (Story 11.8): nomes
+      # derivados do `.env.local.example`, valores resolvidos por colocação
+      # (Secrets -> Variables) a partir de `toJSON(vars)`/`toJSON(secrets)` —
+      # replace total do branch, sem get-branch/merge. `amplify-branch-name`
+      # vem de `github.ref_name` (branch que disparou o workflow via
+      # `on.push.branches: [prod]`) — não é um secret, pois é sempre igual ao
+      # branch da pipeline, nunca configurado à parte.
+      #
+      # GITHUB ACTIONS OIDC (substitui o bootstrap federado SSO): não há mais
+      # nenhuma credencial estática de longo prazo nem renovação manual — o
+      # job usa o ID token OIDC emitido pelo próprio GitHub Actions (via
+      # `permissions.id-token: write` acima) para assumir o deploy role
+      # diretamente via `sts:AssumeRoleWithWebIdentity`. A trust policy do
+      # deploy role (fora do escopo deste repo — configurada pelo humano na
+      # conta AWS) precisa confiar no OIDC Identity Provider do GitHub.
       - name: Run deploy-amplify composite
         uses: ./.github/jobs/deploy-amplify
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           amplify-app-id: ${{ secrets.AMPLIFY_APP_ID }}
