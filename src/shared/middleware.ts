@@ -5,7 +5,7 @@ import { withApiKeyAuth } from "@/shared/middlewares/withApiKeyAuth";
 import { withDIDAuth } from "@/shared/middlewares/withDIDAuth";
 
 function isDashboardPage(pathname: string): boolean {
-  const dashboardPaths = ["/", "/apps", "/proof-requests", "/settings"];
+  const dashboardPaths = ["/dashboard", "/apps", "/proof-requests", "/settings"];
   return dashboardPaths.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`)
   );
@@ -58,19 +58,27 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // 1. Public auth pages — redirect authenticated users away from sign-in
   if (isPublicAuthPage(pathname)) {
     if (user && (pathname === "/sign-in" || pathname === "/sign-up")) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return sessionResponse;
   }
 
-  // 2. Dashboard pages — redirect to sign-in if not authenticated
+  // 2. Root — authenticated users go to the dashboard, visitors pass through
+  if (pathname === "/") {
+    if (user) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    return sessionResponse;
+  }
+
+  // 3. Dashboard pages — redirect to sign-in if not authenticated
   if (isDashboardPage(pathname)) {
     return withSessionAuth(request, sessionResponse, user, {
       redirectOnFail: "/sign-in",
     });
   }
 
-  // 3. POST /api/proof-requests — API key or session auth
+  // 4. POST /api/proof-requests — API key or session auth
   if (pathname === "/api/proof-requests" && method === "POST") {
     const hasApiKeyHeader =
       Boolean(request.headers.get("x-api-key")) ||
@@ -85,24 +93,24 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // 4. DID auth routes — DID signature validation (Epic 5)
+  // 5. DID auth routes — DID signature validation (Epic 5)
   if (isDIDAuthRoute(pathname)) {
     return await withDIDAuth(request);
   }
 
-  // 5. Session-auth API routes — require authenticated user
+  // 6. Session-auth API routes — require authenticated user
   if (isSessionAuthApiRoute(pathname, method)) {
     return withSessionAuth(request, sessionResponse, user, {
       redirectOnFail: null,
     });
   }
 
-  // 6. Explicit public API routes (no auth)
+  // 7. Explicit public API routes (no auth)
   if (isPublicApiRoute(pathname, method)) {
     return sessionResponse;
   }
 
-  // 7. Everything else — pass through
+  // 8. Everything else — pass through
   return sessionResponse;
 }
 

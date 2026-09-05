@@ -49,70 +49,35 @@ function withEnv(overrides: Record<string, string | undefined>, fn: () => void) 
   }
 }
 
-// ── AC #1: formato hex das chaves de assinatura ─────────────────────────────
+// ── Formato hex das chaves de assinatura: validação removida a pedido ───────
 
-test("Story 10.2 — ISSUER_PRIVATE_KEY malformed (typo/wrong length/non-hex) fails boot naming the variable", () => {
+test("Story 10.2 — a malformed (non-hex / wrong-length) private key no longer fails boot", () => {
   const cases = [
     "0000000000000000000000000000000000000000000000000000000000000zz1", // non-hex chars
     "00000000000000000000000000000000000000000000000000000000000000011", // 65 chars (one char too many)
     "not-a-hex-key",
+    "", // explicitly empty
   ];
 
   for (const malformed of cases) {
     withEnv(
       {
-        STAGE: Stage.PROD,
+        // DEV: a checagem de presença (PROD/HOMOLOG) não se aplica, então o que
+        // está sob teste aqui é só a ausência da validação de formato.
+        STAGE: Stage.DEV,
         ISSUER_PRIVATE_KEY: malformed,
-        WEBHOOK_SIGNING_PRIVATE_KEY: VALID_WEBHOOK_HEX,
-        BLOCKCHAIN_WALLET_PRIVATE_KEY: VALID_WALLET_HEX,
+        WEBHOOK_SIGNING_PRIVATE_KEY: malformed,
+        BLOCKCHAIN_WALLET_PRIVATE_KEY: malformed,
         BLOCKCHAIN_CONTRACT_ADDRESS: VALID_CONTRACT_ADDRESS,
       },
       () => {
-        assert.throws(
+        assert.doesNotThrow(
           () => new Environments().loadEnvs(),
-          /ISSUER_PRIVATE_KEY must be exactly 64 hexadecimal characters/,
-          `expected the format-validation message naming ISSUER_PRIVATE_KEY for malformed value: ${malformed}`
+          `hex format validation was removed, so "${malformed}" must be accepted`
         );
       }
     );
   }
-});
-
-test("Story 10.2 — WEBHOOK_SIGNING_PRIVATE_KEY malformed fails boot naming the variable", () => {
-  withEnv(
-    {
-      STAGE: Stage.PROD,
-      ISSUER_PRIVATE_KEY: VALID_ISSUER_HEX,
-      WEBHOOK_SIGNING_PRIVATE_KEY: "zz",
-      BLOCKCHAIN_WALLET_PRIVATE_KEY: VALID_WALLET_HEX,
-      BLOCKCHAIN_CONTRACT_ADDRESS: VALID_CONTRACT_ADDRESS,
-    },
-    () => {
-      assert.throws(
-        () => new Environments().loadEnvs(),
-        /WEBHOOK_SIGNING_PRIVATE_KEY must be exactly 64 hexadecimal characters/
-      );
-    }
-  );
-});
-
-test("Story 10.2 — ISSUER_PRIVATE_KEY defined as an empty string fails boot instead of being treated as absent (review patch)", () => {
-  withEnv(
-    {
-      STAGE: Stage.DEV,
-      ISSUER_PRIVATE_KEY: "",
-      WEBHOOK_SIGNING_PRIVATE_KEY: VALID_WEBHOOK_HEX,
-      BLOCKCHAIN_WALLET_PRIVATE_KEY: VALID_WALLET_HEX,
-      BLOCKCHAIN_CONTRACT_ADDRESS: VALID_CONTRACT_ADDRESS,
-    },
-    () => {
-      assert.throws(
-        () => new Environments().loadEnvs(),
-        /ISSUER_PRIVATE_KEY must be exactly 64 hexadecimal characters/,
-        "an explicitly-set empty string must fail format validation, not silently pass as if absent"
-      );
-    }
-  );
 });
 
 test("Story 10.2 — all 4 keys with valid, non-placeholder values do not throw in PROD (plus the pre-existing MISTRAL_API_KEY requirement)", () => {
@@ -131,25 +96,7 @@ test("Story 10.2 — all 4 keys with valid, non-placeholder values do not throw 
   );
 });
 
-// ── AC #2: BLOCKCHAIN_WALLET_PRIVATE_KEY e BLOCKCHAIN_CONTRACT_ADDRESS ──────
-
-test("Story 10.2 — BLOCKCHAIN_WALLET_PRIVATE_KEY malformed fails boot naming the variable", () => {
-  withEnv(
-    {
-      STAGE: Stage.PROD,
-      ISSUER_PRIVATE_KEY: VALID_ISSUER_HEX,
-      WEBHOOK_SIGNING_PRIVATE_KEY: VALID_WEBHOOK_HEX,
-      BLOCKCHAIN_WALLET_PRIVATE_KEY: "too-short",
-      BLOCKCHAIN_CONTRACT_ADDRESS: VALID_CONTRACT_ADDRESS,
-    },
-    () => {
-      assert.throws(
-        () => new Environments().loadEnvs(),
-        /BLOCKCHAIN_WALLET_PRIVATE_KEY must be exactly 64 hexadecimal characters/
-      );
-    }
-  );
-});
+// ── AC #2: BLOCKCHAIN_CONTRACT_ADDRESS ─────────────────────────────────────
 
 test("Story 10.2 — BLOCKCHAIN_CONTRACT_ADDRESS invalid fails boot naming the variable", () => {
   withEnv(

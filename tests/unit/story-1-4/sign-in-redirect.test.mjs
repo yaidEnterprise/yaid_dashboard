@@ -40,13 +40,13 @@ test("Story 1.4 sign-in validates next param to block open redirect attacks", ()
   );
 });
 
-test("Story 1.4 sign-in falls back to / when next is absent or unsafe", () => {
+test("Story 1.4 sign-in falls back to /dashboard when next is absent or unsafe", () => {
   const src = readText("app/sign-in/page.tsx");
-  // The ternary must have a '/' fallback
+  // The ternary must have a '/dashboard' fallback (Story 13.1 freed the / route)
   assert.match(
     src,
-    /:\s*["']\/["']/,
-    "must fall back to '/' root when next is null, empty, or fails open-redirect validation"
+    /:\s*["']\/dashboard["']/,
+    "must fall back to '/dashboard' when next is null, empty, or fails open-redirect validation"
   );
 });
 
@@ -79,7 +79,9 @@ test("Story 1.4 sign-in does not redirect to /onboarding/company after login", (
 
 test("Story 1.4 open-redirect guard correctly classifies safe and unsafe paths", () => {
   function computeSafePath(next) {
-    return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    return next && next.startsWith("/") && !next.startsWith("//")
+      ? next
+      : "/dashboard";
   }
 
   // Safe: relative paths
@@ -93,14 +95,30 @@ test("Story 1.4 open-redirect guard correctly classifies safe and unsafe paths",
   );
 
   // Unsafe: absolute and protocol-relative URLs
-  assert.equal(computeSafePath("//evil.com"), "/", "protocol-relative URL must be blocked");
-  assert.equal(computeSafePath("https://evil.com"), "/", "https absolute URL must be blocked");
-  assert.equal(computeSafePath("http://evil.com"), "/", "http absolute URL must be blocked");
+  assert.equal(
+    computeSafePath("//evil.com"),
+    "/dashboard",
+    "protocol-relative URL must be blocked"
+  );
+  assert.equal(
+    computeSafePath("https://evil.com"),
+    "/dashboard",
+    "https absolute URL must be blocked"
+  );
+  assert.equal(
+    computeSafePath("http://evil.com"),
+    "/dashboard",
+    "http absolute URL must be blocked"
+  );
 
   // Missing or empty
-  assert.equal(computeSafePath(null), "/", "null must fall back to /");
-  assert.equal(computeSafePath(undefined), "/", "undefined must fall back to /");
-  assert.equal(computeSafePath(""), "/", "empty string must fall back to /");
+  assert.equal(computeSafePath(null), "/dashboard", "null must fall back to /dashboard");
+  assert.equal(
+    computeSafePath(undefined),
+    "/dashboard",
+    "undefined must fall back to /dashboard"
+  );
+  assert.equal(computeSafePath(""), "/dashboard", "empty string must fall back to /dashboard");
 });
 
 test("Story 1.4 fetchWithAuth encodes pathname in ?next= to prevent URL injection", () => {

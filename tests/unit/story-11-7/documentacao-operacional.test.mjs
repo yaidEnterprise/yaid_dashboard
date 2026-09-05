@@ -10,7 +10,7 @@
  *   AC #1  — doc existe, não vazio, tem H1
  *   AC #2  — arquitetura: trigger prod, cadeia dos 4 jobs, needs, estrutura distribuída
  *   AC #3  — descrição dos 4 jobs (tests / deploy-supabase / deploy-amplify / smoke-test)
- *   AC #4  — >= 2 blocos de policy JSON válidos (bootstrap sts:AssumeRole; deploy role amplify:* no ARN)
+ *   AC #4  — >= 2 blocos de policy JSON válidos (trust policy Principal.Federated/OIDC; deploy role amplify:* no ARN)
  *   AC #5  — nenhum bloco JSON contém AdministratorAccess / "Action":"*" / "Resource":"*"
  *   AC #6  — bootstrap (one-time) vs release (automático)
  *   AC #7  — custom domain + DNS + SSL
@@ -104,8 +104,11 @@ describe("Story 11.7 — AC #3: os quatro jobs descritos", () => {
     assert.ok(docLower.includes("link"), "deve mencionar supabase link");
   });
 
-  test("deploy-amplify: AssumeRole + sync env merge + start-job RELEASE + polling", () => {
-    assert.ok(doc.includes("AssumeRole") || doc.includes("sts:AssumeRole"), "deve mencionar AssumeRole");
+  test("deploy-amplify: OIDC + sync env merge + start-job RELEASE + polling", () => {
+    assert.ok(
+      doc.includes("OIDC") || doc.includes("AssumeRoleWithWebIdentity"),
+      "deve mencionar OIDC/AssumeRoleWithWebIdentity",
+    );
     assert.ok(docLower.includes("merge"), "deve mencionar o sync de env por merge");
     assert.ok(doc.includes("RELEASE"), "deve mencionar start-job RELEASE");
     assert.ok(docLower.includes("polling"), "deve mencionar o polling finito");
@@ -135,8 +138,8 @@ describe("Story 11.7 — AC #4: policies IAM JSON válidas e least-privilege", (
     }
   });
 
-  test("existe uma policy do bootstrap user com apenas sts:AssumeRole", () => {
-    const hasBootstrap = jsonBlocks.some((b) => {
+  test("existe uma trust policy com Principal.Federated (OIDC) e Condition no sub", () => {
+    const hasOidcTrustPolicy = jsonBlocks.some((b) => {
       let p;
       try {
         p = JSON.parse(b);
@@ -145,12 +148,27 @@ describe("Story 11.7 — AC #4: policies IAM JSON válidas e least-privilege", (
       }
       const stmts = Array.isArray(p.Statement) ? p.Statement : [p.Statement];
       return stmts.some((s) => {
-        if (!s || !s.Action) return false;
-        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
-        return actions.length === 1 && actions[0] === "sts:AssumeRole" && s.Effect === "Allow";
+        if (!s || !s.Principal || !s.Principal.Federated) return false;
+        const federated = Array.isArray(s.Principal.Federated) ? s.Principal.Federated : [s.Principal.Federated];
+        const hasGithubOidc = federated.some(
+          (f) => typeof f === "string" && f.includes("token.actions.githubusercontent.com"),
+        );
+        const hasAudCondition =
+          s.Condition?.StringEquals?.["token.actions.githubusercontent.com:aud"] === "sts.amazonaws.com";
+        const sub =
+          s.Condition?.StringEquals?.["token.actions.githubusercontent.com:sub"] ??
+          s.Condition?.StringLike?.["token.actions.githubusercontent.com:sub"];
+        // Mesma regra estrita do teste QA (production-cicd-contract.test.mjs): exige um
+        // valor exato repo:<org>/<repo>:ref:refs/heads/<branch>, nunca "*" nem wildcard.
+        const hasSubCondition =
+          typeof sub === "string" && /^repo:[^/*]+\/[^:*]+:ref:refs\/heads\/[^*]+$/.test(sub);
+        return s.Effect === "Allow" && hasGithubOidc && hasAudCondition && hasSubCondition;
       });
     });
-    assert.ok(hasBootstrap, "deve haver uma policy com apenas sts:AssumeRole (bootstrap user)");
+    assert.ok(
+      hasOidcTrustPolicy,
+      "deve haver uma trust policy com Principal.Federated (OIDC do GitHub) e Condition escopando o sub",
+    );
   });
 
   test("existe uma policy do deploy role com as ações amplify:* esperadas escopadas a um ARN", () => {

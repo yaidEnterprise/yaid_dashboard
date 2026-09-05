@@ -24,8 +24,6 @@ const productionRequiredEnvNames = [
   "MISTRAL_API_KEY",
 ] as const;
 
-const HEX_PRIVATE_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
-
 const envSchema = z
   .object({
     STAGE: z.enum(Stage).default(Stage.DOTENV),
@@ -43,27 +41,10 @@ const envSchema = z
     MISTRAL_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((values, ctx) => {
-    const hexKeyEnvNames = [
-      "ISSUER_PRIVATE_KEY",
-      "WEBHOOK_SIGNING_PRIVATE_KEY",
-      "BLOCKCHAIN_WALLET_PRIVATE_KEY",
-    ] as const;
-
     // Formato — roda sempre que o schema é avaliado (todo stage exceto TEST, que
     // nunca chama envSchema.parse(); ver loadEnvs()). Não gated por stage.
     // Checa "!== undefined" (não truthy) para que uma string vazia definida
     // explicitamente seja tratada como valor inválido, não como ausência.
-    for (const envName of hexKeyEnvNames) {
-      const value = values[envName];
-      if (value !== undefined && !HEX_PRIVATE_KEY_PATTERN.test(value)) {
-        ctx.addIssue({
-          code: "custom",
-          path: [envName],
-          message: `${envName} must be exactly 64 hexadecimal characters (32 bytes)`,
-        });
-      }
-    }
-
     if (
       values.BLOCKCHAIN_CONTRACT_ADDRESS !== undefined &&
       !ethers.isAddress(values.BLOCKCHAIN_CONTRACT_ADDRESS)

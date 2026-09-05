@@ -26,12 +26,13 @@ tests → deploy-supabase → deploy-amplify → smoke-test
 
 - `tests` — roda a suíte como gate; nada é deployado se falhar.
 - `deploy-supabase` — aplica migrations pendentes ao Supabase Cloud (com `--dry-run` antes).
-- `deploy-amplify` — publica o app Next.js SSR no AWS Amplify (AssumeRole + sync env + `start-job RELEASE`).
+- `deploy-amplify` — publica o app Next.js SSR no AWS Amplify (GitHub Actions OIDC + sync env + `start-job RELEASE`).
 - `smoke-test` — valida a aplicação publicada via `GET /api/health`.
 
 Migrations são aplicadas **antes** do deploy do app, seguindo **expand → deploy → contract**. A
-autenticação AWS usa **IAM User bootstrap → `sts:AssumeRole` → IAM Role de deploy** (OIDC indisponível).
-A validação pós-deploy é feita por `GET /api/health` (endpoint público leve entregue pela Story 11.1,
+autenticação AWS usa **GitHub Actions OIDC → `sts:AssumeRoleWithWebIdentity` → IAM Role de deploy**,
+sem nenhuma credencial estática nem sessão a renovar manualmente. A validação pós-deploy é feita por
+`GET /api/health` (endpoint público leve entregue pela Story 11.1,
 [`app/api/health/route.ts`](../../app/api/health/route.ts)).
 
 ---
@@ -66,6 +67,10 @@ apenas os chama via `uses: ./.github/jobs/<nome>`.
   evitar a coerção YAML 1.1 que a transformaria no booleano `true`.)
 - **Permissões:** `permissions: contents: read` no nível do workflow — least-privilege; sem isso o
   `GITHUB_TOKEN` herdaria as permissões default (frequentemente amplas) do repositório/organização.
+  O job `deploy-amplify` declara seu próprio bloco `permissions: {id-token: write, contents: read}`
+  (ver §5) — no GitHub Actions, `permissions` no nível do job **substitui** (não mescla com) o default
+  do workflow, por isso `contents: read` precisa ser repetido ali, senão o `actions/checkout` desse job
+  perderia acesso de leitura ao repositório.
 - **Secrets centralizados:** todos os secrets vivem no GitHub Environment/repo e são referenciados
   **apenas** no `production.yml`, passados aos composites via `with: ${{ secrets.* }}`. Nunca hardcoded.
 
@@ -80,7 +85,7 @@ flowchart TD
     C1 --> C2[db push --dry-run]
     C2 --> C3[db push]
     C3 --> D[Job deploy-amplify]
-    D --> D1[configure-aws-credentials + AssumeRole]
+    D --> D1[configure-aws-credentials + OIDC AssumeRoleWithWebIdentity]
     D1 --> D2[sync env vars GitHub -> Amplify: replace autoritativo]
     D2 --> D3[amplify start-job RELEASE]
     D3 --> D4[polling até estado terminal - timeout]
@@ -126,8 +131,10 @@ Entram via `inputs` → `env`, **nunca** ecoados nos logs.
 
 Publica o app Next.js SSR no AWS Amplify (`needs: deploy-supabase`):
 
-1. `aws-actions/configure-aws-credentials@v4` — credenciais **bootstrap** (só `sts:AssumeRole`) usadas
-   para **assumir** o deploy role via `role-to-assume` (OIDC indisponível; ver §5).
+1. `aws-actions/configure-aws-credentials@v4` — autentica via **GitHub Actions OIDC**: o job declara
+   `permissions: id-token: write` (precondição), o runner obtém o ID token OIDC do próprio job, e a
+   action o troca diretamente pelo deploy role via `sts:AssumeRoleWithWebIdentity` (`role-to-assume`) —
+   sem nenhuma credencial estática nem sessão a renovar manualmente (ver §5).
 2. **Sync de env vars AUTORITATIVO** (Story 11.8 — reverte o modelo de merge da §5.4 da proposta
    2026-08-08): deriva os **nomes** do `.env.local.example` (ignora comentários/linhas vazias);
    resolve o **valor** de cada nome por colocação no GitHub — **Secrets primeiro, senão Variables**
@@ -140,10 +147,10 @@ Publica o app Next.js SSR no AWS Amplify (`needs: deploy-supabase`):
 4. **Polling finito** (§5.8): espera até estado terminal (60×15s = 15 min). `SUCCEED` → sucesso;
    `FAILED`/`CANCELLED`/inesperado/timeout → `exit 1`. Nunca um loop infinito.
 
-**Inputs (secrets, via `with:`):** `aws-access-key-id`, `aws-secret-access-key`, `aws-region`,
-`aws-role-to-assume` (`AWS_DEPLOY_ROLE_ARN`), `amplify-app-id`, `amplify-branch-name`,
-`github-variables-json` (`${{ toJSON(vars) }}`), `github-secrets-json` (`${{ toJSON(secrets) }}`).
-Nenhum secret server-side vira `NEXT_PUBLIC_*`; nada ecoado nos logs.
+**Inputs (secrets, via `with:`):** `aws-region`, `aws-role-to-assume` (`AWS_DEPLOY_ROLE_ARN`),
+`amplify-app-id`, `amplify-branch-name`, `github-variables-json` (`${{ toJSON(vars) }}`),
+`github-secrets-json` (`${{ toJSON(secrets) }}`). Nenhuma credencial estática é passada — a
+autenticação é 100% OIDC. Nenhum secret server-side vira `NEXT_PUBLIC_*`; nada ecoado nos logs.
 
 ### 3.4 `smoke-test` (gate final) — [`.github/jobs/smoke-test/action.yml`](../../.github/jobs/smoke-test/action.yml)
 
@@ -167,14 +174,14 @@ flowchart LR
       S1[Supabase project + link]
       S2[Amplify app + conectar GitHub]
       S3[branch prod + desabilitar auto-build]
-      S4[IAM bootstrap + deploy role]
+      S4[IAM OIDC provider + deploy role trust policy]
       S5[GitHub Environment secrets/vars]
       S6[Custom domain + DNS + SSL]
     end
     subgraph EACH [A cada release - automático]
       R1[tests]
       R2[db push --dry-run + db push]
-      R3[AssumeRole + sync env]
+      R3[OIDC AssumeRoleWithWebIdentity + sync env]
       R4[Amplify start-job RELEASE + wait]
       R5[smoke test /api/health]
     end
@@ -192,8 +199,11 @@ Executado **uma vez** por um operador com acesso às contas (não faz parte da p
 - [ ] **Branch `prod` + desabilitar auto-build:** criar a branch `prod` no Amplify e **desabilitar o
       Auto Build** nela. Passo a passo e verificação em
       [`docs/ops/amplify-deploy.md`](../ops/amplify-deploy.md).
-- [ ] **IAM:** criar o **IAM User bootstrap** (só `sts:AssumeRole`) e o **deploy role** least-privilege
-      (só ações do Amplify no ARN do app). JSON em §5.
+- [ ] **IAM:** criar o **OIDC Identity Provider** do GitHub Actions
+      (`token.actions.githubusercontent.com`) na conta AWS e o **deploy role** com a trust policy OIDC
+      (`Principal.Federated` + `Condition` escopando o `sub` ao repo/branch) e a permission policy
+      least-privilege (só ações do Amplify no ARN do app). JSON em §5. **Responsabilidade do humano** —
+      fora do escopo do código deste repositório.
 - [ ] **GitHub Environment:** cadastrar os **secrets/vars** (ver §6) no Environment/repo.
 - [ ] **Custom domain + DNS + SSL:** associar o domínio, criar os registros DNS e provisionar o
       certificado SSL. Ver §6.
@@ -208,62 +218,59 @@ release saudável.
 
 ## 5. IAM least-privilege (§5.7 — CRÍTICO)
 
-OIDC está indisponível neste setup, então a autenticação AWS usa o fluxo:
+A autenticação AWS usa **GitHub Actions OIDC puro** — sem nenhuma credencial estática nem sessão a
+renovar manualmente:
 
 ```
-credenciais bootstrap (IAM User, só sts:AssumeRole)  →  sts:AssumeRole  →  deploy role (só ações do Amplify no ARN do app)
+GitHub Actions (ID token OIDC do job)  →  sts:AssumeRoleWithWebIdentity  →  deploy role (só ações do Amplify no ARN do app)
 ```
+
+O job `deploy-amplify` declara `permissions: id-token: write` (+ `contents: read`, pois `permissions`
+no nível do job **substitui** o default do workflow) — sem essa permissão o runner não emite o ID
+token e `configure-aws-credentials` falha antes de qualquer chamada AWS. O deploy role confia
+diretamente no OIDC Identity Provider do GitHub (`token.actions.githubusercontent.com`), com uma
+`Condition` que escopa o `sub` ao repositório/branch — nunca `*`.
 
 **Princípios:**
 
-- O **bootstrap user** só pode **assumir** o deploy role — nada mais. Suas credenciais (`AWS_ACCESS_KEY_ID`
-  / `AWS_SECRET_ACCESS_KEY`) são os únicos segredos AWS de longo prazo.
+- Não existe usuário/credencial de longo prazo: o runner troca o ID token OIDC (de curta duração,
+  emitido por release) diretamente pela sessão temporária do deploy role.
 - O **deploy role** só tem as ações do Amplify estritamente usadas pela pipeline, escopadas ao **ARN do
   app**.
-- **Proibido:** `AdministratorAccess`, `"Action": "*"`, `"Resource": "*"`.
+- **Proibido:** `AdministratorAccess`, `"Action": "*"`, `"Resource": "*"`, e `Principal`/`Condition`
+  não-escopados (`*`) na trust policy.
 
-Substitua os placeholders `<account-id>`, `<region>`, `<app-id>` e `<deploy-role-arn>` pelos valores
-reais da sua conta.
+**Responsabilidade do humano (fora do escopo de código):** criar o OIDC Identity Provider e aplicar a
+trust policy abaixo ao deploy role na conta AWS. Enquanto isso não estiver feito, o
+`sts:AssumeRoleWithWebIdentity` falha (`Not authorized`) e o job `deploy-amplify` não autentica.
 
-### 5.1 Policy do IAM User bootstrap (só `sts:AssumeRole`)
+Substitua os placeholders `<account-id>`, `<region>` e `<app-id>` pelos valores reais da sua conta.
 
-Anexada ao IAM User bootstrap. Permite exclusivamente assumir o deploy role:
+### 5.1 Trust policy do deploy role (quem pode assumir via OIDC)
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowAssumeDeployRole",
-      "Effect": "Allow",
-      "Action": "sts:AssumeRole",
-      "Resource": "arn:aws:iam::<account-id>:role/yaid-amplify-deploy-role"
-    }
-  ]
-}
-```
-
-### 5.2 Trust policy do deploy role (quem pode assumir)
-
-Anexada ao deploy role como *trust relationship*: só o IAM User bootstrap pode assumi-lo:
+Anexada ao deploy role como *trust relationship*: só o GitHub Actions OIDC Identity Provider, para este
+repositório executando na branch `prod`, pode assumi-lo via `AssumeRoleWithWebIdentity`:
 
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowBootstrapUserToAssume",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::<account-id>:user/yaid-cicd-bootstrap"
-      },
-      "Action": "sts:AssumeRole"
+  "Statement": [{
+    "Sid": "AllowGitHubActionsOIDC",
+    "Effect": "Allow",
+    "Principal": {"Federated": "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {"token.actions.githubusercontent.com:aud": "sts.amazonaws.com"},
+      "StringLike": {"token.actions.githubusercontent.com:sub": "repo:yaidEnterprise/yaid_dashboard:ref:refs/heads/prod"}
     }
-  ]
+  }]
 }
 ```
 
-### 5.3 Permission policy do deploy role (só ações do Amplify, escopadas ao ARN do app)
+> A `Condition` é o que impede qualquer outro repositório/branch (ou um fork) de assumir o deploy role
+> — o `sub` do ID token OIDC só casa com pushes na branch `prod` deste repositório exato.
+
+### 5.2 Permission policy do deploy role (só ações do Amplify, escopadas ao ARN do app)
 
 Anexada ao deploy role. Contém **apenas** as ações do Amplify usadas pela pipeline
 (`start-job`, `get-job`, `get-branch`, `update-branch`, `list-jobs`), escopadas ao ARN do app:
@@ -292,9 +299,10 @@ Anexada ao deploy role. Contém **apenas** as ações do Amplify usadas pela pip
 }
 ```
 
-> **Auditoria:** nenhuma das três policies contém `AdministratorAccess`, `"Action": "*"` ou
-> `"Resource": "*"`. Um teste estrutural (`tests/unit/story-11-7/`) parseia cada bloco JSON e afirma a
-> ausência desses wildcards.
+> **Auditoria:** nenhuma das duas policies (trust + permission) contém `AdministratorAccess`,
+> `"Action": "*"` ou `"Resource": "*"`, e a trust policy nunca escopa `Principal`/`Condition` com `*`.
+> Um teste estrutural (`tests/unit/story-11-7/`) parseia cada bloco JSON e afirma a ausência desses
+> wildcards.
 
 ---
 
@@ -308,14 +316,16 @@ passados aos composites via `with:`:
 | `SUPABASE_ACCESS_TOKEN` | deploy-supabase | Personal access token da CLI Supabase |
 | `SUPABASE_PROJECT_REF` | deploy-supabase | Project-ref do projeto Cloud |
 | `SUPABASE_DB_PASSWORD` | deploy-supabase | Senha do Postgres (link/db push) |
-| `AWS_ACCESS_KEY_ID` | deploy-amplify | Access key do IAM User bootstrap |
-| `AWS_SECRET_ACCESS_KEY` | deploy-amplify | Secret key do IAM User bootstrap |
 | `AWS_REGION` | deploy-amplify | Região do app Amplify (ex.: `us-east-1`) |
 | `AWS_DEPLOY_ROLE_ARN` | deploy-amplify | ARN do deploy role a assumir |
 | `AMPLIFY_APP_ID` | deploy-amplify | ID do app Amplify |
 | todas as **Variables** e **Secrets** listadas em §6.2 | deploy-amplify | Env vars server-side da app, sincronizadas de forma autoritativa (§3.3 e §6.2) |
 
 > **Nota:** o smoke-test reutiliza a Variable `NEXT_PUBLIC_APP_URL` (já listada em §6.2) — não há secret/variable separado `PRODUCTION_URL`.
+
+> **Não há credencial AWS estática cadastrada:** a autenticação usa exclusivamente GitHub Actions OIDC
+> (`sts:AssumeRoleWithWebIdentity`, ver §5) — nenhum secret de access key/secret key/session token de
+> longo prazo é cadastrado ou consumido por este repositório.
 
 > **Não é secret:** `amplify-branch-name` (nome do branch a publicar) vem de `github.ref_name` — o
 > branch que disparou o workflow (`on.push.branches: [prod]`) — e não de um secret/variable
@@ -543,7 +553,8 @@ não puderam ser exercitados no sandbox — trate-os como itens de verificação
 | Suíte "passa" com 0 testes coletados | tests | Node < 21 no runner — garantir Node 22 (§3.1) |
 | `db push` trava/pede confirmação | deploy-supabase | CI não-TTY (§9.3) — flag não-interativa |
 | `db push` aplica algo inesperado | deploy-supabase | revisar o `--dry-run` antes; migration destrutiva fora de ordem (§7) |
-| `AccessDenied` na AWS | deploy-amplify | policy/trust do role incompletas (§5) ou ARN errado |
+| `Not authorized to perform sts:AssumeRoleWithWebIdentity` / `AccessDenied` na AWS | deploy-amplify | OIDC Identity Provider/trust policy do deploy role ainda não configurados na conta AWS, ou ARN/condição do `sub` errados (§5) |
+| `configure-aws-credentials` falha ao obter o ID token OIDC | deploy-amplify | `permissions: id-token: write` ausente/incorreta no job (ver `production.yml`) |
 | Env vars server-side sumiram/erradas | deploy-amplify | nome ausente do `.env.local.example`, ou Secret/Variable correspondente não cadastrada no GitHub (§6.2) |
 | Deploy nunca termina | deploy-amplify | polling atinge timeout (15 min) → `exit 1`; checar o job no Console |
 | 404 em rotas SSR após deploy | deploy-amplify | App não é Web Compute (§9.4) |
