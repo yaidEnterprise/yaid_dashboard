@@ -39,7 +39,12 @@ function detectMimeType(buffer: Buffer): string {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
     return "image/jpeg";
   }
-  throw new Error("Document processing failed");
+  // TODO(debug-422-mobile): remover após diagnosticar a causa do 422 no fluxo smartphone.
+  throw new Error(
+    `Document processing failed: unsupported image format (bufferLength=${buffer.length}, magicBytes=${buffer
+      .subarray(0, 4)
+      .toString("hex")})`
+  );
 }
 
 function toDataUri(base64Image: string): string {
@@ -90,24 +95,26 @@ function isValidBirthDate(value: string): boolean {
 }
 
 function validateOcrResult(raw: RawAnnotation): OcrResult {
+  // TODO(debug-422-mobile): mensagens específicas abaixo — remover após diagnosticar
+  // a causa do 422 no fluxo smartphone. Não vazam PII, só quais campos falharam.
   if (typeof raw.name !== "string") {
-    throw new Error("Document processing failed");
+    throw new Error("Document processing failed: name field missing/not a string");
   }
   const name = raw.name.trim();
   if (name.length < 3) {
-    throw new Error("Document processing failed");
+    throw new Error("Document processing failed: name field too short");
   }
 
   if (typeof raw.cpf !== "string") {
-    throw new Error("Document processing failed");
+    throw new Error("Document processing failed: cpf field missing/not a string");
   }
   const cpf = raw.cpf.replace(/\D/g, "");
   if (cpf.length !== 11) {
-    throw new Error("Document processing failed");
+    throw new Error("Document processing failed: cpf field invalid length");
   }
 
   if (typeof raw.birthDate !== "string" || !isValidBirthDate(raw.birthDate)) {
-    throw new Error("Document processing failed");
+    throw new Error("Document processing failed: birthDate field missing/invalid");
   }
 
   return { name, cpf, birthDate: raw.birthDate };
@@ -132,14 +139,16 @@ export class MistralOcrProvider implements OcrProvider {
     );
 
     if (!response.documentAnnotation) {
-      throw new Error("Document processing failed");
+      // TODO(debug-422-mobile): remover após diagnosticar a causa do 422 no fluxo smartphone.
+      throw new Error("Document processing failed: Mistral returned no documentAnnotation");
     }
 
     let parsed: RawAnnotation;
     try {
       parsed = JSON.parse(response.documentAnnotation);
     } catch {
-      throw new Error("Document processing failed");
+      // TODO(debug-422-mobile): remover após diagnosticar a causa do 422 no fluxo smartphone.
+      throw new Error("Document processing failed: could not JSON.parse documentAnnotation");
     }
 
     return validateOcrResult(parsed);

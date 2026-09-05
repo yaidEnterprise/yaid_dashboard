@@ -69,11 +69,11 @@ function timeAgo(dateStr) {
 
 describe("Story 3.5 file contracts", () => {
   test("page.tsx exists", () => {
-    assertFileExists("app/(dashboard)/page.tsx");
+    assertFileExists("app/(dashboard)/dashboard/page.tsx");
   });
 
   test("page.tsx imports listApps from apps-store", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(
       src.includes("listApps") && src.includes("apps-store"),
       "should import listApps from apps-store"
@@ -81,7 +81,7 @@ describe("Story 3.5 file contracts", () => {
   });
 
   test("page.tsx imports listProofRequests from proof-requests-store", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(
       src.includes("listProofRequests") && src.includes("proof-requests-store"),
       "should import listProofRequests from proof-requests-store"
@@ -89,7 +89,7 @@ describe("Story 3.5 file contracts", () => {
   });
 
   test("page.tsx imports fetchWithAuth for companies/me", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(
       src.includes("fetchWithAuth") && src.includes("/api/companies/me"),
       "should fetch company data via fetchWithAuth"
@@ -97,7 +97,7 @@ describe("Story 3.5 file contracts", () => {
   });
 
   test("page.tsx has no hardcoded mock data arrays", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(
       !src.includes("const recentRequests = ["),
       "should not have hardcoded recentRequests array"
@@ -109,12 +109,12 @@ describe("Story 3.5 file contracts", () => {
   });
 
   test("page.tsx uses 'use client' directive", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(src.startsWith('"use client"'), "should start with use client");
   });
 
   test("page.tsx includes privacy notice", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(
       src.includes("A YaID nunca expõe documentos brutos"),
       "should include static privacy notice"
@@ -122,7 +122,7 @@ describe("Story 3.5 file contracts", () => {
   });
 
   test("page.tsx handles loading state", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(
       src.includes("loading") && src.includes("setLoading"),
       "should have loading state management"
@@ -130,7 +130,7 @@ describe("Story 3.5 file contracts", () => {
   });
 
   test("page.tsx handles error state with retry", () => {
-    const src = readText("app/(dashboard)/page.tsx");
+    const src = readText("app/(dashboard)/dashboard/page.tsx");
     assert.ok(
       src.includes("Tentar novamente"),
       "should have retry button in error state"

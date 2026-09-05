@@ -56,7 +56,8 @@ _Este documento é construído colaborativamente através de descoberta passo a 
 > GitHub Actions** na branch `prod`, com gates sequenciais `tests → deploy-supabase → deploy-amplify →
 > smoke-test`; o **auto-build do Amplify é desabilitado** na branch `prod` (evita deploy duplicado);
 > migrations aplicadas via `supabase db push` (com `--dry-run`) antes do deploy do app
-> (expand→deploy→contract); autenticação AWS via IAM `sts:AssumeRole` least-privilege; health check
+> (expand→deploy→contract); autenticação AWS via GitHub Actions OIDC (`sts:AssumeRoleWithWebIdentity`
+> direto no deploy role, least-privilege, sem credenciais estáticas); health check
 > público `GET /api/health` (whitelisting em `middleware.ts`). Introdução do **Epic 11** (pipeline de
 > CI/CD de produção). Infraestrutura de entrega, aditiva — núcleo e MVP do produto permanecem intactos;
 > sem impacto em schema, camadas, blockchain ou stack.
@@ -273,8 +274,9 @@ As seguintes dependências são necessárias mas ainda não instaladas:
   Amplify na branch `prod` é DESABILITADO** (`enableAutoBuild=false`) para evitar deploy duplicado; a
   integração GitHub↔Amplify é preservada (o Amplify continua buscando o código). Migrations são
   aplicadas via Supabase CLI (`db push`, precedido de `--dry-run`) **antes** do deploy do app,
-  seguindo **expand→deploy→contract**. A autenticação AWS usa IAM bootstrap → `sts:AssumeRole` → IAM
-  Role de deploy **least-privilege** (OIDC indisponível). Lint/typecheck permanecem como validação (o
+  seguindo **expand→deploy→contract**. A autenticação AWS usa GitHub Actions OIDC →
+  `sts:AssumeRoleWithWebIdentity` → IAM Role de deploy **least-privilege** (sem credenciais estáticas
+  nem sessão a renovar manualmente). Lint/typecheck permanecem como validação (o
   build Next.js no Amplify executa o typecheck). **Sync de env vars (revisão 2026-08-09):** é
   **autoritativo e derivado do `.env.local.example`** — a pipeline extrai dele a lista canônica de
   **nomes** e, para cada nome, resolve o valor pela **colocação no GitHub** (procura em Secrets →

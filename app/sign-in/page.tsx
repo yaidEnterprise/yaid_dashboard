@@ -47,7 +47,7 @@ export default function SignInPage() {
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
     const safePath =
-      next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+      next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
     router.push(safePath);
   }
 

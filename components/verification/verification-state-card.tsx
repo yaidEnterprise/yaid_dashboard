@@ -1,4 +1,5 @@
 import { Clock, Loader2, CheckCircle2, XCircle, Lock, WifiOff } from "lucide-react";
+import QRCode from "react-qr-code";
 import { StatusBadge } from "@/components/feedback/status-badge";
 import { formatProofType } from "@/utils/proof-requests-store";
 import { DeepLinkButton } from "./deep-link-button";
@@ -76,6 +77,17 @@ export function VerificationStateCard({
                 {formatCountdown(secondsRemaining)}
               </span>
             </div>
+          </div>
+
+          {/* QR code: desktop-only — mobile scans via deep link button */}
+          <div className="mb-6 hidden md:flex md:flex-col md:items-center md:gap-3">
+            <div className="rounded-xl border border-border bg-white p-3">
+              <QRCode
+                value={`yaid://verify?session=${encodeURIComponent(sessionToken)}`}
+                size={160}
+              />
+            </div>
+            <p className="text-xs text-text-tertiary">Escaneie com o app YaID Wallet</p>
           </div>
 
           <DeepLinkButton sessionToken={sessionToken} onOpen={onOpenApp} />
