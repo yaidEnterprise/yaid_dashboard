@@ -34,7 +34,10 @@ export class GetProofSessionUseCase {
       await this.sessionRepo.update(session);
 
       // Also transition proof_request to expired (was missing before Story 6.1)
+      let externalReference: string | null = null;
       if (this.requestRepo) {
+        const requestResult = await this.requestRepo.findById(session.proofRequestId);
+        externalReference = requestResult?.request.externalRef ?? null;
         await this.requestRepo.updateStatus(
           session.proofRequestId,
           ProofRequestStatus.EXPIRED
@@ -48,6 +51,7 @@ export class GetProofSessionUseCase {
             proofRequestId: session.proofRequestId,
             status: ProofRequestStatus.EXPIRED,
             proofType,
+            externalReference,
             updatedAt: new Date().toISOString(),
           })
           .catch((err) =>

@@ -39,6 +39,7 @@ export class CancelProofSessionUseCase {
 
     session.cancel();
     await this.sessionRepo.update(session);
+    const requestResult = await this.requestRepo.findById(session.proofRequestId);
     await this.requestRepo.updateStatus(session.proofRequestId, ProofRequestStatus.REJECTED);
 
     // Fire-and-forget webhook delivery
@@ -48,6 +49,7 @@ export class CancelProofSessionUseCase {
           proofRequestId: session.proofRequestId,
           status: ProofRequestStatus.REJECTED,
           proofType: "verification",
+          externalReference: requestResult?.request.externalRef ?? null,
           updatedAt: new Date().toISOString(),
         })
         .catch((err) =>
