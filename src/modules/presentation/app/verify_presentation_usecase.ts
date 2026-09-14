@@ -109,11 +109,12 @@ export class VerifyPresentationUseCase {
       return { valid: false };
     }
     const proofType = proofRequestResult.request.proofType;
+    const externalReference = proofRequestResult.request.externalRef;
 
     // Helper: mark proof_request as rejected and return { valid: false }
     const reject = async (): Promise<VerifyPresentationOutputDTO> => {
       await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.REJECTED);
-      this.fireWebhook(proofRequestId, ProofRequestStatus.REJECTED, proofType);
+      this.fireWebhook(proofRequestId, ProofRequestStatus.REJECTED, proofType, externalReference);
       return { valid: false };
     };
 
@@ -331,7 +332,7 @@ export class VerifyPresentationUseCase {
     session.approveByUser(now);
     await this.sessionRepo.update(session);
     await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.APPROVED);
-    this.fireWebhook(proofRequestId, ProofRequestStatus.APPROVED, proofType);
+    this.fireWebhook(proofRequestId, ProofRequestStatus.APPROVED, proofType, externalReference);
 
     return { valid: true };
   }
@@ -342,7 +343,8 @@ export class VerifyPresentationUseCase {
   private fireWebhook(
     proofRequestId: string,
     status: ProofRequestStatus,
-    proofType: string
+    proofType: string,
+    externalReference: string | null
   ): void {
     if (!this.deliverWebhook) return;
     this.deliverWebhook
@@ -350,6 +352,7 @@ export class VerifyPresentationUseCase {
         proofRequestId,
         status,
         proofType,
+        externalReference,
         updatedAt: new Date().toISOString(),
       })
       .catch((err) =>
