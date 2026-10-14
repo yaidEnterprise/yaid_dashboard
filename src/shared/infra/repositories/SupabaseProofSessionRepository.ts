@@ -35,6 +35,22 @@ export class SupabaseProofSessionRepository implements ProofSessionRepository {
     return ProofSessionMapper.toDomain(data);
   }
 
+  async findByProofRequestId(proofRequestId: string): Promise<ProofSession | null> {
+    const { data, error } = await this.client
+      .from(TABLE)
+      .select("*")
+      .eq("proof_request_id", proofRequestId)
+      // proof_request_id has no UNIQUE constraint; never let a duplicate row
+      // turn maybeSingle() into an error that blocks the manual approval.
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<ProofSessionPersistence>();
+
+    if (error) throw error;
+    if (!data) return null;
+    return ProofSessionMapper.toDomain(data);
+  }
+
   /**
    * Finds a proof_session by token hash and enriches it with context from
    * related tables needed by the public status endpoint:

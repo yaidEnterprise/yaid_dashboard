@@ -9,6 +9,7 @@ export type ProofSessionWithContext = {
 export interface ProofSessionRepository {
   create(session: ProofSession): Promise<void>;
   findByTokenHash(hashSessionToken: string): Promise<ProofSession | null>;
+  findByProofRequestId(proofRequestId: string): Promise<ProofSession | null>;
   findByTokenHashWithContext(hash: string): Promise<ProofSessionWithContext | null>;
   update(session: ProofSession): Promise<void>;
 }

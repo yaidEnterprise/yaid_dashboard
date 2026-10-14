@@ -22,6 +22,12 @@ import type {
 } from "@/modules/webhook/app/deliver_webhook_usecase";
 import { ProofRequest } from "@/shared/domain/entities/ProofRequest";
 import { ProofRequestStatus } from "@/shared/domain/enums/ProofRequestStatus";
+import { ProofSession } from "@/shared/domain/entities/ProofSession";
+import { ProofSessionStatus } from "@/shared/domain/enums/ProofSessionStatus";
+import type {
+  ProofSessionRepository,
+  ProofSessionWithContext,
+} from "@/shared/domain/interfaces/repositories/ProofSessionRepository";
 import type {
   ProofRequestRepository,
   ProofRequestWithApp,
@@ -49,6 +55,51 @@ class FakeRequestRepo implements ProofRequestRepository {
   async updateStatus(id: string, status: ProofRequestStatus): Promise<void> {
     this.statusUpdates.push({ id, status });
   }
+}
+
+class FakeSessionRepo implements ProofSessionRepository {
+  readonly updated: ProofSession[] = [];
+  lookups = 0;
+
+  constructor(
+    private readonly session: ProofSession | null = null,
+    private readonly log: string[] = []
+  ) {}
+
+  async create(): Promise<void> {}
+
+  async findByTokenHash(): Promise<ProofSession | null> {
+    return null;
+  }
+
+  async findByProofRequestId(proofRequestId: string): Promise<ProofSession | null> {
+    this.lookups++;
+    return this.session?.proofRequestId === proofRequestId ? this.session : null;
+  }
+
+  async findByTokenHashWithContext(): Promise<ProofSessionWithContext | null> {
+    return null;
+  }
+
+  async update(session: ProofSession): Promise<void> {
+    this.log.push("session.update");
+    this.updated.push(session);
+  }
+}
+
+function makeSession(status: ProofSessionStatus): ProofSession {
+  return new ProofSession({
+    id: "session-1",
+    proofRequestId: "request-1",
+    hashSessionToken: "hash",
+    challengeNonceHash: null,
+    challengeCreatedAt: null,
+    status,
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    expiresAt: new Date("2026-01-01T00:30:00.000Z"),
+    openedAt: null,
+    approvedAt: null,
+  });
 }
 
 class FakeDeliverWebhookUseCase implements Pick<DeliverWebhookUseCase, "execute"> {
@@ -104,6 +155,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase approve/reject transitions", (
     const webhook = new FakeDeliverWebhookUseCase();
     const useCase = new ReviewProofRequestUseCase(
       repo,
+      new FakeSessionRepo(),
       webhook as unknown as DeliverWebhookUseCase
     );
 
@@ -131,6 +183,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase approve/reject transitions", (
     const webhook = new FakeDeliverWebhookUseCase();
     const useCase = new ReviewProofRequestUseCase(
       repo,
+      new FakeSessionRepo(),
       webhook as unknown as DeliverWebhookUseCase
     );
 
@@ -154,6 +207,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase approve/reject transitions", (
     const webhook = new FakeDeliverWebhookUseCase();
     const useCase = new ReviewProofRequestUseCase(
       repo,
+      new FakeSessionRepo(),
       webhook as unknown as DeliverWebhookUseCase
     );
 
@@ -171,7 +225,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase approve/reject transitions", (
   test("works without a webhook dependency (optional constructor argument)", async () => {
     const row = makeRow({ status: ProofRequestStatus.PENDING_USER });
     const repo = new FakeRequestRepo(row);
-    const useCase = new ReviewProofRequestUseCase(repo);
+    const useCase = new ReviewProofRequestUseCase(repo, new FakeSessionRepo());
 
     const result = await useCase.execute({
       requestId: "request-1",
@@ -190,7 +244,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase rejects non-homol apps", () =>
     test(`rejects with ForbiddenError (403) when app.environment === "${environment}"`, async () => {
       const row = makeRow({ environment, status: ProofRequestStatus.PENDING_USER });
       const repo = new FakeRequestRepo(row);
-      const useCase = new ReviewProofRequestUseCase(repo);
+      const useCase = new ReviewProofRequestUseCase(repo, new FakeSessionRepo());
 
       await assert.rejects(
         () =>
@@ -221,7 +275,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase rejects terminal-state request
     test(`rejects with UnprocessableEntityError (422) when status === "${status}"`, async () => {
       const row = makeRow({ status });
       const repo = new FakeRequestRepo(row);
-      const useCase = new ReviewProofRequestUseCase(repo);
+      const useCase = new ReviewProofRequestUseCase(repo, new FakeSessionRepo());
 
       await assert.rejects(
         () =>
@@ -246,7 +300,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase rejects terminal-state request
 describe("Story 7.5 — ReviewProofRequestUseCase enforces company isolation", () => {
   test("rejects with NotFoundError (404) when the request does not exist", async () => {
     const repo = new FakeRequestRepo(null);
-    const useCase = new ReviewProofRequestUseCase(repo);
+    const useCase = new ReviewProofRequestUseCase(repo, new FakeSessionRepo());
 
     await assert.rejects(
       () =>
@@ -266,7 +320,7 @@ describe("Story 7.5 — ReviewProofRequestUseCase enforces company isolation", (
   test("rejects with NotFoundError (404), not ForbiddenError, when the request belongs to another company", async () => {
     const row = makeRow({ companyId: "company-2" });
     const repo = new FakeRequestRepo(row);
-    const useCase = new ReviewProofRequestUseCase(repo);
+    const useCase = new ReviewProofRequestUseCase(repo, new FakeSessionRepo());
 
     await assert.rejects(
       () =>
@@ -290,7 +344,7 @@ describe("Story 7.5 — ReviewProofRequestController validates the decision fiel
   test("rejects an invalid decision value with a ZodError before reaching the use case", async () => {
     const row = makeRow();
     const repo = new FakeRequestRepo(row);
-    const useCase = new ReviewProofRequestUseCase(repo);
+    const useCase = new ReviewProofRequestUseCase(repo, new FakeSessionRepo());
     const controller = new ReviewProofRequestController(useCase);
 
     await assert.rejects(
@@ -308,7 +362,7 @@ describe("Story 7.5 — ReviewProofRequestController validates the decision fiel
   test("passes a valid decision through to the use case", async () => {
     const row = makeRow();
     const repo = new FakeRequestRepo(row);
-    const useCase = new ReviewProofRequestUseCase(repo);
+    const useCase = new ReviewProofRequestUseCase(repo, new FakeSessionRepo());
     const controller = new ReviewProofRequestController(useCase);
 
     const result = await controller.handle({
@@ -318,5 +372,98 @@ describe("Story 7.5 — ReviewProofRequestController validates the decision fiel
     });
 
     assert.equal(result.status, ProofRequestStatus.APPROVED);
+  });
+});
+
+// ── Manual approval propagates to the verification screen (proof_session) ───
+
+describe("ReviewProofRequestUseCase approve updates the proof_session", () => {
+  for (const initial of [ProofSessionStatus.WAITING_USER, ProofSessionStatus.OPENED]) {
+    test(`approve moves a "${initial}" session to approved_by_user, before request status and webhook`, async () => {
+      const order: string[] = [];
+      const row = makeRow({ status: ProofRequestStatus.PENDING_USER });
+      const repo = new FakeRequestRepo(row);
+      const origUpdate = repo.updateStatus.bind(repo);
+      repo.updateStatus = async (id, status) => {
+        order.push("request.updateStatus");
+        return origUpdate(id, status);
+      };
+      const session = makeSession(initial);
+      const sessionRepo = new FakeSessionRepo(session, order);
+      const webhook = new FakeDeliverWebhookUseCase();
+      const origExecute = webhook.execute.bind(webhook);
+      webhook.execute = async (input) => {
+        order.push("webhook");
+        return origExecute(input);
+      };
+      const useCase = new ReviewProofRequestUseCase(
+        repo,
+        sessionRepo,
+        webhook as unknown as DeliverWebhookUseCase
+      );
+
+      await useCase.execute({ requestId: "request-1", companyId: "company-1", decision: "approve" });
+
+      assert.equal(session.status, ProofSessionStatus.APPROVED_BY_USER);
+      assert.ok(session.approvedAt instanceof Date);
+      assert.equal(sessionRepo.updated.length, 1);
+      assert.deepEqual(order, ["session.update", "request.updateStatus", "webhook"]);
+    });
+  }
+
+  test("approve still succeeds when the request has no session", async () => {
+    const repo = new FakeRequestRepo(makeRow({ status: ProofRequestStatus.PENDING_USER }));
+    const sessionRepo = new FakeSessionRepo(null);
+    const useCase = new ReviewProofRequestUseCase(repo, sessionRepo);
+
+    const result = await useCase.execute({
+      requestId: "request-1",
+      companyId: "company-1",
+      decision: "approve",
+    });
+
+    assert.equal(result.status, ProofRequestStatus.APPROVED);
+    assert.equal(sessionRepo.updated.length, 0);
+  });
+
+  for (const terminal of [
+    ProofSessionStatus.EXPIRED,
+    ProofSessionStatus.CANCELLED,
+    ProofSessionStatus.APPROVED_BY_USER,
+  ]) {
+    test(`approve leaves a "${terminal}" session untouched`, async () => {
+      const repo = new FakeRequestRepo(makeRow({ status: ProofRequestStatus.PENDING_USER }));
+      const session = makeSession(terminal);
+      const sessionRepo = new FakeSessionRepo(session);
+      const useCase = new ReviewProofRequestUseCase(repo, sessionRepo);
+
+      await useCase.execute({ requestId: "request-1", companyId: "company-1", decision: "approve" });
+
+      assert.equal(session.status, terminal);
+      assert.equal(sessionRepo.updated.length, 0);
+    });
+  }
+
+  test("reject neither reads nor changes the session", async () => {
+    const repo = new FakeRequestRepo(makeRow({ status: ProofRequestStatus.PENDING_USER }));
+    const session = makeSession(ProofSessionStatus.OPENED);
+    const sessionRepo = new FakeSessionRepo(session);
+    const useCase = new ReviewProofRequestUseCase(repo, sessionRepo);
+
+    await useCase.execute({ requestId: "request-1", companyId: "company-1", decision: "reject" });
+
+    assert.equal(sessionRepo.lookups, 0);
+    assert.equal(session.status, ProofSessionStatus.OPENED);
+  });
+
+  test("guards run before any session access", async () => {
+    const repo = new FakeRequestRepo(makeRow({ environment: "prod" }));
+    const sessionRepo = new FakeSessionRepo(makeSession(ProofSessionStatus.OPENED));
+    const useCase = new ReviewProofRequestUseCase(repo, sessionRepo);
+
+    await assert.rejects(() =>
+      useCase.execute({ requestId: "request-1", companyId: "company-1", decision: "approve" })
+    );
+    assert.equal(sessionRepo.lookups, 0);
   });
 });

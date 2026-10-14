@@ -77,6 +77,19 @@ export class ProofSession {
     this.props.challengeCreatedAt = now;
   }
 
+  // Manual approval from the dashboard (homol): no holder VP exists, so the
+  // session may still be waiting_user. Terminal sessions are left untouched.
+  approveManually(now: Date) {
+    if (
+      this.props.status !== ProofSessionStatus.WAITING_USER &&
+      this.props.status !== ProofSessionStatus.OPENED
+    ) {
+      return;
+    }
+    this.props.status = ProofSessionStatus.APPROVED_BY_USER;
+    this.props.approvedAt = now;
+  }
+
   approveByUser(now: Date) {
     if (this.props.status !== ProofSessionStatus.OPENED) return;
     this.props.status = ProofSessionStatus.APPROVED_BY_USER;

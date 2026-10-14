@@ -1,5 +1,6 @@
 import { ForbiddenError, NotFoundError, UnprocessableEntityError } from "@/shared/errors/AppError";
 import { ProofRequestRepository } from "@/shared/domain/interfaces/repositories/ProofRequestRepository";
+import { ProofSessionRepository } from "@/shared/domain/interfaces/repositories/ProofSessionRepository";
 import { ProofRequestStatus } from "@/shared/domain/enums/ProofRequestStatus";
 import type { DeliverWebhookUseCase } from "@/modules/webhook/app/deliver_webhook_usecase";
 import { ReviewProofRequestOutputDTO } from "./review_proof_request_viewmodel";
@@ -13,6 +14,7 @@ const TERMINAL_STATUSES = new Set<ProofRequestStatus>([
 export class ReviewProofRequestUseCase {
   constructor(
     private readonly requestRepo: ProofRequestRepository,
+    private readonly sessionRepo: ProofSessionRepository,
     private readonly deliverWebhook?: DeliverWebhookUseCase
   ) {}
 
@@ -39,6 +41,19 @@ export class ReviewProofRequestUseCase {
 
     const newStatus =
       input.decision === "approve" ? ProofRequestStatus.APPROVED : ProofRequestStatus.REJECTED;
+
+    // Mirror the real flow (VerifyPresentationUseCase): the verification page
+    // polls the proof_session, so it must reach approved_by_user too.
+    if (input.decision === "approve") {
+      const session = await this.sessionRepo.findByProofRequestId(input.requestId);
+      if (session) {
+        const previousStatus = session.status;
+        session.approveManually(new Date());
+        if (session.status !== previousStatus) {
+          await this.sessionRepo.update(session);
+        }
+      }
+    }
 
     await this.requestRepo.updateStatus(input.requestId, newStatus);
 

@@ -70,6 +70,9 @@ class FakeSessionRepo implements ProofSessionRepository {
     return this.session.hashSessionToken === hash ? this.session : null;
   }
 
+  async findByProofRequestId(): Promise<ProofSession | null> {
+    return this.session;
+  }
   async findByTokenHashWithContext(): Promise<ProofSessionWithContext | null> {
     return null;
   }
