@@ -6,8 +6,9 @@ import { ReviewProofRequestController } from "./review_proof_request_controller"
 export async function makeReviewProofRequestController() {
   const envs = Environments.getEnvs();
   const requestRepo = await envs.getProofRequestRepository();
+  const sessionRepo = await envs.getProofSessionRepository();
   const deliverWebhook = await makeDeliverWebhookUseCase();
   return new ReviewProofRequestController(
-    new ReviewProofRequestUseCase(requestRepo, deliverWebhook)
+    new ReviewProofRequestUseCase(requestRepo, sessionRepo, deliverWebhook)
   );
 }
