@@ -42,19 +42,16 @@ export class CancelProofSessionUseCase {
     const requestResult = await this.requestRepo.findById(session.proofRequestId);
     await this.requestRepo.updateStatus(session.proofRequestId, ProofRequestStatus.REJECTED);
 
-    // Fire-and-forget webhook delivery
+    // Awaited: serverless runtimes freeze after the response, which would
+    // kill an in-flight delivery. execute() never throws.
     if (this.deliverWebhook) {
-      this.deliverWebhook
-        .execute({
-          proofRequestId: session.proofRequestId,
-          status: ProofRequestStatus.REJECTED,
-          proofType: "verification",
-          externalReference: requestResult?.request.externalRef ?? null,
-          updatedAt: new Date().toISOString(),
-        })
-        .catch((err) =>
-          console.error(`[webhook] fire-and-forget error: ${err}`)
-        );
+      await this.deliverWebhook.execute({
+        proofRequestId: session.proofRequestId,
+        status: ProofRequestStatus.REJECTED,
+        proofType: "verification",
+        externalReference: requestResult?.request.externalRef ?? null,
+        updatedAt: new Date().toISOString(),
+      });
     }
 
     return { cancelled: true };

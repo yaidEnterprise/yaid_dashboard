@@ -114,7 +114,7 @@ export class VerifyPresentationUseCase {
     // Helper: mark proof_request as rejected and return { valid: false }
     const reject = async (): Promise<VerifyPresentationOutputDTO> => {
       await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.REJECTED);
-      this.fireWebhook(proofRequestId, ProofRequestStatus.REJECTED, proofType, externalReference);
+      await this.fireWebhook(proofRequestId, ProofRequestStatus.REJECTED, proofType, externalReference);
       return { valid: false };
     };
 
@@ -332,31 +332,28 @@ export class VerifyPresentationUseCase {
     session.approveByUser(now);
     await this.sessionRepo.update(session);
     await this.requestRepo.updateStatus(proofRequestId, ProofRequestStatus.APPROVED);
-    this.fireWebhook(proofRequestId, ProofRequestStatus.APPROVED, proofType, externalReference);
+    await this.fireWebhook(proofRequestId, ProofRequestStatus.APPROVED, proofType, externalReference);
 
     return { valid: true };
   }
 
   /**
-   * Fire-and-forget webhook delivery. Never blocks the response.
+   * Webhook delivery, awaited so serverless runtimes don't freeze mid-request.
+   * DeliverWebhookUseCase.execute() never throws.
    */
-  private fireWebhook(
+  private async fireWebhook(
     proofRequestId: string,
     status: ProofRequestStatus,
     proofType: string,
     externalReference: string | null
-  ): void {
+  ): Promise<void> {
     if (!this.deliverWebhook) return;
-    this.deliverWebhook
-      .execute({
-        proofRequestId,
-        status,
-        proofType,
-        externalReference,
-        updatedAt: new Date().toISOString(),
-      })
-      .catch((err) =>
-        console.error(`[webhook] fire-and-forget error: ${err}`)
-      );
+    await this.deliverWebhook.execute({
+      proofRequestId,
+      status,
+      proofType,
+      externalReference,
+      updatedAt: new Date().toISOString(),
+    });
   }
 }
