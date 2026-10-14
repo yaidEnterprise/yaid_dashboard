@@ -116,6 +116,13 @@ test("Story 6.1 DeliverWebhookUseCase never throws", () => {
   assert.match(src, /console\.error/, "Must log errors");
 });
 
+test("Story 6.1 DeliverWebhookUseCase retries network failures and logs cause", () => {
+  const src = readText("src/modules/webhook/app/deliver_webhook_usecase.ts");
+  assert.match(src, /MAX_ATTEMPTS/, "Must define retry attempts");
+  assert.match(src, /\.cause/, "Must surface error.cause in the log");
+  assert.match(src, /attempts=/, "Final error log must include attempts");
+});
+
 test("Story 6.1 DeliverWebhookUseCase body does not contain PII", () => {
   const src = readText("src/modules/webhook/app/deliver_webhook_usecase.ts");
   // Body should only contain: proofRequestId, status, proofType, externalReference, updatedAt
@@ -215,9 +222,9 @@ test("Story 6.1 GetProofSessionPresenter injects webhook and requestRepo", () =>
   assert.match(src, /deliverWebhook/, "Must inject deliverWebhook");
 });
 
-// ─── Webhook é fire-and-forget em todos os pontos ─────────────────────────────
+// ─── Webhook é aguardado (await) em todos os pontos — serverless congela após a resposta ─────────────────────────────
 
-test("Story 6.1 All webhook calls use fire-and-forget pattern (.catch)", () => {
+test("Story 6.1 All webhook calls are awaited (execute() never throws)", () => {
   const files = [
     "src/modules/presentation/app/verify_presentation_usecase.ts",
     "src/modules/proof-session/app/cancel_proof_session_usecase.ts",
@@ -228,9 +235,10 @@ test("Story 6.1 All webhook calls use fire-and-forget pattern (.catch)", () => {
     const src = readText(file);
     assert.match(
       src,
-      /\.catch\(/,
-      `${file}: webhook call must use .catch() for fire-and-forget`
+      /await (this\.deliverWebhook\.execute|this\.fireWebhook)/,
+      `${file}: webhook call must be awaited so serverless runtimes do not freeze mid-delivery`
     );
+    assert.doesNotMatch(src, /fire-and-forget error/, `${file}: no detached .catch() handler`);
   }
 });
 

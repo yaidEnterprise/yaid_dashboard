@@ -72,9 +72,8 @@ describe("Story 7.5 — ReviewProofRequestUseCase guard order", () => {
     assert.ok(updateIdx < webhookIdx, "updateStatus must run before the webhook dispatch");
   });
 
-  test("webhook delivery is fire-and-forget, never awaited directly", () => {
-    assert.doesNotMatch(src, /await this\.deliverWebhook\.execute/);
-    assert.match(src, /\.catch\(/);
+  test("webhook delivery is awaited (serverless runtimes freeze after the response)", () => {
+    assert.match(src, /await this\.deliverWebhook\.execute/);
   });
 });
 

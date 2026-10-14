@@ -9,7 +9,30 @@ export interface DeliverWebhookInput {
   updatedAt: string;
 }
 
-const WEBHOOK_TIMEOUT_MS = 10_000;
+const WEBHOOK_TIMEOUT_MS = 5_000;
+const MAX_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = [500, 1_500];
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** undici wraps the real network error (ECONNRESET, ENOTFOUND...) in `cause`. */
+function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const cause = (error as Error & { cause?: unknown }).cause;
+  if (!cause) return error.message;
+  if (cause instanceof AggregateError) {
+    // Dual-stack connect failures (IPv4 + IPv6) arrive as an AggregateError with an empty message.
+    const inner = cause.errors
+      .map((e) => (e as { code?: string }).code ?? String(e))
+      .join(",");
+    return `${error.message} cause=${inner}`;
+  }
+  if (cause instanceof Error) {
+    const code = (cause as Error & { code?: string }).code;
+    return `${error.message} cause=${code ? `${code}: ` : ""}${cause.message}`;
+  }
+  return `${error.message} cause=${String(cause)}`;
+}
 
 export class DeliverWebhookUseCase {
   constructor(
@@ -58,38 +81,51 @@ export class DeliverWebhookUseCase {
       // Sign the raw JSON payload
       const { signature, timestamp } = await this.signer.sign(bodyJson);
 
-      // Send the webhook
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        WEBHOOK_TIMEOUT_MS
-      );
+      // Send the webhook, retrying only on network-level failures
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(
+          () => controller.abort(),
+          WEBHOOK_TIMEOUT_MS
+        );
 
-      try {
-        const response = await fetch(webhookUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-YaID-Signature": signature,
-            "X-YaID-Timestamp": String(timestamp),
-          },
-          body: bodyJson,
-          signal: controller.signal,
-        });
+        try {
+          const response = await fetch(webhookUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-YaID-Signature": signature,
+              "X-YaID-Timestamp": String(timestamp),
+            },
+            body: bodyJson,
+            signal: controller.signal,
+          });
 
-        if (!response.ok) {
-          console.error(
-            `[webhook] delivery failed: proofRequestId=${input.proofRequestId} webhookUrl=${webhookUrl} status=${response.status} statusText=${response.statusText}`
+          if (!response.ok) {
+            console.error(
+              `[webhook] delivery failed: proofRequestId=${input.proofRequestId} webhookUrl=${webhookUrl} status=${response.status} statusText=${response.statusText}`
+            );
+          }
+          return;
+        } catch (error: unknown) {
+          const detail = describeError(error);
+          if (attempt === MAX_ATTEMPTS) {
+            console.error(
+              `[webhook] delivery error: proofRequestId=${input.proofRequestId} webhookUrl=${webhookUrl} attempts=${attempt} error=${detail}`
+            );
+            return;
+          }
+          console.warn(
+            `[webhook] delivery attempt ${attempt}/${MAX_ATTEMPTS} failed, retrying: proofRequestId=${input.proofRequestId} webhookUrl=${webhookUrl} error=${detail}`
           );
+          await sleep(RETRY_BACKOFF_MS[attempt - 1]);
+        } finally {
+          clearTimeout(timeoutId);
         }
-      } finally {
-        clearTimeout(timeoutId);
       }
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : String(error);
       console.error(
-        `[webhook] delivery error: proofRequestId=${input.proofRequestId} error=${message}`
+        `[webhook] delivery error: proofRequestId=${input.proofRequestId} error=${describeError(error)}`
       );
     }
   }
