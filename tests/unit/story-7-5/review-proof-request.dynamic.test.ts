@@ -54,11 +54,13 @@ class FakeRequestRepo implements ProofRequestRepository {
 class FakeDeliverWebhookUseCase implements Pick<DeliverWebhookUseCase, "execute"> {
   readonly calls: DeliverWebhookInput[] = [];
 
-  constructor(private readonly shouldReject = false) {}
+  completed = false;
 
   async execute(input: DeliverWebhookInput): Promise<void> {
     this.calls.push(input);
-    if (this.shouldReject) throw new Error("webhook delivery failed");
+    // Simulates a slow delivery: the use case must wait for it.
+    await new Promise((r) => setTimeout(r, 10));
+    this.completed = true;
   }
 }
 
@@ -146,10 +148,10 @@ describe("Story 7.5 — ReviewProofRequestUseCase approve/reject transitions", (
     assert.equal(webhook.calls[0].status, ProofRequestStatus.REJECTED);
   });
 
-  test("webhook delivery failure does not reject the use case (fire-and-forget)", async () => {
+  test("awaits webhook delivery before returning (serverless runtimes freeze after the response)", async () => {
     const row = makeRow({ status: ProofRequestStatus.PENDING_USER });
     const repo = new FakeRequestRepo(row);
-    const webhook = new FakeDeliverWebhookUseCase(true);
+    const webhook = new FakeDeliverWebhookUseCase();
     const useCase = new ReviewProofRequestUseCase(
       repo,
       webhook as unknown as DeliverWebhookUseCase
@@ -162,7 +164,8 @@ describe("Story 7.5 — ReviewProofRequestUseCase approve/reject transitions", (
     });
 
     assert.equal(result.status, ProofRequestStatus.APPROVED);
-    assert.equal(repo.statusUpdates.length, 1, "status must still transition even if webhook delivery fails");
+    assert.equal(repo.statusUpdates.length, 1);
+    assert.equal(webhook.completed, true, "delivery must finish before execute() returns");
   });
 
   test("works without a webhook dependency (optional constructor argument)", async () => {

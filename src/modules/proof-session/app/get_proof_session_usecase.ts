@@ -44,19 +44,16 @@ export class GetProofSessionUseCase {
         );
       }
 
-      // Fire-and-forget webhook delivery
+      // Awaited: serverless runtimes freeze after the response, which would
+      // kill an in-flight delivery. execute() never throws.
       if (this.deliverWebhook) {
-        this.deliverWebhook
-          .execute({
-            proofRequestId: session.proofRequestId,
-            status: ProofRequestStatus.EXPIRED,
-            proofType,
-            externalReference,
-            updatedAt: new Date().toISOString(),
-          })
-          .catch((err) =>
-            console.error(`[webhook] fire-and-forget error: ${err}`)
-          );
+        await this.deliverWebhook.execute({
+          proofRequestId: session.proofRequestId,
+          status: ProofRequestStatus.EXPIRED,
+          proofType,
+          externalReference,
+          updatedAt: new Date().toISOString(),
+        });
       }
     }
 
