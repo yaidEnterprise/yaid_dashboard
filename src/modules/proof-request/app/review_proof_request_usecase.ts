@@ -44,17 +44,15 @@ export class ReviewProofRequestUseCase {
 
     const updatedAt = new Date().toISOString();
 
-    // Fire-and-forget webhook delivery — mirrors CancelProofSessionUseCase.
+    // Awaited — mirrors CancelProofSessionUseCase. execute() never throws.
     if (this.deliverWebhook) {
-      this.deliverWebhook
-        .execute({
-          proofRequestId: input.requestId,
-          status: newStatus,
-          proofType: row.request.proofType,
-          externalReference: row.request.externalRef,
-          updatedAt,
-        })
-        .catch((err) => console.error(`[webhook] fire-and-forget error: ${err}`));
+      await this.deliverWebhook.execute({
+        proofRequestId: input.requestId,
+        status: newStatus,
+        proofType: row.request.proofType,
+        externalReference: row.request.externalRef,
+        updatedAt,
+      });
     }
 
     return { id: input.requestId, status: newStatus, updatedAt };
